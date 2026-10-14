@@ -1,6 +1,6 @@
 # Insurance Policy RAG
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR-GITHUB-USERNAME/insurance-policy-rag/blob/main/insurance_policy_rag.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RamkrushnaSaner/insurance-policy-rag/blob/main/insurance_policy_rag.ipynb)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -116,7 +116,7 @@ The first cell installs the dependencies Colab does not already have.
 Requires Python 3.12 and a CUDA GPU (see [Requirements](#requirements)).
 
 ```bash
-git clone https://github.com/YOUR-GITHUB-USERNAME/insurance-policy-rag.git
+git clone https://github.com/RamkrushnaSaner/insurance-policy-rag.git
 cd insurance-policy-rag
 
 python3.12 -m venv .venv          # Windows: py -3.12 -m venv .venv
