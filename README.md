@@ -1,6 +1,6 @@
 # Insurance Policy RAG
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR-GITHUB-USERNAME/insurance-policy-rag/blob/main/insurance_policy_rag.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RamkrushnaSaner/insurance-policy-rag/blob/main/insurance_policy_rag.ipynb)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -52,6 +52,30 @@ flowchart LR
 | Generation | [`mistralai/Mistral-7B-Instruct-v0.3`](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3), fp16, greedy decoding |
 | Orchestration | LangGraph `StateGraph` |
 
+## Example
+
+Output recorded from a run of the notebook. `Sources` lists the chunks given to the model, as `section (reranker score)`, best first.
+
+**Q:** What is the procedure for cashless claims in India? Give me step wise complete procedure.
+
+`Sources: 11.2 (3.69), 11.3 (1.28), 11.5 (-0.73), 11 (-2.34), 11.4 (-2.48), 4.9.1 (-2.97), 4.10.1 (-3.63)`<br>
+`Context tokens: 1283`
+
+**A:** The procedure for cashless claims in India, as specified in the policy text, is as follows:
+
+1. Treatment may be taken in a Network Provider (Section 11.2.a).
+2. The Insured Person or Policyholder should obtain a Cashless request form from the Network Provider (Section 11.2.b).
+3. The Network Provider shall gather relevant information from the Insured Person/Policyholder and send a Cashless Facility request to the Company for authorization (Section 11.2.c).
+4. The Company, upon receiving the cashless request form and related medical information, will issue a pre-authorization letter to the Network Provider after verification (Section 11.2.d).
+5. At the time of discharge, the Insured Person shall verify and sign the discharge papers along with the final bill, pay for non-medical and inadmissible expenses (Section 11.2.e).
+6. In case the Insured Person is unable to provide the relevant medical details, the Company reserves the right to deny pre-authorization (Section 11.2.f).
+7. If cashless access is denied, the Insured Person may obtain treatment as per the treating doctor's advice and submit the claim documents to the Company for reimbursement (Section 11.2.g).
+8. It is important to note that the pre-authorization issued by the Company is valid for 15 days from the date of issuance (or expiry of the Policy, whichever is earlier) (Section 11.5.c).
+9. The Company shall make payment for the Cashless facility to the authorized amount, directly to the Network Provider (Section 11.5.d).
+10. The Insured Person should check the updated list of Network Providers before applying for cashless claim, as the Company reserves the right to modify, add, or restrict any Network Provider for Cashless facility at its sole discretion (Section 11.5.b).
+
+More recorded answers, covering plan comparison, exclusions, waiting periods, claims, pre- and post-hospitalization expenses and the Plus Benefit, are in [`examples/sample_outputs.md`](examples/sample_outputs.md).
+
 ## Repository structure
 
 ```
@@ -60,6 +84,8 @@ insurance-policy-rag/
 ├── requirements.txt             # dependencies for local runs
 ├── data/
 │   └── README.md                # how to obtain and place the policy text
+├── examples/
+│   └── sample_outputs.md        # recorded answers to eight policy questions
 ├── .gitignore                   # keeps the policy text and generated index out of git
 ├── LICENSE
 └── README.md
@@ -90,7 +116,7 @@ The first cell installs the dependencies Colab does not already have.
 Requires Python 3.12 and a CUDA GPU (see [Requirements](#requirements)).
 
 ```bash
-git clone https://github.com/YOUR-GITHUB-USERNAME/insurance-policy-rag.git
+git clone https://github.com/RamkrushnaSaner/insurance-policy-rag.git
 cd insurance-policy-rag
 
 python3.12 -m venv .venv          # Windows: py -3.12 -m venv .venv
