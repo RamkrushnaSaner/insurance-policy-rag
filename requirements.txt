@@ -1,0 +1,29 @@
+# Dependencies for running the notebook locally (Python 3.12).
+# Google Colab does not need this file: the notebook's first cell installs what it needs.
+#
+# PyTorch is not pinned. Install the build that matches your CUDA version first
+# (https://pytorch.org/get-started/locally/), then run: pip install -r requirements.txt
+
+torch>=2.5
+
+# Retrieval, reranking and generation
+transformers==5.19.0
+sentence-transformers==6.1.0
+accelerate==1.15.0
+faiss-cpu==1.15.1
+rank-bm25==0.2.2
+tiktoken==0.14.0
+
+# Orchestration
+langgraph==1.2.15
+
+# Data handling
+numpy==2.5.4
+pandas==3.0.6
+
+# Notebook runtime
+jupyterlab==4.6.4
+
+# Optional: only needed when CONFIG["llm_load_in_4bit"] = True (CUDA GPUs only).
+# The notebook installs it automatically in that case.
+# bitsandbytes==0.50.2
