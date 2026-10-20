@@ -1,7 +1,7 @@
 # Sample outputs
 
 Answers recorded from a run of `insurance_policy_rag.ipynb` (v2.2) on the my:Optima Secure policy
-text. They are reproduced exactly as the notebook printed them; only the layout was converted to
+text. They predate the v2.3 answer-quality fixes and will be re-recorded from a v2.3 run. They are reproduced exactly as the notebook printed them; only the layout was converted to
 Markdown.
 
 Each entry shows what `ask()` prints in Section 9:
