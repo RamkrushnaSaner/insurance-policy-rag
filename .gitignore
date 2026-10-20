@@ -6,6 +6,12 @@ data/*
 *.faiss
 chunks.json
 
+# Evaluation results (contain policy excerpts; share the zip directly instead)
+eval_runs/
+rag_eval_results/
+rag_eval_results_*.zip
+original_set_results.json
+
 # Jupyter
 .ipynb_checkpoints/
 

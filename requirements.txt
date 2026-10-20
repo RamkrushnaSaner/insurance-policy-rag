@@ -21,6 +21,9 @@ langgraph==1.2.15
 numpy==2.5.4
 pandas==3.0.6
 
+# Stemmed BM25 experiment (only used when CONFIG["bm25_stemming"] = True)
+snowballstemmer==3.0.1
+
 # Notebook runtime
 jupyterlab==4.6.4
 
