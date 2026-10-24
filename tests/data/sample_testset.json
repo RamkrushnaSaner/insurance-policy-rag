@@ -1,0 +1,140 @@
+{
+ "name": "sample policy test set",
+ "document": "sample",
+ "table_checker": null,
+ "evidence_removed_candidates": [
+  "S01",
+  "S03"
+ ],
+ "items": [
+  {
+   "id": "S01",
+   "split": "dev",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the waiting period for kidney stones?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "covered only after 24 months of continuous cover"
+    ]
+   ],
+   "facts": [
+    [
+     "24 months"
+    ]
+   ],
+   "reference": "Kidney stones are covered after 24 months of continuous cover (Section 10.1)."
+  },
+  {
+   "id": "S02",
+   "split": "dev",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How many days before admission are medical bills paid?",
+   "sections": [
+    "3.2"
+   ],
+   "evidence": [
+    [
+     "incurred in the 30 days before admission"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ]
+   ],
+   "reference": "Expenses in the 30 days before admission (Section 3.2)."
+  },
+  {
+   "id": "S03",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the Wellness Bonus?",
+   "sections": [
+    "4.1"
+   ],
+   "evidence": [
+    [
+     "increases the sum insured by 10 for each claim free year"
+    ]
+   ],
+   "facts": [
+    [
+     "10%"
+    ],
+    [
+     "50%"
+    ]
+   ],
+   "reference": "10% more Sum Insured per claim-free year, up to 50% (Section 4.1)."
+  },
+  {
+   "id": "S04",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the annual premium for age 40 with a Sum Insured of 10 lakh?",
+   "sections": [
+    "Annexure-C"
+   ],
+   "evidence": [
+    [
+     "age 36 45 8 000 12 000"
+    ]
+   ],
+   "facts": [
+    [
+     "12,000"
+    ]
+   ],
+   "reference": "Rs 12,000 a year (Annexure C)."
+  },
+  {
+   "id": "S05",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "Does the policy cover pet insurance for dogs?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "pet"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "S06",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Is joint replacement after an accident subject to the waiting period?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "joint replacement unless caused by an accident"
+    ]
+   ],
+   "facts": [
+    [
+     "accident"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No: the 24-month waiting period does not apply when the joint replacement is caused by an accident."
+  }
+ ]
+}

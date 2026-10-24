@@ -1,0 +1,78 @@
+# The baseline system: the configuration behind the published results (README, "Results").
+# Paths are relative to the repository root. Every setting is explained in src/policy_rag/config.py.
+# Experiments: copy a file from configs/experiments/ ("extends: ../default.yaml" + only what changes),
+# or override on the command line: --set generator.think_budget=1536
+
+documents:
+  - id: optima-secure
+    name: "HDFC ERGO my:Optima Secure"
+    chunks: data/policy_chunks.json      # made by: policy-rag chunk-pdf <policy.pdf> data/policy_chunks.json
+
+embedder:
+  type: sentence_transformers
+  model: BAAI/bge-small-en-v1.5
+  query_prefix: "Represent this sentence for searching relevant passages: "
+  batch_size: 32
+
+reranker:
+  type: cross_encoder
+  model: BAAI/bge-reranker-v2-m3
+  max_length: 1024
+  batch_size: 8
+  use_label: true                        # the reranker reads "label: text"
+
+retrieval:
+  k_dense: 32
+  k_bm25: 32
+  use_bm25: true
+  rrf_k: 60
+  routing: true
+  routed_indexes:
+    premium:                             # premium-table chunks: searched only for cost questions
+      k: 12
+      query_pattern: '\bhow much\b[^?]*\b(cost|premium|pay for (the|this) (policy|plan|cover))|\b(annual|yearly) premium|\bpremium (for|of|amount|rates?|payable for)\b|\bwhat (is|are|would be) the premium|\b(cost|price)s? (of|for)\b|\bcost (more|less)\b|\b(cheaper|expensive)\b'
+      exclude_pattern: 'instal+ment|grace period|refund|deduction|income tax|discount|loading'
+
+context:
+  token_budget: 1500
+  title_pinning: true
+  max_pinned_sections: 2
+  neighbour_expansion: true
+  seed_score_floor: -5.0
+
+gate:
+  min_score: -5.0
+
+prompt:
+  template: policy_analyst_v2_3
+
+generator:
+  type: hf_causal_lm
+  model: Qwen/Qwen3-8B
+  load_in_4bit: true
+  enable_thinking: true
+  think_budget: 1024
+  max_new_tokens: 1000
+  sampling: true
+  oom_retry_context_tokens: 1000
+
+cache:
+  enabled: true
+  path: runs/answer_cache.jsonl
+
+evaluation:
+  testset: testsets/optima_secure_v3.json
+  splits: [dev, test]
+  output_dir: runs
+  groundedness: true
+  grounding_model: vectara/hallucination_evaluation_model
+  hhem_threshold: 0.5
+  evidence_removed_test: true
+  repeat_check: true
+
+decision:                                # fixed before results: when does a candidate replace the baseline?
+  alpha: 0.05
+  n_bootstrap: 10000
+  max_median_seconds: 150
+  max_peak_gpu_gb: 14.0
+  kappa_target: 0.7

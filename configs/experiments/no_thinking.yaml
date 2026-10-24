@@ -1,0 +1,6 @@
+# Qwen3 without thinking: no thinking tokens, so answers come much faster; is the quality the same?
+#   policy-rag evaluate --config configs/experiments/no_thinking.yaml --name no_thinking
+#   policy-rag compare runs/baseline/run.json runs/no_thinking/run.json
+extends: ../default.yaml
+generator:
+  enable_thinking: false

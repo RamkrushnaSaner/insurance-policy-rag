@@ -1,0 +1,114 @@
+id,split,type,answerable,everyday_wording,fully_correct,first_failing_stage,critical,issues,gate,top_rerank_score,context_tokens,search_recall,context_recall,mrr10,groundedness_hhem,think_tokens,thinking_forced,answer_tokens,seconds
+G01,test,list,True,False,False,generation,,"in the context, not in the answer: 5 consecutive days | in the context, not in the answer: economy | says something is not shown, but the context has: 5 consecutive days, economy",answer,2.91796875,1452,1.0,1.0,1.0,0.9090909090909091,490.0,False,379.0,87.28
+G02,dev,definition,True,False,False,generation,,"in the context, not in the answer: irrespective | says something is not shown, but the context has: irrespective",answer,1.587890625,1474,1.0,1.0,1.0,0.8333333333333334,714.0,False,523.0,130.21
+G03,dev,fact,True,False,True,,,,answer,0.86962890625,1441,1.0,1.0,1.0,1.0,413.0,False,126.0,55.73
+G04,dev,fact,True,False,True,,,,answer,1.357421875,1447,1.0,1.0,1.0,1.0,480.0,False,115.0,61.45
+G05,dev,procedure,True,False,True,,,,answer,0.57763671875,1483,1.0,1.0,1.0,1.0,754.0,False,578.0,142.25
+G06,dev,procedure,True,False,True,,,,answer,2.794921875,1417,1.0,1.0,1.0,1.0,484.0,False,352.0,85.28
+G07,dev,list,True,False,True,,,,answer,0.63525390625,1455,1.0,1.0,1.0,0.9523809523809523,573.0,False,583.0,121.8
+G08,dev,list,True,False,False,context,,not in the context: excl09 | not in the context: excl18,answer,0.77783203125,1499,1.0,0.6666666666666666,0.3333333333333333,1.0,641.0,False,860.0,161.9
+G09,dev,comparison,True,False,False,generation,,table values missing: 4 of 14,answer,1.93359375,1480,1.0,1.0,0.5,0.6666666666666666,1024.0,True,355.0,148.67
+G10,test,out_of_scope,False,False,True,,,,answer,-4.23046875,1408,,,,0.5,225.0,False,57.0,31.28
+F01,test,fact,True,False,True,,,,answer,2.662109375,1467,1.0,1.0,1.0,1.0,213.0,False,94.0,33.84
+F02,test,fact,True,False,True,,,,answer,5.75390625,418,1.0,1.0,1.0,1.0,163.0,False,28.0,18.69
+F03,test,fact,True,False,True,,,,answer,4.99609375,1410,1.0,1.0,1.0,1.0,282.0,False,80.0,38.5
+F04,test,fact,True,False,True,,,,answer,1.8818359375,1471,1.0,1.0,1.0,1.0,386.0,False,111.0,52.05
+F05,test,fact,True,False,True,,,,answer,3.8046875,1462,1.0,1.0,1.0,1.0,461.0,False,143.0,63.03
+F06,test,fact,True,False,True,,,,answer,1.3974609375,1462,1.0,1.0,1.0,1.0,323.0,False,94.0,44.73
+F07,test,fact,True,False,True,,,,answer,3.685546875,1464,1.0,1.0,1.0,1.0,318.0,False,83.0,42.91
+F08,test,fact,True,False,True,,,,answer,4.51171875,333,1.0,1.0,1.0,1.0,133.0,False,31.0,16.31
+F09,test,fact,True,False,True,,,,answer,6.5078125,1474,1.0,1.0,1.0,1.0,1024.0,True,80.0,117.1
+F10,test,fact,True,False,True,,,,answer,5.07421875,1475,1.0,1.0,1.0,1.0,331.0,False,114.0,46.84
+F11,test,fact,True,False,True,,,,answer,-2.9296875,1497,1.0,1.0,0.5,1.0,1024.0,True,113.0,121.01
+F12,test,fact,True,False,True,,,,answer,2.00390625,985,1.0,1.0,0.5,1.0,338.0,False,165.0,48.02
+F13,test,fact,True,False,True,,,,answer,4.671875,135,1.0,1.0,1.0,1.0,292.0,False,70.0,32.66
+F14,test,fact,True,False,True,,,cites section numbers not in the context: 80,answer,6.3046875,1486,1.0,1.0,1.0,1.0,340.0,False,41.0,41.18
+F15,test,fact,True,False,True,,,,answer,4.00390625,701,1.0,1.0,1.0,1.0,285.0,False,56.0,32.58
+F16,test,fact,True,False,True,,,,answer,3.9765625,1443,1.0,1.0,1.0,1.0,210.0,False,44.0,28.59
+F17,test,fact,True,False,True,,,,answer,3.595703125,385,1.0,1.0,1.0,1.0,150.0,False,45.0,18.56
+F18,test,fact,True,False,True,,,,answer,2.6640625,1397,1.0,1.0,1.0,0.8333333333333334,344.0,False,230.0,58.35
+F19,test,fact,True,False,True,,,,answer,1.1123046875,976,1.0,1.0,1.0,1.0,1024.0,True,84.0,106.72
+F20,test,fact,True,False,True,,,,answer,4.49609375,1500,1.0,1.0,1.0,1.0,679.0,False,125.0,84.49
+L01,test,list,True,False,True,,,,answer,4.1328125,1492,1.0,1.0,0.5,0.95,774.0,False,638.0,151.35
+L02,test,list,True,False,True,,,,answer,5.37890625,1473,1.0,1.0,1.0,1.0,249.0,False,81.0,35.64
+L03,test,list,True,False,True,,,,answer,7.08984375,1464,1.0,1.0,1.0,1.0,368.0,False,264.0,64.88
+L04,test,list,True,False,True,,,,answer,5.8515625,1455,1.0,1.0,1.0,1.0,492.0,False,193.0,69.93
+L05,test,list,True,False,True,,,,answer,7.28515625,1482,1.0,1.0,1.0,1.0,401.0,False,378.0,80.38
+L06,test,list,True,False,True,,,,answer,6.546875,1460,1.0,1.0,1.0,1.0,596.0,False,447.0,107.27
+L07,test,list,True,False,True,,,,answer,5.6328125,1435,1.0,1.0,1.0,1.0,481.0,False,553.0,105.55
+L08,test,list,True,False,True,,,,answer,6.05859375,1484,1.0,1.0,1.0,1.0,306.0,False,122.0,45.25
+L09,test,list,True,False,True,,,,answer,5.52734375,1240,1.0,1.0,1.0,1.0,327.0,False,60.0,39.14
+L10,test,list,True,False,True,,,,answer,4.88671875,1391,1.0,1.0,1.0,1.0,234.0,False,139.0,39.24
+P01,test,procedure,True,False,True,,,,answer,2.83984375,1417,1.0,1.0,1.0,1.0,376.0,False,252.0,63.8
+P02,test,procedure,True,False,True,,,,answer,3.5,1405,1.0,1.0,1.0,0.5714285714285714,1024.0,True,228.0,131.22
+P03,test,procedure,True,False,True,,,,answer,1.224609375,1498,1.0,1.0,1.0,1.0,273.0,False,114.0,41.57
+C01,dev,comparison,True,False,False,generation,,"in the context, not in the answer: 25 lakh | table values missing: 1 of 3",answer,4.296875,1471,1.0,1.0,1.0,0.6666666666666666,345.0,False,98.0,46.77
+C02,test,comparison,True,False,True,,,,answer,3.130859375,1371,1.0,1.0,0.5,0.9,1024.0,True,496.0,160.63
+C03,dev,comparison,True,False,True,,,,answer,1.4951171875,1463,1.0,1.0,0.1,0.9285714285714286,608.0,False,464.0,111.15
+C04,test,comparison,True,False,True,,,,answer,3.0859375,1157,1.0,1.0,1.0,1.0,280.0,False,97.0,37.61
+K01,test,conditional,True,True,True,,,,answer,-0.7529296875,1359,1.0,1.0,1.0,0.5,267.0,False,152.0,43.08
+K02,dev,conditional,True,True,True,,,,answer,-0.25244140625,1069,1.0,1.0,1.0,1.0,183.0,False,93.0,27.71
+K03,dev,conditional,True,False,True,,,,answer,5.11328125,1224,1.0,1.0,1.0,1.0,324.0,False,259.0,56.73
+K04,test,conditional,True,False,True,,,,answer,5.73046875,1263,1.0,1.0,1.0,0.6666666666666666,276.0,False,85.0,36.83
+K05,dev,conditional,True,True,True,,,,answer,0.60693359375,1387,1.0,1.0,1.0,1.0,271.0,False,73.0,36.37
+K06,test,conditional,True,False,True,,,,answer,4.6640625,1421,1.0,1.0,1.0,0.5,244.0,False,92.0,36.03
+K07,dev,conditional,True,True,True,,,,answer,-2.451171875,1422,1.0,1.0,1.0,1.0,406.0,False,179.0,59.91
+K08,test,conditional,True,True,True,,,,answer,2.833984375,1488,1.0,1.0,1.0,1.0,421.0,False,133.0,58.3
+K09,test,conditional,True,True,True,,,,answer,1.998046875,1461,1.0,1.0,1.0,0.75,176.0,False,88.0,29.58
+K10,test,conditional,True,False,True,,,,answer,4.234375,1458,1.0,1.0,1.0,1.0,294.0,False,61.0,38.11
+K11,test,conditional,True,False,True,,,,answer,2.912109375,1498,1.0,1.0,1.0,1.0,543.0,False,138.0,71.01
+K12,test,conditional,True,False,True,,,,answer,5.46875,1474,1.0,1.0,1.0,1.0,377.0,False,59.0,46.45
+D01,test,definition,True,False,True,,,,answer,1.716796875,1491,1.0,1.0,0.5,1.0,334.0,False,142.0,50.07
+D02,test,definition,True,False,True,,,,answer,3.6796875,1495,1.0,1.0,0.5,1.0,312.0,False,157.0,49.28
+D03,test,definition,True,False,True,,,,answer,0.833984375,1423,1.0,1.0,1.0,0.8571428571428571,519.0,False,213.0,74.71
+D04,test,definition,True,False,True,,,,answer,2.99609375,1387,1.0,1.0,1.0,1.0,510.0,False,197.0,71.62
+D05,test,definition,True,False,False,generation,,"in the context, not in the answer: sum insured",answer,3.791015625,1421,1.0,1.0,1.0,1.0,475.0,False,280.0,76.57
+D06,test,definition,True,False,True,,,,answer,2.107421875,1489,1.0,1.0,1.0,1.0,387.0,False,407.0,82.24
+D07,test,definition,True,False,True,,,,answer,1.0732421875,1393,1.0,1.0,1.0,1.0,488.0,False,259.0,75.41
+M01,dev,multi_section,True,True,True,,,,answer,2.830078125,1440,1.0,1.0,1.0,0.8,185.0,False,131.0,34.21
+M02,test,multi_section,True,False,True,,,,answer,4.55078125,1429,1.0,1.0,1.0,1.0,340.0,False,130.0,48.75
+M03,test,multi_section,True,True,True,,,,answer,3.607421875,1473,1.0,1.0,0.2,1.0,405.0,False,222.0,64.32
+M04,test,multi_section,True,False,True,,,,answer,4.35546875,1475,1.0,1.0,1.0,1.0,440.0,False,476.0,93.6
+X01,test,paraphrase,True,True,False,generation,known_false,"known false or wrong-row statement: ""regardless of accidents""",answer,-3.103515625,1309,1.0,1.0,0.5,1.0,347.0,False,128.0,47.63
+X02,test,paraphrase,True,True,False,context,,not in the context: 24 months | model refused,answer,-4.07421875,708,1.0,0.0,0.2,0.3333333333333333,286.0,False,144.0,39.97
+X03,dev,paraphrase,True,True,False,retrieval,,search did not find: excl18,answer,-3.79296875,645,0.0,0.0,0.0,1.0,1024.0,True,80.0,99.88
+X04,test,paraphrase,True,True,False,context,,not in the context: excl17 | model refused,answer,-4.38671875,1363,1.0,0.0,0.16666666666666666,0.3333333333333333,624.0,False,123.0,74.75
+X05,test,paraphrase,True,True,True,,,,answer,-3.740234375,230,1.0,1.0,1.0,1.0,136.0,False,80.0,19.82
+X06,test,paraphrase,True,True,True,,,,answer,-3.26171875,668,1.0,1.0,1.0,0.6666666666666666,128.0,False,64.0,19.27
+X07,test,paraphrase,True,True,True,,,,answer,4.51953125,1443,1.0,1.0,1.0,1.0,319.0,False,74.0,41.51
+X08,test,paraphrase,True,True,True,,,,answer,5.5859375,1443,1.0,1.0,1.0,1.0,320.0,False,134.0,47.25
+X09,test,paraphrase,True,True,True,,,,answer,0.239990234375,697,1.0,1.0,1.0,1.0,240.0,False,84.0,30.82
+X10,test,paraphrase,True,True,True,,,,answer,-3.365234375,1065,1.0,1.0,1.0,0.3333333333333333,228.0,False,112.0,33.39
+X11,test,paraphrase,True,True,True,,,,answer,1.28515625,1466,1.0,1.0,0.5,1.0,734.0,False,148.0,91.93
+X12,test,paraphrase,True,True,False,context,,not in the context: disease or injury,answer,1.755859375,1450,1.0,0.0,0.16666666666666666,0.8333333333333334,345.0,False,90.0,45.68
+X13,test,paraphrase,True,True,True,,,,answer,-2.474609375,1049,1.0,1.0,1.0,1.0,442.0,False,202.0,60.35
+X14,test,paraphrase,True,True,True,,,,answer,0.2142333984375,1452,1.0,1.0,1.0,1.0,482.0,False,146.0,65.09
+X15,test,paraphrase,True,True,True,,,,answer,-0.763671875,343,1.0,1.0,1.0,0.75,190.0,False,81.0,25.21
+N01,dev,out_of_scope,False,False,True,,,,answer,-1.40625,1477,,,,0.0,327.0,False,94.0,44.88
+N02,test,out_of_scope,False,False,True,,,,answer,-4.51171875,1350,,,,,334.0,False,10.0,36.15
+N03,test,out_of_scope,False,False,True,,,,answer,-2.701171875,697,,,,,217.0,False,10.0,22.74
+N04,dev,out_of_scope,False,False,False,generation,not_declined,answered instead of saying the policy does not cover it,answer,1.380859375,1453,,,,1.0,495.0,False,172.0,68.74
+N05,dev,fact,True,False,True,,,,answer,3.71484375,1477,1.0,1.0,1.0,0.25,1024.0,True,130.0,123.38
+N06,test,out_of_scope,False,False,True,,,,no_answer,-5.2890625,0,,,,,,,,
+FP01,dev,false_premise,False,False,True,,,,no_answer,-5.015625,0,,,,,,,,
+FP02,test,false_premise,False,False,True,,,,answer,-1.7197265625,1428,,,,1.0,262.0,False,74.0,36.14
+FP03,dev,false_premise,True,True,False,context,,not in the context: excl18 | model refused,answer,-4.5859375,990,1.0,0.0,0.0,,236.0,False,10.0,25.48
+T01,dev,comparison,True,False,True,,,,answer,7.4296875,1450,1.0,1.0,1.0,1.0,422.0,False,53.0,49.73
+TY01,dev,paraphrase,True,True,True,,,,answer,0.87939453125,198,1.0,1.0,1.0,1.0,182.0,False,60.0,22.42
+PA01,dev,partial,True,True,True,,,,answer,-0.72900390625,697,1.0,1.0,1.0,0.5,277.0,False,72.0,33.31
+PR01,test,fact,True,False,True,,,,answer,3.71484375,1496,1.0,1.0,1.0,1.0,380.0,False,96.0,50.81
+PR02,test,comparison,True,True,False,context,,"not in the context: 10,800 | not in the context: 11,138 | in the context, not in the answer: 338 | model refused",answer,1.62109375,1450,0.6666666666666666,0.0,0.5,0.5,338.0,False,80.0,44.05
+PR03,test,fact,True,False,True,,,,answer,1.8115234375,1490,1.0,1.0,1.0,0.5,258.0,False,86.0,37.75
+AB01,test,conditional,True,False,False,generation,,"in the context, not in the answer: protect benefit | says something is not shown, but the context has: protect benefit",answer,2.845703125,1491,1.0,0.5,1.0,1.0,394.0,False,166.0,58.03
+AB02,test,paraphrase,True,True,False,context,,not in the context: protect benefit,answer,-1.2880859375,1419,0.5,0.5,1.0,0.75,320.0,False,124.0,45.98
+FP04,test,false_premise,False,False,True,,,,answer,0.347900390625,1498,,,,0.6,376.0,False,136.0,53.33
+FP05,test,false_premise,False,False,True,,,,answer,-4.078125,1464,,,,,241.0,False,10.0,28.33
+N07,test,out_of_scope,False,False,True,,,,answer,-3.802734375,1138,,,,0.0,219.0,False,51.0,27.97
+N08,test,out_of_scope,False,True,True,,,,no_answer,-5.0859375,0,,,,,,,,
+N09,test,out_of_scope,False,False,True,,,,answer,-2.74609375,1365,,,,1.0,228.0,False,60.0,31.22
+N10,test,out_of_scope,False,False,True,,,,answer,-3.390625,1239,,,,0.3333333333333333,183.0,False,66.0,26.91
+N11,test,out_of_scope,False,True,True,,,,no_answer,-6.49609375,0,,,,,,,,
+N12,dev,out_of_scope,False,False,True,,,,answer,3.13671875,1387,,,,0.0,181.0,False,63.0,27.57
+N13,test,out_of_scope,False,False,True,,,,answer,-3.716796875,1169,,,,0.0,294.0,False,88.0,38.08
+N14,test,out_of_scope,False,True,True,,,,answer,-1.775390625,1491,,,,0.0,375.0,False,135.0,53.47
+N15,test,out_of_scope,False,True,True,,,,no_answer,-6.609375,0,,,,,,,,

@@ -1,0 +1,4 @@
+# The package with the model and PDF extras (same as: pip install -e ".[models,ingest]").
+# Install PyTorch for your CUDA version first: https://pytorch.org/get-started/locally/
+# Exact versions of the published run: requirements-lock.txt
+-e .[models,ingest]

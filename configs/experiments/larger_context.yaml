@@ -1,0 +1,4 @@
+# A larger context budget (more passages reach the model; slower, and more room for off-scope text).
+extends: ../default.yaml
+context:
+  token_budget: 2600

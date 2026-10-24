@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "policy-rag"
+version = "3.2.0"
+description = "Grounded question answering over insurance policy documents, with a reproducible evaluation"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Ramkrushna Saner" }]
+requires-python = ">=3.10"
+# Light core: retrieval, context building, the pipeline graph and the evaluation logic (no PyTorch needed).
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pyyaml>=6.0",
+    "faiss-cpu>=1.8",
+    "rank-bm25>=0.2.2",
+    "langgraph>=0.2",
+]
+
+[project.optional-dependencies]
+# The models (embedder, reranker, answer model, HHEM). Install PyTorch for your CUDA version first.
+models = [
+    "torch>=2.4",
+    "transformers>=4.51",          # Qwen3 needs 4.51 or later
+    "sentence-transformers>=3.0",
+    "accelerate>=1.0",
+    "bitsandbytes>=0.45; platform_system == 'Linux'",
+]
+# Turning the policy PDF into a chunk file
+ingest = ["pdfplumber==0.11.10", "tiktoken>=0.7"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+policy-rag = "policy_rag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,3398 @@
+{
+ "name": "my:Optima Secure test set v3",
+ "description": "113 questions keyed to the my:Optima Secure prospectus PDF: 25 dev (debugging), 88 held-out test (adopt/reject decisions only); 19 not answerable; 32 in everyday wording. Written by hand from the policy wording; evidence anchors are short phrases from the policy.",
+ "document": "optima-secure",
+ "table_checker": "optima_secure",
+ "evidence_removed_candidates": [
+  "G03",
+  "K02",
+  "X03",
+  "K05",
+  "T01",
+  "K03",
+  "TY01"
+ ],
+ "items": [
+  {
+   "id": "G01",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What expenses are covered under the Overseas Travel Secure option? Give complete details.",
+   "sections": [
+    "4.11"
+   ],
+   "evidence": [
+    [
+     "minimum hospitalization of 5 consecutive days and has also"
+    ],
+    [
+     "tickets most basic economy class airfare in"
+    ],
+    [
+     "15 000 per day only"
+    ],
+    [
+     "maximum upto 30 days in a policy"
+    ],
+    [
+     "expenses such as meals laundry transport are not"
+    ]
+   ],
+   "facts": [
+    [
+     "5 consecutive days"
+    ],
+    [
+     "accompanying person"
+    ],
+    [
+     "economy"
+    ],
+    [
+     "15,000"
+    ],
+    [
+     "30 days"
+    ],
+    [
+     "meals, laundry",
+     "meals"
+    ]
+   ],
+   "reference": "Overseas Travel Secure (4.11), available only with the Global or Global Plus plan, pays economy airfare for the insured person and one accompanying person and accommodation for the accompanying person up to Rs. 15,000 per day for up to 30 days in a policy year, if the overseas doctor advised at least 5 consecutive days of hospitalization and a Global Health Cover claim was accepted; meals, laundry and other transport are not paid."
+  },
+  {
+   "id": "G02",
+   "split": "dev",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the Plus Benefit? Explain in detail.",
+   "sections": [
+    "4.4"
+   ],
+   "evidence": [
+    [
+     "sum equal to 50 of the base"
+    ],
+    [
+     "accumulated up to 100 of base sum"
+    ],
+    [
+     "will be applied irrespective of number of"
+    ],
+    [
+     "is received within the grace period"
+    ]
+   ],
+   "facts": [
+    [
+     "50%"
+    ],
+    [
+     "100%"
+    ],
+    [
+     "irrespective",
+     "regardless",
+     "re:\\b(even|whether) (if|or not|though|when)\\b[^.]{0,50}\\bclaim",
+     "re:\\bno matter\\b",
+     "re:\\bnot (be )?(reduced|affected|impacted|dependent|linked|lost)\\b[^.]{0,40}\\bclaim",
+     "re:\\b(does|do) not depend on\\b[^.]{0,20}\\bclaim",
+     "re:\\bstill\\b[^.]{0,30}\\b(get|receive|added|eligible|entitled|apply|applies|be added)\\b"
+    ],
+    [
+     "grace period"
+    ]
+   ],
+   "must_not": [
+    "plus benefit (is |are )?not (applicable|available|payable|extended)"
+   ],
+   "role": "definition; known false claim",
+   "reference": "On each renewal without a break, 50% of the expiring Base Sum Insured is added, accumulating up to 100% of the Base Sum Insured irrespective of claims; it needs renewal within the Grace Period and can be used only for Section 3 and Section 4.3 claims."
+  },
+  {
+   "id": "G03",
+   "split": "dev",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the exact inclusions for pre-hospitalization expenses?",
+   "sections": [
+    "3.5"
+   ],
+   "evidence": [
+    [
+     "for up to 60 days immediately prior to"
+    ]
+   ],
+   "facts": [
+    [
+     "60 days"
+    ],
+    [
+     "3.1",
+     "admissible hospitalization"
+    ]
+   ],
+   "off_scope": [
+    "4.9",
+    "4.10",
+    "3.7"
+   ],
+   "must_not": [
+    "\\broom rent\\b|\\bboarding\\b|\\bsurgeon|\\banaesthetist|operation theatre|\\bintravenous\\b|\\bprosthetic"
+   ],
+   "role": "single fact; rules of other covers",
+   "reference": "Pre-hospitalization medical expenses are covered for up to 60 days immediately before an admissible hospitalization under Section 3.1."
+  },
+  {
+   "id": "G04",
+   "split": "dev",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the exact inclusions for post-hospitalization expenses?",
+   "sections": [
+    "3.6"
+   ],
+   "evidence": [
+    [
+     "for up to 180 days from the date"
+    ]
+   ],
+   "facts": [
+    [
+     "180 days"
+    ],
+    [
+     "discharge"
+    ]
+   ],
+   "off_scope": [
+    "4.9",
+    "4.10",
+    "3.1.1",
+    "3.7"
+   ],
+   "must_not": [
+    "\\broom rent\\b|\\bboarding\\b|\\bsurgeon|\\banaesthetist|operation theatre|\\bintravenous\\b|\\bprosthetic",
+    "pre hospitali[sz]ation (medical )?expenses (are|is) not (included|payable|covered)"
+   ],
+   "role": "single fact; rules of other covers",
+   "reference": "Post-hospitalization medical expenses are covered for up to 180 days from discharge, following an admissible hospitalization claim under Section 3.1."
+  },
+  {
+   "id": "G05",
+   "split": "dev",
+   "type": "procedure",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How to file reimbursement claims? Give me step wise complete procedure.",
+   "sections": [
+    "11.6",
+    "11.7"
+   ],
+   "evidence": [
+    [
+     "within 30 days of date of",
+     "be submitted within 30 days from the date"
+    ],
+    [
+     "within 15 days from completion of",
+     "be submitted within 15 days from the completion"
+    ],
+    [
+     "duly completed claim form"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ],
+    [
+     "15 days"
+    ],
+    [
+     "claim form"
+    ],
+    [
+     "discharge"
+    ]
+   ],
+   "off_scope": [
+    "11.2",
+    "11.3",
+    "11.4"
+   ],
+   "role": "procedure; cashless steps do not belong",
+   "reference": "Submit the claim documents within 30 days of discharge (hospitalization, day care, pre-hospitalization) or within 15 days of finishing post-hospitalization treatment, with the claim form, photo ID, discharge summary, final bill and the other documents in Section 11.7."
+  },
+  {
+   "id": "G06",
+   "split": "dev",
+   "type": "procedure",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the procedure for cashless claims in India? Give me step wise complete procedure.",
+   "sections": [
+    "11.2"
+   ],
+   "evidence": [
+    [
+     "may be taken in a network provider and is subject to pre"
+    ],
+    [
+     "the time of discharge the insured person"
+    ],
+    [
+     "the company for reimbursement"
+    ]
+   ],
+   "facts": [
+    [
+     "network provider"
+    ],
+    [
+     "pre authorization",
+     "preauthorization"
+    ],
+    [
+     "discharge"
+    ],
+    [
+     "reimbursement"
+    ]
+   ],
+   "off_scope": [
+    "11.3",
+    "4.9",
+    "4.10"
+   ],
+   "role": "procedure; overseas steps do not belong",
+   "reference": "Treatment at a Network Provider subject to pre-authorization: the provider sends the cashless request, the Company issues a pre-authorization letter, the insured signs the discharge papers and pays non-medical expenses, and if cashless is denied the claim can be filed for reimbursement."
+  },
+  {
+   "id": "G07",
+   "split": "dev",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the exact specific conditions with a 24-month waiting period? Give complete details.",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "the expiry of 24 months of continuous coverage"
+    ],
+    [
+     "non infective arthritis"
+    ],
+    [
+     "cataract and other disorders"
+    ],
+    [
+     "hernia"
+    ],
+    [
+     "for claims arising due to an accident"
+    ]
+   ],
+   "facts": [
+    [
+     "24 months",
+     "24 month"
+    ],
+    [
+     "non infective arthritis"
+    ],
+    [
+     "cataract"
+    ],
+    [
+     "hernia"
+    ],
+    [
+     "accident"
+    ]
+   ],
+   "role": "list that is in the context",
+   "reference": "Under Excl02 the listed conditions (such as non-infective arthritis, gall bladder disease, kidney stones, cataract) and procedures (such as hernia repair, joint replacement) are excluded for 24 months of continuous coverage, except claims arising from an accident."
+  },
+  {
+   "id": "G08",
+   "split": "dev",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the standard exclusions under the my:Optima Secure policy? Give complete details.",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "excl01"
+    ],
+    [
+     "excl02"
+    ],
+    [
+     "excl03"
+    ],
+    [
+     "excl06"
+    ],
+    [
+     "excl09"
+    ],
+    [
+     "excl18"
+    ]
+   ],
+   "facts": [
+    [
+     "excl01",
+     "pre existing"
+    ],
+    [
+     "excl02",
+     "24 months"
+    ],
+    [
+     "excl03",
+     "30 day"
+    ],
+    [
+     "excl06",
+     "obesity"
+    ],
+    [
+     "excl09",
+     "hazardous"
+    ],
+    [
+     "excl18",
+     "maternity"
+    ]
+   ],
+   "role": "long list (context budget, answer length)",
+   "reference": "Standard exclusions Excl01 to Excl18: pre-existing diseases (36 months), specified diseases (24 months), 30-day waiting period, investigation, rest cure, obesity surgery, gender change, cosmetic surgery, hazardous sports, breach of law, excluded providers, addiction, spas, supplements, refractive error, unproven treatment, infertility and maternity."
+  },
+  {
+   "id": "G09",
+   "split": "dev",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the difference between Optima Secure and Optima Super Secure plans? Give complete details.",
+   "sections": [
+    "2.1"
+   ],
+   "evidence": [
+    [
+     "year 1 optima secure base sum insured",
+     "hospitalization claim year 1"
+    ],
+    [
+     "year 1 optima super secure base sum insured",
+     "hospitalization claim year 1"
+    ],
+    [
+     "year 2 optima secure base sum insured",
+     "hospitalization claim year 2"
+    ],
+    [
+     "year 3 optima secure base sum insured",
+     "hospitalization claim year 3"
+    ]
+   ],
+   "facts": [
+    [
+     "secure benefit"
+    ],
+    [
+     "20 lakh"
+    ],
+    [
+     "30 lakh"
+    ],
+    [
+     "40 lakh"
+    ]
+   ],
+   "table_cells": [
+    [
+     "secure",
+     "single",
+     1
+    ],
+    [
+     "secure",
+     "single",
+     2
+    ],
+    [
+     "secure",
+     "single",
+     3
+    ],
+    [
+     "secure",
+     "all",
+     1
+    ],
+    [
+     "secure",
+     "all",
+     2
+    ],
+    [
+     "secure",
+     "all",
+     3
+    ],
+    [
+     "super",
+     "single",
+     1
+    ],
+    [
+     "super",
+     "single",
+     2
+    ],
+    [
+     "super",
+     "single",
+     3
+    ],
+    [
+     "super",
+     "all",
+     1
+    ],
+    [
+     "super",
+     "all",
+     2
+    ],
+    [
+     "super",
+     "all",
+     3
+    ],
+    [
+     "secure",
+     "secure_benefit",
+     1
+    ],
+    [
+     "super",
+     "secure_benefit",
+     1
+    ]
+   ],
+   "must_not": [
+    "neither of these benefits (are|is) available",
+    "(optima )?secure (plan )?(does not|doesn t|do not) (offer|have|include|provide) (the |a |any )?secure benefit"
+   ],
+   "role": "table: whole plan comparison, all years",
+   "reference": "With a Rs. 10 lakh Base Sum Insured, the Secure Benefit is Rs. 10 lakh for Optima Secure and Rs. 20 lakh for Optima Super Secure. Maximum for a single claim: Optima Secure Rs. 20 lakh in Year 1, Rs. 25 lakh in Year 2, Rs. 30 lakh in Year 3; Optima Super Secure Rs. 30 lakh in Year 1, Rs. 35 lakh in Year 2, Rs. 40 lakh in Year 3. Maximum for all claims in a year: Optima Secure Rs. 30 lakh in Year 1, Rs. 35 lakh in Year 2, Rs. 40 lakh in Year 3; Optima Super Secure Rs. 40 lakh in Year 1, Rs. 45 lakh in Year 2, Rs. 50 lakh in Year 3."
+  },
+  {
+   "id": "G10",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the coverage for pet insurance under this policy?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "pet",
+    "pets",
+    "animal insurance"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "F01",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the age range of people covered under this policy?",
+   "sections": [
+    "1"
+   ],
+   "evidence": [
+    [
+     "the age group 91 days to 65 years"
+    ]
+   ],
+   "facts": [
+    [
+     "91 days"
+    ],
+    [
+     "65 years"
+    ]
+   ],
+   "reference": "The policy covers insured persons aged 91 days to 65 years."
+  },
+  {
+   "id": "F02",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the maximum entry age for a dependent child?",
+   "sections": [
+    "1"
+   ],
+   "evidence": [
+    [
+     "entry age is 25 years"
+    ]
+   ],
+   "facts": [
+    [
+     "25 years",
+     "re:\\b(?:aged?|ages|under|below|less than|younger than|up to|upto|until|till|before|over|above|at least|minimum of|maximum of|older than)(?: the)?(?: age)?(?: of)? 25\\b(?! (?:days|months|lakh))"
+    ]
+   ],
+   "reference": "A dependent child can enter up to age 25."
+  },
+  {
+   "id": "F03",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How many adults and children can be covered in a family floater policy?",
+   "sections": [
+    "1"
+   ],
+   "evidence": [
+    [
+     "a maximum of 4 adults and a maximum"
+    ]
+   ],
+   "facts": [
+    [
+     "4 adults",
+     "four adults"
+    ],
+    [
+     "6 dependent children",
+     "six dependent children",
+     "6 children"
+    ]
+   ],
+   "reference": "A family floater policy can include up to 4 adults and 6 dependent children."
+  },
+  {
+   "id": "F04",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the minimum duration of hospitalization for a claim to be admissible?",
+   "sections": [
+    "3.1.1"
+   ],
+   "evidence": [
+    [
+     "minimum period of 24 consecutive hours only shall be"
+    ],
+    [
+     "all day care treatments"
+    ]
+   ],
+   "facts": [
+    [
+     "24 consecutive hours",
+     "24 hours"
+    ],
+    [
+     "day care"
+    ]
+   ],
+   "reference": "Hospitalization must last at least 24 consecutive hours; the limit does not apply to day care treatment."
+  },
+  {
+   "id": "F05",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the waiting period for pre-existing diseases?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "the expiry of 36 months of continuous coverage"
+    ]
+   ],
+   "facts": [
+    [
+     "36 months"
+    ]
+   ],
+   "reference": "Pre-existing diseases are excluded until 36 months of continuous coverage (Excl01)."
+  },
+  {
+   "id": "F06",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the initial waiting period for illnesses after the policy starts?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "any illness within 30 days from the first"
+    ],
+    [
+     "for claims arising due to an accident"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ],
+    [
+     "accident"
+    ]
+   ],
+   "reference": "Illness treated within 30 days of the first policy start is excluded, except claims arising from an accident (Excl03)."
+  },
+  {
+   "id": "F07",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the grace period for renewing the policy?",
+   "sections": [
+    "12.9"
+   ],
+   "evidence": [
+    [
+     "grace period of 30 days to maintain continuity"
+    ],
+    [
+     "coverage is not available during the grace period"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ],
+    [
+     "not available during the grace period",
+     "coverage is not available",
+     "re:\\bno (?:coverage|cover|insurance cover)\\b[^.]{0,30}\\bgrace period",
+     "re:\\b(?:not covered|no claims? (?:are |is )?(?:payable|admissible|paid))\\b[^.]{0,40}\\bgrace period",
+     "re:\\bgrace period\\b[^.]{0,60}\\b(?:no (?:coverage|cover)|not covered|coverage (?:is |will )?not)"
+    ]
+   ],
+   "reference": "The policy can be renewed within a 30-day Grace Period without a break, but there is no coverage during the Grace Period."
+  },
+  {
+   "id": "F08",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How long is the free look period?",
+   "sections": [
+    "12.8"
+   ],
+   "evidence": [
+    [
+     "look period of fifteen days from date of"
+    ]
+   ],
+   "facts": [
+    [
+     "fifteen days",
+     "15 days"
+    ]
+   ],
+   "reference": "New individual policies have a free look period of fifteen days from receipt of the policy document."
+  },
+  {
+   "id": "F09",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Within how many days must the company settle a claim after receiving the last necessary document?",
+   "sections": [
+    "12.3"
+   ],
+   "evidence": [
+    [
+     "may be within 30 days from the date"
+    ],
+    [
+     "the claim within 45 days from the date"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ],
+    [
+     "45 days"
+    ]
+   ],
+   "reference": "Claims are settled or rejected within 30 days of the last necessary document, or within 45 days when an investigation is needed."
+  },
+  {
+   "id": "F10",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the per claim deductible under the Global Health Cover?",
+   "sections": [
+    "4.9",
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "10 000 will apply separately for each and every claim except section"
+    ]
+   ],
+   "facts": [
+    [
+     "10,000"
+    ]
+   ],
+   "reference": "A per claim deductible of Rs. 10,000 applies to each Global Health Cover claim (except E-Opinion)."
+  },
+  {
+   "id": "F11",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the maximum total discount when discounts are combined?",
+   "sections": [
+    "8"
+   ],
+   "evidence": [
+    [
+     "shall not exceed 20"
+    ]
+   ],
+   "facts": [
+    [
+     "20%"
+    ]
+   ],
+   "reference": "Employee, online, loyalty and family discounts together cannot exceed 20%."
+  },
+  {
+   "id": "F12",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What discount is given to NRI policyholders?",
+   "sections": [
+    "8"
+   ],
+   "evidence": [
+    [
+     "a discount of 40 subject to the"
+    ]
+   ],
+   "facts": [
+    [
+     "40%"
+    ]
+   ],
+   "reference": "Insured persons living abroad for the whole policy year get a 40% NRI discount."
+  },
+  {
+   "id": "F13",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the moratorium period?",
+   "sections": [
+    "12.6"
+   ],
+   "evidence": [
+    [
+     "after completion of eight continuous years under the policy"
+    ]
+   ],
+   "facts": [
+    [
+     "eight continuous years",
+     "8 continuous years",
+     "eight years",
+     "8 years"
+    ]
+   ],
+   "reference": "After eight continuous years under the policy no look back applies, except for proven fraud and permanent exclusions."
+  },
+  {
+   "id": "F14",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Under which section of the Income Tax Act does the premium qualify for deduction?",
+   "sections": [
+    "9"
+   ],
+   "evidence": [
+    [
+     "deduction under section 80d of the income"
+    ]
+   ],
+   "facts": [
+    [
+     "80d"
+    ]
+   ],
+   "reference": "The premium qualifies for deduction under Section 80D of the Income Tax Act."
+  },
+  {
+   "id": "F15",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How long is a cashless pre-authorization valid?",
+   "sections": [
+    "11.5"
+   ],
+   "evidence": [
+    [
+     "be valid for 15 days from the date"
+    ]
+   ],
+   "facts": [
+    [
+     "15 days"
+    ]
+   ],
+   "reference": "A pre-authorization is valid for 15 days from issue or until the policy expires, whichever is earlier."
+  },
+  {
+   "id": "F16",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How far in advance must a planned hospitalization be notified?",
+   "sections": [
+    "11.1"
+   ],
+   "evidence": [
+    [
+     "at least 48 hours prior to admission"
+    ]
+   ],
+   "facts": [
+    [
+     "48 hours"
+    ]
+   ],
+   "reference": "A planned hospitalization must be notified at least 48 hours before admission."
+  },
+  {
+   "id": "F17",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the maximum medical underwriting loading?",
+   "sections": [
+    "13.4"
+   ],
+   "evidence": [
+    [
+     "shall not exceed 100 for each condition"
+    ]
+   ],
+   "facts": [
+    [
+     "100%"
+    ],
+    [
+     "150%"
+    ]
+   ],
+   "reference": "Loading cannot exceed 100% per condition and 150% in total per insured person."
+  },
+  {
+   "id": "F18",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How does the Cumulative Bonus work and which plan does it apply to?",
+   "sections": [
+    "3.8"
+   ],
+   "evidence": [
+    [
+     "applied increased by 10 of the base"
+    ]
+   ],
+   "facts": [
+    [
+     "10%"
+    ],
+    [
+     "optima suraksha"
+    ],
+    [
+     "100%"
+    ]
+   ],
+   "reference": "Cumulative Bonus applies only to the Optima Suraksha plan: 10% of the Base Sum Insured is added for each claim-free year, up to 100%, and reduced at the same rate after a claim."
+  },
+  {
+   "id": "F19",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How early must a portability request be made?",
+   "sections": [
+    "12.10"
+   ],
+   "evidence": [
+    [
+     "any at least 45 days before but not"
+    ]
+   ],
+   "facts": [
+    [
+     "45 days"
+    ],
+    [
+     "60 days"
+    ]
+   ],
+   "reference": "Apply to port at least 45 days, but not earlier than 60 days, before the renewal date."
+  },
+  {
+   "id": "F20",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How much notice is needed for the policyholder to cancel the policy, and what is refunded?",
+   "sections": [
+    "12.12"
+   ],
+   "evidence": [
+    [
+     "person by giving 15 days written notice"
+    ],
+    [
+     "the insured a pro rata premium for the"
+    ]
+   ],
+   "facts": [
+    [
+     "15 days",
+     "15days"
+    ],
+    [
+     "pro rata"
+    ]
+   ],
+   "reference": "The policyholder can cancel with 15 days' written notice and gets a pro-rata refund for the unexpired period, unless a claim was admitted."
+  },
+  {
+   "id": "L01",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which expenses are covered under Hospitalization Expenses?",
+   "sections": [
+    "3.1"
+   ],
+   "evidence": [
+    [
+     "room rent boarding nursing expenses"
+    ],
+    [
+     "intensive care unit icu intensive"
+    ],
+    [
+     "surgeon anaesthetist medical practitioner"
+    ],
+    [
+     "medicines and drugs prescribed"
+    ],
+    [
+     "the cost of prosthetics and other devices"
+    ]
+   ],
+   "facts": [
+    [
+     "room rent"
+    ],
+    [
+     "intensive care",
+     "icu"
+    ],
+    [
+     "surgeon"
+    ],
+    [
+     "medicines"
+    ],
+    [
+     "prosthetics"
+    ]
+   ],
+   "reference": "Room rent and nursing, ICU/ICCU, surgeon and specialist fees, diagnostics, medicines, IV fluids and blood, operation theatre, and internally implanted prosthetics."
+  },
+  {
+   "id": "L02",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which expenses are excluded from the Organ Donor Expenses cover?",
+   "sections": [
+    "3.7"
+   ],
+   "evidence": [
+    [
+     "organ donor s pre hospitalization expenses and post"
+    ],
+    [
+     "related to organ transportation or preservation"
+    ],
+    [
+     "consequent to the organ harvesting"
+    ]
+   ],
+   "facts": [
+    [
+     "pre hospitalization"
+    ],
+    [
+     "transportation or preservation",
+     "organ transportation"
+    ],
+    [
+     "organ harvesting"
+    ]
+   ],
+   "reference": "The donor's pre- and post-hospitalization expenses, organ transportation or preservation, and other expenses consequent to the organ harvesting are excluded."
+  },
+  {
+   "id": "L03",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the specific exclusions for the Global Health Cover (Emergency Treatments Only)?",
+   "sections": [
+    "4.9"
+   ],
+   "evidence": [
+    [
+     "any planned treatments"
+    ],
+    [
+     "oncological cancer diseases"
+    ],
+    [
+     "any treatment of orthopedic diseases or conditions"
+    ],
+    [
+     "that is the sole reason or one of"
+    ]
+   ],
+   "facts": [
+    [
+     "planned treatments",
+     "re:\\bplanned (?:treatment|procedure|surgery|surgeries)"
+    ],
+    [
+     "oncological",
+     "cancer"
+    ],
+    [
+     "orthopedic"
+    ],
+    [
+     "sole reason",
+     "re:\\btravel(?:l?ing)?\\b[^.]{0,40}\\b(?:for|to (?:get|obtain|receive|seek)) (?:the )?(?:medical )?treatment",
+     "solely for",
+     "only for the purpose"
+    ]
+   ],
+   "off_scope": [
+    "4.10"
+   ],
+   "reference": "Planned treatment, pre/post-hospitalization for a paid claim, non-life-threatening treatment that can wait, travel for treatment, orthopedic conditions except fractures and injuries, cancer, and countries under territorial restriction."
+  },
+  {
+   "id": "L04",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which benefits does the Global Health Cover (Emergency & Planned Treatments) extend outside India?",
+   "sections": [
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "extended for both planned and emergency medical expenses"
+    ]
+   ],
+   "facts": [
+    [
+     "ayush"
+    ],
+    [
+     "pre hospitalization"
+    ],
+    [
+     "post hospitalization"
+    ],
+    [
+     "organ donor"
+    ],
+    [
+     "air ambulance"
+    ],
+    [
+     "e opinion"
+    ]
+   ],
+   "off_scope": [
+    "4.9"
+   ],
+   "reference": "Hospitalization, AYUSH, pre- and post-hospitalization, organ donor, emergency air ambulance, Protect Benefit, Plus Benefit and E-Opinion."
+  },
+  {
+   "id": "L05",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What add-on covers are offered with my:Optima Secure?",
+   "sections": [
+    "6",
+    "Annexure-A"
+   ],
+   "evidence": [
+    [
+     "health critical illness add on with"
+    ],
+    [
+     "health hospital cash benefit add on with"
+    ],
+    [
+     "lndividual personal accident rider with sum"
+    ],
+    [
+     "unlimited restore add on"
+    ]
+   ],
+   "facts": [
+    [
+     "critical illness"
+    ],
+    [
+     "hospital cash"
+    ],
+    [
+     "personal accident"
+    ],
+    [
+     "unlimited restore"
+    ]
+   ],
+   "reference": "Critical Illness add-on, Hospital Cash Benefit add-on, Individual Personal Accident Rider and Unlimited Restore."
+  },
+  {
+   "id": "L06",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What are the specific exclusions listed in Section 10.2?",
+   "sections": [
+    "10.2"
+   ],
+   "evidence": [
+    [
+     "war or any act"
+    ],
+    [
+     "injury or attempted suicide or suicide"
+    ],
+    [
+     "congenital external diseases defects or"
+    ],
+    [
+     "stem cell harvesting"
+    ],
+    [
+     "vaccination including inoculation and"
+    ],
+    [
+     "treatment taken on outpatient basis"
+    ],
+    [
+     "or fitting of hearing aids spectacles or contact"
+    ]
+   ],
+   "facts": [
+    [
+     "war"
+    ],
+    [
+     "suicide",
+     "self injury"
+    ],
+    [
+     "congenital external"
+    ],
+    [
+     "stem cell"
+    ],
+    [
+     "vaccination"
+    ],
+    [
+     "outpatient"
+    ],
+    [
+     "hearing aids",
+     "spectacles"
+    ]
+   ],
+   "reference": "War and nuclear risks, deductible amounts, self-injury and suicide, military operations, sleep-apnoea investigation, congenital external diseases, stem cell harvesting, spinal manipulation, circumcision, vaccination, non-medical items, outpatient treatment, hearing aids and spectacles, alopecia, external devices, unreasonable charges and permanent exclusions."
+  },
+  {
+   "id": "L07",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which illnesses count as Major Medical Illnesses for the E-Opinion cover?",
+   "sections": [
+    "4.8"
+   ],
+   "evidence": [
+    [
+     "51 angioplasty",
+     "major medical illnesses 51 conditions"
+    ],
+    [
+     "cancer of specified severity"
+    ],
+    [
+     "kidney failure requiring regular dialysis"
+    ],
+    [
+     "stroke resulting in permanent"
+    ]
+   ],
+   "facts": [
+    [
+     "51"
+    ],
+    [
+     "cancer"
+    ],
+    [
+     "kidney failure"
+    ],
+    [
+     "stroke"
+    ]
+   ],
+   "reference": "51 conditions, including cancer of specified severity, open chest CABG, kidney failure on dialysis, heart attack, stroke, major organ transplant and paralysis."
+  },
+  {
+   "id": "L08",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What additional documents are needed for a claim outside India?",
+   "sections": [
+    "11.7"
+   ],
+   "evidence": [
+    [
+     "passport copy with entry"
+    ],
+    [
+     "flight tickets and boarding pass"
+    ],
+    [
+     "accommodation invoices if applicable"
+    ],
+    [
+     "written advice from the overseas"
+    ]
+   ],
+   "facts": [
+    [
+     "passport"
+    ],
+    [
+     "flight tickets",
+     "boarding pass"
+    ],
+    [
+     "accommodation invoices"
+    ],
+    [
+     "written advice"
+    ]
+   ],
+   "reference": "Passport copy with entry and exit stamps, flight tickets and boarding pass, accommodation invoices, and the overseas doctor's written advice on the need for an accompanying person."
+  },
+  {
+   "id": "L09",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which cities are classified as Tier 1 for premium calculation?",
+   "sections": [
+    "14"
+   ],
+   "evidence": [
+    [
+     "delhi national capital region"
+    ]
+   ],
+   "facts": [
+    [
+     "delhi"
+    ],
+    [
+     "mumbai"
+    ],
+    [
+     "thane"
+    ],
+    [
+     "surat"
+    ],
+    [
+     "ahmedabad"
+    ],
+    [
+     "vadodara"
+    ]
+   ],
+   "reference": "Delhi and NCR, Mumbai and Mumbai Suburban, Thane and Navi Mumbai, Surat, Ahmedabad and Vadodara; the rest of India is Tier 2."
+  },
+  {
+   "id": "L10",
+   "split": "test",
+   "type": "list",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What can the company do if a pre-existing disease was not disclosed?",
+   "sections": [
+    "13.1"
+   ],
+   "evidence": [
+    [
+     "permanently exclude the disease condition"
+    ],
+    [
+     "of not exceeding 4 years for the said"
+    ],
+    [
+     "levy underwriting loading from the first"
+    ]
+   ],
+   "facts": [
+    [
+     "permanently exclude"
+    ],
+    [
+     "4 years"
+    ],
+    [
+     "loading"
+    ]
+   ],
+   "reference": "With the policyholder's consent it can permanently exclude the condition, add a waiting period of up to 4 years, or apply underwriting loading."
+  },
+  {
+   "id": "P01",
+   "split": "test",
+   "type": "procedure",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the procedure for cashless claims outside India?",
+   "sections": [
+    "11.3"
+   ],
+   "evidence": [
+    [
+     "we shall send release of information form to the"
+    ],
+    [
+     "issue the guarantee of payment specifying the sanctioned"
+    ],
+    [
+     "may be taken in a network provider and is subject to pre"
+    ]
+   ],
+   "facts": [
+    [
+     "release of information"
+    ],
+    [
+     "guarantee of payment"
+    ],
+    [
+     "network provider"
+    ]
+   ],
+   "off_scope": [
+    "11.2",
+    "11.5"
+   ],
+   "reference": "Intimate the claim, take treatment at a Network Provider subject to pre-authorization: the insured signs a Release of Information form, the Company retrieves the hospital documents and then issues a guarantee of payment or rejects the request with reasons."
+  },
+  {
+   "id": "P02",
+   "split": "test",
+   "type": "procedure",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How does cashless approval work for Home Health Care?",
+   "sections": [
+    "11.4",
+    "3.2"
+   ],
+   "evidence": [
+    [
+     "will share the care plan and treatment cost"
+    ],
+    [
+     "issue the authorization letter specifying the sanctioned"
+    ]
+   ],
+   "facts": [
+    [
+     "care plan"
+    ],
+    [
+     "authorization letter"
+    ]
+   ],
+   "reference": "After a pre-authorization form is received, the home healthcare provider shares the care plan and cost estimate, and the Company issues an authorization letter with the sanctioned amount or rejects the request."
+  },
+  {
+   "id": "P03",
+   "split": "test",
+   "type": "procedure",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How and when must a claim be notified to the insurer?",
+   "sections": [
+    "11.1"
+   ],
+   "evidence": [
+    [
+     "within 24 hours from the date"
+    ],
+    [
+     "at least 48 hours prior to admission"
+    ]
+   ],
+   "facts": [
+    [
+     "24 hours"
+    ],
+    [
+     "48 hours"
+    ]
+   ],
+   "reference": "Notify within 24 hours of an emergency hospitalization (or before discharge, if earlier), and at least 48 hours before a planned admission or home health care."
+  },
+  {
+   "id": "C01",
+   "split": "dev",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How does the maximum single-claim amount for the Optima Secure plan change from Year 1 to Year 3?",
+   "sections": [
+    "2.1"
+   ],
+   "evidence": [
+    [
+     "year 1 optima secure base sum insured",
+     "hospitalization claim year 1"
+    ],
+    [
+     "year 2 optima secure base sum insured",
+     "hospitalization claim year 2"
+    ],
+    [
+     "year 3 optima secure base sum insured",
+     "hospitalization claim year 3"
+    ]
+   ],
+   "facts": [
+    [
+     "20 lakh"
+    ],
+    [
+     "25 lakh"
+    ],
+    [
+     "30 lakh"
+    ]
+   ],
+   "table_cells": [
+    [
+     "secure",
+     "single",
+     1
+    ],
+    [
+     "secure",
+     "single",
+     2
+    ],
+    [
+     "secure",
+     "single",
+     3
+    ]
+   ],
+   "role": "table: one plan across three years",
+   "reference": "For Optima Secure the single-claim maximum is Rs. 20 lakh in Year 1, Rs. 25 lakh in Year 2 and Rs. 30 lakh in Year 3 (assuming no claims)."
+  },
+  {
+   "id": "C02",
+   "split": "test",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the difference between the Global Health Cover for emergency treatments only and the one for emergency and planned treatments?",
+   "sections": [
+    "4.9",
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "any planned treatments"
+    ],
+    [
+     "under this benefit pre hospitalization medical expenses and"
+    ],
+    [
+     "within the first 45 days of a trip"
+    ]
+   ],
+   "facts": [
+    [
+     "planned"
+    ],
+    [
+     "pre hospitalization"
+    ],
+    [
+     "45 days"
+    ]
+   ],
+   "reference": "The emergency-only cover excludes planned treatment and pre/post-hospitalization for overseas claims and requires treatment to start within 45 days of a trip; the emergency and planned cover also pays planned treatment and overseas pre- and post-hospitalization."
+  },
+  {
+   "id": "C03",
+   "split": "dev",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How do the Cumulative Bonus and the Plus Benefit differ?",
+   "sections": [
+    "3.8",
+    "4.4"
+   ],
+   "evidence": [
+    [
+     "applied increased by 10 of the base"
+    ],
+    [
+     "sum equal to 50 of the base"
+    ],
+    [
+     "will be applied irrespective of number of"
+    ]
+   ],
+   "facts": [
+    [
+     "10%"
+    ],
+    [
+     "50%"
+    ],
+    [
+     "claim free",
+     "no claim",
+     "re:\\bwithout (a |any )?claims?\\b",
+     "re:\\bno claims? (is |are |was |were )?(made|reported|filed)"
+    ],
+    [
+     "irrespective",
+     "regardless",
+     "re:\\b(even|whether) (if|or not|though|when)\\b[^.]{0,50}\\bclaim",
+     "re:\\bno matter\\b",
+     "re:\\bnot (be )?(reduced|affected|impacted|dependent|linked|lost)\\b[^.]{0,40}\\bclaim",
+     "re:\\b(does|do) not depend on\\b[^.]{0,20}\\bclaim",
+     "re:\\bstill\\b[^.]{0,30}\\b(get|receive|added|eligible|entitled|apply|applies|be added)\\b"
+    ]
+   ],
+   "role": "comparison across two sections",
+   "reference": "Cumulative Bonus (Optima Suraksha only) adds 10% per claim-free year and is reduced after a claim; Plus Benefit adds 50% per renewal irrespective of claims; both are capped at 100% of the Base Sum Insured."
+  },
+  {
+   "id": "C04",
+   "split": "test",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "How do the grace periods differ for monthly and yearly premium instalments?",
+   "sections": [
+    "12.13"
+   ],
+   "evidence": [
+    [
+     "monthly grace period applicable 15 days",
+     "monthly premium 15 days grace period"
+    ],
+    [
+     "yearly grace period applicable 30 days",
+     "yearly premium 30 days grace period"
+    ]
+   ],
+   "facts": [
+    [
+     "15 days"
+    ],
+    [
+     "30 days"
+    ]
+   ],
+   "reference": "Monthly instalments have a 15-day grace period; yearly, half-yearly and quarterly instalments have 30 days."
+  },
+  {
+   "id": "K01",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Can a 3-year-old child be insured without a parent on the policy?",
+   "sections": [
+    "1"
+   ],
+   "evidence": [
+    [
+     "either of the parent is getting insured"
+    ]
+   ],
+   "facts": [
+    [
+     "parent"
+    ],
+    [
+     "5 years"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. A child between 91 days and 5 years can be insured only if a parent is also insured; from 5 to 25 years a child can be insured individually."
+  },
+  {
+   "id": "K02",
+   "split": "dev",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Will the air ambulance also fly me back home after treatment?",
+   "sections": [
+    "4.1"
+   ],
+   "evidence": [
+    [
+     "no return transportation to the insured"
+    ]
+   ],
+   "facts": [
+    [
+     "return transportation"
+    ]
+   ],
+   "polarity": "no",
+   "role": "yes/no with a negative answer",
+   "reference": "No. Return transportation to home or elsewhere by air ambulance is not covered."
+  },
+  {
+   "id": "K03",
+   "split": "dev",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "When can the Aggregate Deductible be waived or reduced?",
+   "sections": [
+    "4.7.1"
+   ],
+   "evidence": [
+    [
+     "be less than 50 years at the time"
+    ],
+    [
+     "after completion of 5 continuous policy years with"
+    ]
+   ],
+   "facts": [
+    [
+     "50 years",
+     "re:\\b(?:aged?|ages|under|below|less than|younger than|up to|upto|until|till|before|over|above|at least|minimum of|maximum of|older than)(?: the)?(?: age)?(?: of)? 50\\b(?! (?:days|months|lakh))"
+    ],
+    [
+     "5 continuous"
+    ],
+    [
+     "61 years",
+     "re:\\b(?:aged?|ages|under|below|less than|younger than|up to|upto|until|till|before|over|above|at least|minimum of|maximum of|older than)(?: the)?(?: age)?(?: of)? 61\\b(?! (?:days|months|lakh))"
+    ]
+   ],
+   "role": "conditions with three numbers",
+   "reference": "Once in the policy's lifetime at renewal, if the eldest insured was under 50 when buying, after 5 continuous policy years, and the eldest insured is under 61 when using the option."
+  },
+  {
+   "id": "K04",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Is Daily Cash for Shared Room paid for time spent in the ICU?",
+   "sections": [
+    "4.2"
+   ],
+   "evidence": [
+    [
+     "person in an intensive care unit icu"
+    ],
+    [
+     "such hospitalization exceeds 48 consecutive hours"
+    ]
+   ],
+   "facts": [
+    [
+     "intensive care",
+     "icu"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. The daily cash is not paid for time spent in the ICU; it applies to shared rooms in Network Provider hospitals when hospitalization exceeds 48 hours."
+  },
+  {
+   "id": "K05",
+   "split": "dev",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "If I made claims last year, do I still get the extra 50% added when I renew?",
+   "sections": [
+    "4.4"
+   ],
+   "evidence": [
+    [
+     "sum equal to 50 of the base"
+    ],
+    [
+     "will be applied irrespective of number of"
+    ]
+   ],
+   "facts": [
+    [
+     "50%"
+    ],
+    [
+     "irrespective",
+     "regardless",
+     "re:\\b(even|whether) (if|or not|though|when)\\b[^.]{0,50}\\bclaim",
+     "re:\\bno matter\\b",
+     "re:\\bnot (be )?(reduced|affected|impacted|dependent|linked|lost)\\b[^.]{0,40}\\bclaim",
+     "re:\\b(does|do) not depend on\\b[^.]{0,20}\\bclaim",
+     "re:\\bstill\\b[^.]{0,30}\\b(get|receive|added|eligible|entitled|apply|applies|be added)\\b"
+    ]
+   ],
+   "polarity": "yes",
+   "role": "yes/no, everyday wording",
+   "reference": "Yes. The Plus Benefit of 50% of the Base Sum Insured is added irrespective of the number of claims, up to 100%."
+  },
+  {
+   "id": "K06",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Does unused Secure Benefit carry forward to the next year?",
+   "sections": [
+    "4.5"
+   ],
+   "evidence": [
+    [
+     "or in part will not be carried forward to the subsequent policy"
+    ]
+   ],
+   "facts": [
+    [
+     "not be carried forward",
+     "not carried forward"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Any unused Secure Benefit is not carried forward; it applies once per policy year after the Base Sum Insured is exhausted."
+  },
+  {
+   "id": "K07",
+   "split": "dev",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Under what conditions will the policy pay for bariatric surgery?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "has to be 18 years of age or"
+    ],
+    [
+     "or equal to 40 or b"
+    ],
+    [
+     "or equal to 35 in conjunction with"
+    ]
+   ],
+   "facts": [
+    [
+     "18 years",
+     "re:\\b(?:aged?|ages|under|below|less than|younger than|up to|upto|until|till|before|over|above|at least|minimum of|maximum of|older than)(?: the)?(?: age)?(?: of)? 18\\b(?! (?:days|months|lakh))",
+     "re:\\b18 (?:years )?(?:or|and) (?:older|above|more)\\b"
+    ],
+    [
+     "re:\\b40\\b"
+    ],
+    [
+     "re:\\b35\\b"
+    ],
+    [
+     "morbidit"
+    ]
+   ],
+   "role": "conditions, everyday wording",
+   "reference": "Obesity surgery (Excl06) is covered only on a doctor's advice, supported by clinical protocols, for members aged 18 or older with BMI of 40 or more, or 35 or more with a severe co-morbidity after less invasive methods failed."
+  },
+  {
+   "id": "K08",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Does the 30-day initial waiting period still apply if I have been continuously insured for more than a year?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "for more than twelve months"
+    ]
+   ],
+   "facts": [
+    [
+     "twelve months",
+     "12 months"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. The 30-day exclusion does not apply if the insured has continuous coverage for more than twelve months."
+  },
+  {
+   "id": "K09",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Can the insurer refuse to renew my policy because I made claims?",
+   "sections": [
+    "12.9"
+   ],
+   "evidence": [
+    [
+     "renewal shall not be denied on the ground"
+    ]
+   ],
+   "facts": [
+    [
+     "not be denied"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Renewal shall not be denied because of claims made in earlier years; it can be refused only for fraud or misrepresentation."
+  },
+  {
+   "id": "K10",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What happens to the Plus Benefit if the Sum Insured is reduced at renewal?",
+   "sections": [
+    "4.4"
+   ],
+   "evidence": [
+    [
+     "shall be reduced in the same proportion to the sum insured in"
+    ]
+   ],
+   "facts": [
+    [
+     "same proportion"
+    ]
+   ],
+   "reference": "The Plus Benefit is reduced in the same proportion as the Sum Insured."
+  },
+  {
+   "id": "K11",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "On a family floater policy, how is the Cumulative Bonus added and when is it reduced?",
+   "sections": [
+    "3.8"
+   ],
+   "evidence": [
+    [
+     "policy is on floater basis the cb shall"
+    ]
+   ],
+   "facts": [
+    [
+     "floater basis",
+     "re:\\b(?:whole|entire) family\\b",
+     "family as a whole",
+     "floater sum insured"
+    ],
+    [
+     "any family member",
+     "any of the insured persons"
+    ]
+   ],
+   "reference": "On a floater policy the Cumulative Bonus is added for the whole family, provided no claim is reported from any family member, and it is reduced after a claim from any insured person."
+  },
+  {
+   "id": "K12",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What happens to an awarded Cumulative Bonus if a claim from the expiring year is notified after the renewal premium is accepted?",
+   "sections": [
+    "3.8"
+   ],
+   "evidence": [
+    [
+     "cb shall be withdrawn"
+    ]
+   ],
+   "facts": [
+    [
+     "withdrawn"
+    ]
+   ],
+   "reference": "Any awarded Cumulative Bonus is withdrawn."
+  },
+  {
+   "id": "D01",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the Protect Benefit?",
+   "sections": [
+    "4.3"
+   ],
+   "evidence": [
+    [
+     "person for the non medical expenses listed under annexure"
+    ]
+   ],
+   "facts": [
+    [
+     "non medical expenses"
+    ],
+    [
+     "annexure b"
+    ]
+   ],
+   "reference": "Protect Benefit pays the non-medical expenses listed in Annexure B for claims admissible under Section 3."
+  },
+  {
+   "id": "D02",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the Automatic Restore Benefit?",
+   "sections": [
+    "4.6"
+   ],
+   "evidence": [
+    [
+     "utilization of the base sum insured due to any"
+    ],
+    [
+     "restore benefit shall be applied only once during each policy year and any"
+    ]
+   ],
+   "facts": [
+    [
+     "base sum insured"
+    ],
+    [
+     "once"
+    ],
+    [
+     "not be carried forward",
+     "not carried forward",
+     "re:\\b(?:not|never|cannot|can not|won t|will not) (?:be )?carr(?:y|ied) (?:it )?(?:forward|over)\\b",
+     "re:\\bdoes not carry (?:forward|over)\\b"
+    ]
+   ],
+   "reference": "After a claim uses the Base Sum Insured in whole or part, it is restored up to the Base Sum Insured for later claims, once per policy year, and unused amounts are not carried forward."
+  },
+  {
+   "id": "D03",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is domiciliary hospitalization and when is it covered?",
+   "sections": [
+    "3.3"
+   ],
+   "evidence": [
+    [
+     "he she could not be removed admitted to a"
+    ],
+    [
+     "on account of non availability of room in a hospital"
+    ]
+   ],
+   "facts": [
+    [
+     "not be removed",
+     "re:\\b(?:not|cannot|can not|could not|unable to) be (?:moved|removed|shifted|taken|transferred)\\b",
+     "re:\\binability to be (?:moved|removed|shifted|admitted|taken)\\b"
+    ],
+    [
+     "non availability of room",
+     "re:\\bno (?:hospital )?(?:room|bed)s? (?:was |is |are |were )?available",
+     "re:\\b(?:non|un)availability of (?:a )?(?:hospital )?(?:room|bed)",
+     "re:\\b(?:room|bed)s? (?:is|are|was|were) not available",
+     "re:\\b(?:non ?|un)availability of (?:a )?(?:hospital )?(?:room|bed)s?\\b"
+    ]
+   ],
+   "reference": "Treatment at home, prescribed by a doctor, when the patient could not be moved to a hospital or no hospital room was available."
+  },
+  {
+   "id": "D04",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What does the AYUSH Treatment cover include?",
+   "sections": [
+    "3.4"
+   ],
+   "evidence": [
+    [
+     "inpatient care under ayurveda yoga and naturopathy"
+    ]
+   ],
+   "facts": [
+    [
+     "ayurveda"
+    ],
+    [
+     "homeopathy"
+    ],
+    [
+     "sub limit"
+    ]
+   ],
+   "reference": "In-patient care under Ayurveda, Yoga and Naturopathy, Unani, Siddha and Homeopathy in an AYUSH hospital, up to the sub-limit in the Policy Schedule."
+  },
+  {
+   "id": "D05",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the E-Opinion for Critical Illness cover?",
+   "sections": [
+    "4.8"
+   ],
+   "evidence": [
+    [
+     "insured person only once in a policy"
+    ],
+    [
+     "below through the network provider specified in the"
+    ],
+    [
+     "impact on the sum insured"
+    ]
+   ],
+   "facts": [
+    [
+     "once"
+    ],
+    [
+     "network provider"
+    ],
+    [
+     "sum insured"
+    ]
+   ],
+   "reference": "An electronic second opinion on a listed major illness through the Network Provider, once per policy year per insured person, with no impact on the Sum Insured."
+  },
+  {
+   "id": "D06",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the Preventive Health Check-up benefit?",
+   "sections": [
+    "5"
+   ],
+   "evidence": [
+    [
+     "on each continuous renewal of the policy"
+    ],
+    [
+     "this cover does not carry forward if it is"
+    ]
+   ],
+   "facts": [
+    [
+     "renewal"
+    ],
+    [
+     "not carry forward"
+    ]
+   ],
+   "reference": "On each continuous renewal the cost of a health check-up is reimbursed up to the specified limit; it does not carry forward if unclaimed."
+  },
+  {
+   "id": "D07",
+   "split": "test",
+   "type": "definition",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is Home Health Care cover?",
+   "sections": [
+    "3.2"
+   ],
+   "evidence": [
+    [
+     "the treatment is pre authorized by the company"
+    ],
+    [
+     "this cover is not available on reimbursement basis"
+    ]
+   ],
+   "facts": [
+    [
+     "pre authorized"
+    ],
+    [
+     "not available on reimbursement",
+     "re:\\bnot (?:available|payable|paid) on (?:a )?reimbursement\\b"
+    ]
+   ],
+   "reference": "Treatment at home that would otherwise need in-patient care, if prescribed and pre-authorized, with daily signed records; it is not available on reimbursement basis."
+  },
+  {
+   "id": "M01",
+   "split": "dev",
+   "type": "multi_section",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "In what order is the Sum Insured used up when I make claims?",
+   "sections": [
+    "13.2"
+   ],
+   "evidence": [
+    [
+     "the sequence of utilization of the sum insured"
+    ]
+   ],
+   "facts": [
+    [
+     "base sum insured"
+    ],
+    [
+     "plus benefit",
+     "cumulative bonus"
+    ],
+    [
+     "secure benefit"
+    ],
+    [
+     "automatic restore"
+    ]
+   ],
+   "ordered": true,
+   "must_not": [
+    "base sum insured (is|was|will be) not (utilized|utilised|used)"
+   ],
+   "role": "order of use; right words, wrong meaning",
+   "reference": "Base Sum Insured first, then Cumulative Bonus or Plus Benefit, then Secure Benefit, then Automatic Restore."
+  },
+  {
+   "id": "M02",
+   "split": "test",
+   "type": "multi_section",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Which covers are not subject to the Aggregate Deductible?",
+   "sections": [
+    "4.7",
+    "4.9",
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "sections 4 8 e opinion for critical illness"
+    ]
+   ],
+   "facts": [
+    [
+     "e opinion"
+    ],
+    [
+     "preventive health"
+    ],
+    [
+     "global health cover"
+    ],
+    [
+     "overseas travel secure"
+    ]
+   ],
+   "reference": "E-Opinion for Critical Illness, Preventive Health Check-up, both Global Health Covers and Overseas Travel Secure."
+  },
+  {
+   "id": "M03",
+   "split": "test",
+   "type": "multi_section",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Does this policy cover treatment taken outside India?",
+   "sections": [
+    "13.3",
+    "4.9",
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "section 4 9 global health cover emergency treatments only section 4 10"
+    ],
+    [
+     "the territory of india except under section"
+    ]
+   ],
+   "facts": [
+    [
+     "global health cover"
+    ],
+    [
+     "india"
+    ]
+   ],
+   "reference": "The policy covers India only, except through the optional Global Health Covers (Sections 4.9 and 4.10), Overseas Travel Secure and E-Opinion."
+  },
+  {
+   "id": "M04",
+   "split": "test",
+   "type": "multi_section",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What limits and conditions apply to claims under the Global Health Cover?",
+   "sections": [
+    "4.9",
+    "4.10"
+   ],
+   "evidence": [
+    [
+     "shall not exceed the base sum insured and plus benefit if available"
+    ],
+    [
+     "10 000 will apply separately for each and every claim except section"
+    ],
+    [
+     "claims shall normally be payable on reimbursement basis only"
+    ],
+    [
+     "be based on the rate of exchange as on the date of payment"
+    ]
+   ],
+   "facts": [
+    [
+     "base sum insured and plus benefit",
+     "re:\\bbase sum insured (?:and|plus|\\+) (?:the )?plus benefit"
+    ],
+    [
+     "10,000"
+    ],
+    [
+     "reimbursement",
+     "re:\\breimburs"
+    ],
+    [
+     "exchange"
+    ]
+   ],
+   "reference": "Liability is capped at the Base Sum Insured plus Plus Benefit, a Rs. 10,000 deductible applies per claim, claims are normally reimbursed (cashless case by case) at the RBI exchange rate, in registered hospitals."
+  },
+  {
+   "id": "X01",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How long do I have to wait before kidney stone treatment is covered?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "the expiry of 24 months of continuous coverage"
+    ]
+   ],
+   "facts": [
+    [
+     "24 months"
+    ]
+   ],
+   "reference": "Kidney stones are a listed condition under Excl02, so treatment is covered after 24 months of continuous coverage, unless caused by an accident.",
+   "must_not": [
+    "regardless of (?:any |an |the )?accidents?",
+    "\\b(?:applies|apply|applicable) (?:even )?(?:to|for|in case of) (?:claims (?:arising )?(?:due to|from) )?(?:an )?accidents?"
+   ]
+  },
+  {
+   "id": "X02",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Is cataract surgery covered from day one?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "the expiry of 24 months of continuous coverage"
+    ]
+   ],
+   "facts": [
+    [
+     "24 months"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Cataract is a listed condition with a 24-month waiting period (Excl02)."
+  },
+  {
+   "id": "X03",
+   "split": "dev",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Will the policy pay for my wife's delivery?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "excl18"
+    ],
+    [
+     "expenses traceable to childbirth including complicated deliveries"
+    ]
+   ],
+   "facts": [
+    [
+     "excl18",
+     "maternity"
+    ],
+    [
+     "childbirth"
+    ]
+   ],
+   "polarity": "no",
+   "role": "exclusion in everyday wording",
+   "reference": "No. Childbirth expenses, including caesarean sections, are excluded under Excl18 (Maternity), except ectopic pregnancy."
+  },
+  {
+   "id": "X04",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Are IVF treatments reimbursed?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "excl17"
+    ]
+   ],
+   "facts": [
+    [
+     "excl17",
+     "infertility",
+     "sterility"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Assisted reproduction such as IVF is excluded under Excl17 (Sterility and Infertility)."
+  },
+  {
+   "id": "X05",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "I got hurt while scuba diving as a professional diver. Will I be covered?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "excl09"
+    ]
+   ],
+   "facts": [
+    [
+     "excl09",
+     "hazardous",
+     "adventure"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Treatment needed because of professional participation in hazardous or adventure sports, including scuba diving, is excluded (Excl09)."
+  },
+  {
+   "id": "X06",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Can I claim the cost of new spectacles?",
+   "sections": [
+    "10.2"
+   ],
+   "evidence": [
+    [
+     "of hearing aids spectacles or contact lenses"
+    ]
+   ],
+   "facts": [
+    [
+     "spectacles"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. Provision or fitting of hearing aids, spectacles or contact lenses is excluded."
+  },
+  {
+   "id": "X07",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "For how many days before admission is pre hospitalisation covered?",
+   "sections": [
+    "3.5"
+   ],
+   "evidence": [
+    [
+     "for up to 60 days immediately prior to"
+    ]
+   ],
+   "facts": [
+    [
+     "60 days"
+    ]
+   ],
+   "off_scope": [
+    "4.9",
+    "4.10"
+   ],
+   "reference": "Up to 60 days before an admissible hospitalization."
+  },
+  {
+   "id": "X08",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How many days of post hospitalisation expenses can I claim after discharge?",
+   "sections": [
+    "3.6"
+   ],
+   "evidence": [
+    [
+     "for up to 180 days from the date"
+    ]
+   ],
+   "facts": [
+    [
+     "180 days"
+    ]
+   ],
+   "off_scope": [
+    "4.9",
+    "4.10"
+   ],
+   "reference": "Up to 180 days from the date of discharge."
+  },
+  {
+   "id": "X09",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Do I pay less if I buy the policy on the website?",
+   "sections": [
+    "8"
+   ],
+   "evidence": [
+    [
+     "is eligible for 5 discount on premium"
+    ]
+   ],
+   "facts": [
+    [
+     "5%"
+    ]
+   ],
+   "polarity": "yes",
+   "reference": "Yes. Buying online gives a 5% discount, which continues on renewals without an intermediary."
+  },
+  {
+   "id": "X10",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "My son is turning 25. What happens to his cover?",
+   "sections": [
+    "1"
+   ],
+   "evidence": [
+    [
+     "and will be migrated to a new"
+    ]
+   ],
+   "facts": [
+    [
+     "migrated",
+     "new policy"
+    ],
+    [
+     "continuity"
+    ]
+   ],
+   "reference": "At 25 he becomes ineligible on the next renewal and is migrated to a new policy with continuity benefits."
+  },
+  {
+   "id": "X11",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Does the policy pay for an ambulance to take me to the hospital?",
+   "sections": [
+    "3.1.1"
+   ],
+   "evidence": [
+    [
+     "expenses incurred on road ambulance if the insured"
+    ]
+   ],
+   "facts": [
+    [
+     "road ambulance",
+     "ambulance"
+    ],
+    [
+     "nearest hospital"
+    ]
+   ],
+   "polarity": "yes",
+   "reference": "Yes. Road ambulance costs are covered for transfer to the nearest hospital for emergency care, between hospitals, or from hospital to home in the same city."
+  },
+  {
+   "id": "X12",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Is dental treatment covered?",
+   "sections": [
+    "3.1.1"
+   ],
+   "evidence": [
+    [
+     "in patient care dental treatment necessitated due"
+    ]
+   ],
+   "facts": [
+    [
+     "dental"
+    ],
+    [
+     "disease or injury"
+    ]
+   ],
+   "polarity": "yes",
+   "reference": "In-patient dental treatment is covered when necessitated by disease or injury."
+  },
+  {
+   "id": "X13",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How soon will I get paid after submitting my claim papers?",
+   "sections": [
+    "12.3"
+   ],
+   "evidence": [
+    [
+     "may be within 30 days from the date"
+    ]
+   ],
+   "facts": [
+    [
+     "30 days"
+    ]
+   ],
+   "reference": "Within 30 days of the last necessary document, or 45 days if investigated, with interest at 2% above the bank rate for delays."
+  },
+  {
+   "id": "X14",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "If I move my policy to another insurer, do I keep the waiting period I have already served?",
+   "sections": [
+    "12.10"
+   ],
+   "evidence": [
+    [
+     "insured person will get the accrued continuity benefits in waiting periods as per"
+    ]
+   ],
+   "facts": [
+    [
+     "continuity"
+    ]
+   ],
+   "polarity": "yes",
+   "reference": "Yes. With continuous coverage, the accrued continuity benefits in waiting periods carry over as per IRDAI portability guidelines."
+  },
+  {
+   "id": "X15",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Can I pay my premium every month?",
+   "sections": [
+    "12.13"
+   ],
+   "evidence": [
+    [
+     "yearly quarterly or monthly as mentioned in"
+    ],
+    [
+     "monthly grace period applicable 15 days",
+     "monthly premium 15 days grace period"
+    ]
+   ],
+   "facts": [
+    [
+     "monthly"
+    ],
+    [
+     "15 days"
+    ]
+   ],
+   "polarity": "yes",
+   "reference": "Yes. Monthly instalments are allowed, with a 15-day grace period during which there is no cover."
+  },
+  {
+   "id": "N01",
+   "split": "dev",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "Does this policy cover damage to my car in an accident?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "vehicle damage",
+    "car damage",
+    "own damage"
+   ],
+   "role": "not answerable, unrelated",
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N02",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "How much does the policy pay for lost baggage during travel?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "baggage",
+    "luggage"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N03",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the interest rate on a personal loan from HDFC?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "loan"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N04",
+   "split": "dev",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What does the Optima Restore plan cover?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "optima restore"
+   ],
+   "role": "not answerable, similar product name",
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N05",
+   "split": "dev",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the annual premium for a 40-year-old living in a Tier 2 city?",
+   "sections": [
+    "Annexure-C"
+   ],
+   "evidence": [
+    [
+     "age 40 10 300 13 300 16 000"
+    ],
+    [
+     "age 40 10 622 13 579 16 294"
+    ]
+   ],
+   "facts": [
+    [
+     "re:(?<![\\d,.])(?:10,?300|13,?300|16,?000|16,?650|17,?250|20,?150|23,?000|28,?000|10,?622|13,?579|16,?294|16,?908|17,?473|20,?356|23,?180|28,?210)(?![\\d,]*\\d)"
+    ]
+   ],
+   "must_not": [
+    "(?<![\\d,.])(?:12,?500|15,?500|16,?400|17,?200|17,?950|21,?000|25,?000|32,?000|12,?891|15,?825|16,?701|17,?467|18,?182|21,?215|25,?196|32,?240|10,?200|13,?150|15,?800|16,?450|17,?050|19,?950|22,?800|27,?750|10,?400|13,?450|16,?200|16,?850|17,?450|20,?350|23,?200|28,?250|10,?519|13,?425|16,?090|16,?705|17,?271|20,?154|22,?978|27,?958|10,?725|13,?732|16,?497|17,?112|17,?676|20,?558|23,?382|28,?462)(?![\\d,]*\\d)"
+   ],
+   "role": "premium table lookup (separate premium index)",
+   "reference": "It depends on the plan and Sum Insured (Annexure C, Tier 2, age 40, excluding GST): Optima Secure from Rs. 10,300 (Rs. 5 lakh) to Rs. 28,000 (Rs. 2 crore); Optima Super Secure from Rs. 10,622 to Rs. 28,210."
+  },
+  {
+   "id": "N06",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "Does the policy cover home contents against fire?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "fire",
+    "home contents",
+    "burglary"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "FP01",
+   "split": "dev",
+   "type": "false_premise",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the co-payment percentage for senior citizens?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "co-payment for senior",
+    "senior citizen co-pay"
+   ],
+   "role": "false premise, not answerable",
+   "reference": "Not specified in the provided policy text: no senior-citizen co-payment is stated."
+  },
+  {
+   "id": "FP02",
+   "split": "test",
+   "type": "false_premise",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the room rent limit of 1% of the Sum Insured per day?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "1% of the sum insured",
+    "room rent limit"
+   ],
+   "reference": "Not specified in the provided policy text: no room rent cap of 1% of the Sum Insured is stated."
+  },
+  {
+   "id": "FP03",
+   "split": "dev",
+   "type": "false_premise",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How much is the maternity benefit after the 9-month waiting period?",
+   "sections": [
+    "10.1"
+   ],
+   "evidence": [
+    [
+     "excl18"
+    ]
+   ],
+   "facts": [
+    [
+     "excl18",
+     "excluded",
+     "not covered"
+    ]
+   ],
+   "role": "false premise, answerable (no such benefit)",
+   "reference": "There is no maternity benefit: childbirth expenses are excluded under Excl18, and no 9-month waiting period is stated."
+  },
+  {
+   "id": "T01",
+   "split": "dev",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the maximum amount payable for all hospitalization claims in a policy year under Optima Super Secure in Year 2?",
+   "sections": [
+    "2.1"
+   ],
+   "evidence": [
+    [
+     "year 2 optima super secure base sum insured",
+     "hospitalization claim year 2"
+    ]
+   ],
+   "facts": [
+    [
+     "45 lakh"
+    ]
+   ],
+   "table_cells": [
+    [
+     "super",
+     "all",
+     2
+    ]
+   ],
+   "role": "table: one cell",
+   "reference": "Rs. 45 lakh (Year 2 illustration: Base Sum Insured Rs. 10 lakh, no claim in Year 1)."
+  },
+  {
+   "id": "TY01",
+   "split": "dev",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "wat is the free look peroid for a new polcy?",
+   "sections": [
+    "12.8"
+   ],
+   "evidence": [
+    [
+     "look period of fifteen days from date of"
+    ]
+   ],
+   "facts": [
+    [
+     "fifteen days",
+     "15 days"
+    ]
+   ],
+   "role": "typos in the question",
+   "reference": "Fifteen days from receipt of the policy document, for new individual policies."
+  },
+  {
+   "id": "PA01",
+   "split": "dev",
+   "type": "partial",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "What discount do I get for buying online, and is there a special discount for women?",
+   "sections": [
+    "8"
+   ],
+   "evidence": [
+    [
+     "is eligible for 5 discount on premium"
+    ]
+   ],
+   "facts": [
+    [
+     "5%"
+    ]
+   ],
+   "expect_admit": true,
+   "absent_terms": [
+    "women",
+    "woman",
+    "female"
+   ],
+   "role": "half answerable: must say what is not shown",
+   "reference": "5% for buying online (kept on renewal without an intermediary); the policy does not mention a discount for women."
+  },
+  {
+   "id": "PR01",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "What is the annual premium for Optima Secure with a Rs. 10 lakh Sum Insured for a 30-year-old living in Mumbai?",
+   "sections": [
+    "Annexure-C",
+    "14"
+   ],
+   "evidence": [
+    [
+     "age 30 11 000 13 500 14 400"
+    ]
+   ],
+   "facts": [
+    [
+     "re:(?<![\\d,.])13,?500(?![\\d,]*\\d)"
+    ]
+   ],
+   "must_not": [
+    "(?<![\\d,.])(?:11,?800|13,?300|13,?700|11,?000|14,?400|13,?783)(?![\\d,]*\\d)"
+   ],
+   "reference": "Rs. 13,500 a year (Mumbai is Tier 1; age 30; Rs. 10 lakh; Annexure C, excluding GST)."
+  },
+  {
+   "id": "PR02",
+   "split": "test",
+   "type": "comparison",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "How much more does Optima Super Secure cost than Optima Secure for a 45-year-old living in Pune with Rs. 5 lakh cover?",
+   "sections": [
+    "Annexure-C",
+    "14"
+   ],
+   "evidence": [
+    [
+     "age 45 10 800 14 050 17 000"
+    ],
+    [
+     "age 45 11 138 14 344 17 312"
+    ],
+    [
+     "rest of india no co payment"
+    ]
+   ],
+   "facts": [
+    [
+     "re:(?<![\\d,.])10,?800(?![\\d,]*\\d)"
+    ],
+    [
+     "re:(?<![\\d,.])11,?138(?![\\d,]*\\d)"
+    ],
+    [
+     "re:(?<![\\d,.])338(?![\\d,]*\\d)"
+    ]
+   ],
+   "must_not": [
+    "(?<![\\d,.])(?:13,?250|13,?665|10,?700|11,?800|11,?035|12,?169)(?![\\d,]*\\d)"
+   ],
+   "derived_figures": [
+    [
+     "inr",
+     338
+    ]
+   ],
+   "reference": "Pune is not a Tier 1 city, so Tier 2 (Rest of India) applies: Rs. 11,138 for Optima Super Secure vs Rs. 10,800 for Optima Secure, Rs. 338 more a year (excluding GST)."
+  },
+  {
+   "id": "PR03",
+   "split": "test",
+   "type": "fact",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Do the premium rates in the policy include GST?",
+   "sections": [
+    "14",
+    "Annexure-C"
+   ],
+   "evidence": [
+    [
+     "premium table exclusive of goods and services tax",
+     "annual gross premium excl gst"
+    ]
+   ],
+   "facts": [
+    [
+     "excl. gst",
+     "exclusive of goods and services tax",
+     "exclusive of gst",
+     "excluding gst",
+     "excludes gst",
+     "re:\\b(do|does) not include (the )?(gst|goods and services tax)",
+     "re:\\bwithout (the )?gst\\b",
+     "re:\\b(gst|goods and services tax) (is |will be )?(charged |added |payable )?(extra|separately|additionally|excluded)"
+    ]
+   ],
+   "polarity": "no",
+   "reference": "No. The premium table (Annexure C) is exclusive of Goods and Services Tax (GST)."
+  },
+  {
+   "id": "AB01",
+   "split": "test",
+   "type": "conditional",
+   "answerable": true,
+   "paraphrase": false,
+   "question": "Are gloves and food charges paid in a hospitalization claim?",
+   "sections": [
+    "Annexure-B",
+    "4.3",
+    "0"
+   ],
+   "evidence": [
+    [
+     "ecg electrodes 56 gloves",
+     "non medical expenses like gloves food charges"
+    ],
+    [
+     "non medical expenses listed under annexure b"
+    ]
+   ],
+   "facts": [
+    [
+     "protect benefit"
+    ],
+    [
+     "annexure b",
+     "not payable",
+     "not covered",
+     "not available",
+     "otherwise not payable",
+     "non medical",
+     "not reimbursed",
+     "not reimbursable",
+     "excluded"
+    ]
+   ],
+   "reference": "Not under the base cover: gloves and food charges (other than the patient's diet) are on the Annexure B list of non-medical items not covered. The optional Protect Benefit pays the Annexure B items for claims admissible under Section 3."
+  },
+  {
+   "id": "AB02",
+   "split": "test",
+   "type": "paraphrase",
+   "answerable": true,
+   "paraphrase": true,
+   "question": "Will I be reimbursed for attendant charges and the TV in my hospital room?",
+   "sections": [
+    "Annexure-B",
+    "4.3"
+   ],
+   "evidence": [
+    [
+     "22 television charges 23 surcharges 24 attendant charges"
+    ],
+    [
+     "non medical expenses listed under annexure b"
+    ]
+   ],
+   "facts": [
+    [
+     "annexure b",
+     "not payable",
+     "not covered",
+     "not available",
+     "otherwise not payable",
+     "non medical",
+     "not reimbursed",
+     "not reimbursable",
+     "excluded"
+    ],
+    [
+     "protect benefit"
+    ]
+   ],
+   "reference": "Not under the base cover: attendant charges and television charges are Annexure B non-medical items; they are paid only if the optional Protect Benefit is in force, for claims admissible under Section 3."
+  },
+  {
+   "id": "FP04",
+   "split": "test",
+   "type": "false_premise",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the 10% co-payment that applies to every claim?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "must_not": [
+    "\\b10 ?% co payment (applies|is applicable|is charged|will apply|is deducted)"
+   ],
+   "absent_terms": [
+    "10% co-payment",
+    "co-payment of 10"
+   ],
+   "reference": "Not specified: the policy states no co-payment on every claim; it only says no co-payment applies when a Tier 2 insured person is treated in a Tier 1 city."
+  },
+  {
+   "id": "FP05",
+   "split": "test",
+   "type": "false_premise",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the sub-limit for cataract surgery per eye?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "per eye",
+    "cataract sub-limit",
+    "sub-limit for cataract"
+   ],
+   "reference": "Not specified: no cataract sub-limit is stated (cataract is a listed condition with a 24-month waiting period, Excl02)."
+  },
+  {
+   "id": "N07",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is HDFC ERGO's claim settlement ratio?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "settlement ratio"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N08",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": true,
+   "question": "Which hospitals in Pune are in the cashless network?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "pune"
+   ],
+   "reference": "Not specified: the policy does not list network hospitals (it says the list of Network Providers is on the company's website)."
+  },
+  {
+   "id": "N09",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "Does the policy cover trip cancellation or flight delays?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "trip cancellation",
+    "flight delay",
+    "cancellation of trip"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N10",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What GST rate is charged on the premium?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "18%",
+    "gst rate",
+    "rate of gst"
+   ],
+   "reference": "Not specified: the premium table is shown excluding GST and no GST rate is stated."
+  },
+  {
+   "id": "N11",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": true,
+   "question": "How many free doctor teleconsultations do I get each year?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "teleconsult",
+    "tele consultation",
+    "tele-consultation",
+    "video consultation"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N12",
+   "split": "dev",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "What is the annual premium for Optima Suraksha for a 30-year-old?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "must_not": [
+    "(premium|cost|price)s? (for|of) (the )?(optima )?suraksha[^.\\n]{0,60}\\b(is|are|would be|will be)\\b[^.\\n]{0,15}\\d"
+   ],
+   "absent_terms": [
+    "optima suraksha, tier"
+   ],
+   "role": "not answerable: premium of a plan the tables do not cover",
+   "reference": "Not specified: the premium table (Annexure C) covers only Optima Secure and Optima Super Secure."
+  },
+  {
+   "id": "N13",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": false,
+   "question": "Can this policy be converted into a life insurance policy?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "life insurance"
+   ],
+   "reference": "Not specified in the provided policy text."
+  },
+  {
+   "id": "N14",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": true,
+   "question": "Do I get my premium back as cashback at maturity if I make no claims?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "maturity",
+    "cashback",
+    "cash back",
+    "return of premium"
+   ],
+   "reference": "Not specified: the policy describes no maturity or premium-return benefit."
+  },
+  {
+   "id": "N15",
+   "split": "test",
+   "type": "out_of_scope",
+   "answerable": false,
+   "paraphrase": true,
+   "question": "Does the plan include a free gym membership?",
+   "sections": [],
+   "evidence": [],
+   "facts": [],
+   "absent_terms": [
+    "gym",
+    "fitness"
+   ],
+   "reference": "Not specified in the provided policy text."
+  }
+ ]
+}

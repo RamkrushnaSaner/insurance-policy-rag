@@ -1,0 +1,35 @@
+[
+ {
+  "section_id": "0",
+  "section_title": "Introduction",
+  "clause": null,
+  "kind": "text",
+  "group": "0",
+  "text": "Sample Family Care is a second invented policy, used to test loading several policies at once.",
+  "label": "Section 0 - Introduction",
+  "index": "policy",
+  "idx": 0
+ },
+ {
+  "section_id": "3.1",
+  "section_title": "Hospitalization Expenses",
+  "clause": null,
+  "kind": "text",
+  "group": "3.1",
+  "text": "Hospitalization expenses are paid for stays of at least 48 hours, up to 80% of the bill.",
+  "label": "Section 3.1 - Hospitalization Expenses",
+  "index": "policy",
+  "idx": 1
+ },
+ {
+  "section_id": "10.1",
+  "section_title": "Waiting Periods",
+  "clause": null,
+  "kind": "text",
+  "group": "10.1",
+  "text": "Pre-existing diseases are covered after 48 months of continuous cover.",
+  "label": "Section 10.1 - Waiting Periods",
+  "index": "policy",
+  "idx": 2
+ }
+]

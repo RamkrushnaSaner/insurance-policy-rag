@@ -1,0 +1,12 @@
+# Template for several policies at once. Each document needs its own chunk file with the same fields
+# (see docs/adding_a_policy.md). With more than one document, every passage label starts with the policy
+# name, and the prompt gets one extra rule telling the model to keep the policies apart.
+#   policy-rag ask "..." --config configs/two_policies.example.yaml --document optima-secure
+extends: default.yaml
+documents:
+  - id: optima-secure
+    name: "HDFC ERGO my:Optima Secure"
+    chunks: data/policy_chunks.json
+  - id: second-policy
+    name: "Another policy"
+    chunks: data/second_policy_chunks.json

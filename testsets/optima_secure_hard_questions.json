@@ -1,0 +1,82 @@
+{
+ "name": "my:Optima Secure hard questions",
+ "description": "15 questions beyond the test set (calculations, combined conditions, traps), each with the expected answer for a human to compare. Not scored automatically and not part of any decision.",
+ "document": "optima-secure",
+ "items": [
+  {
+   "id": "H01",
+   "question": "I have Optima Secure with a Rs. 5 lakh Base Sum Insured, in my second policy year with no break. This year I make three claims: Rs. 4 lakh, then Rs. 12 lakh, then Rs. 4 lakh. How much is paid for each?",
+   "expected": "Rs 4 lakh (Base); Rs 12 lakh (Base 1 + Plus 2.5 + Secure 5 + Restore 3.5); Rs 1.5 lakh (rest of Restore). Sections 13.2, 4.4-4.6"
+  },
+  {
+   "id": "H02",
+   "question": "We chose a Rs. 1 lakh Aggregate Deductible. In one year my wife claims Rs. 60,000 and I claim Rs. 80,000. How much does the insurer pay on a family floater, and how much on an individual policy?",
+   "expected": "Floater: Rs 40,000 (deductible used up once across the family). Individual: nothing (each person bears up to Rs 1 lakh). Section 4.7"
+  },
+  {
+   "id": "H03",
+   "question": "On Optima Super Secure I stayed 5 days in a shared room at a network hospital, 1 of those days in the ICU. How much daily cash do I get?",
+   "expected": "4 days x Rs 1,000 = Rs 4,000 (no ICU days; cap Rs 6,000; does not reduce the Sum Insured). Section 4.2, Annexure A"
+  },
+  {
+   "id": "H04",
+   "question": "We are a family of four on a Rs. 15 lakh family floater. How much health check-up cover do we get per year, and would four individual covers give more?",
+   "expected": "Floater: Rs 8,000 in total. Individual: Rs 4,000 each = Rs 16,000. Only on continuous renewal, no carry-forward. Section 5"
+  },
+  {
+   "id": "H05",
+   "question": "My father was discharged on 1 March. His post-hospitalization treatment ended on 20 August, and we submit the bills on 30 August. Will they be paid?",
+   "expected": "Yes: the 180-day window runs to about 28 Aug; the deadline is 15 days after treatment ends (4 Sep). Sections 3.6, 11.6"
+  },
+  {
+   "id": "H06",
+   "question": "The insurer received our last document on 1 June, investigated the claim, and paid on 25 July. Do we get interest?",
+   "expected": "Yes: with an investigation the limit is 45 days (16 July); interest at 2% above bank rate from 1 June to 25 July. Section 12.3"
+  },
+  {
+   "id": "H07",
+   "question": "My first policy is 10 months old. I need a knee replacement after a road accident. Is it covered?",
+   "expected": "Yes: the 24-month waiting period for joint replacement does not apply to accidents. Excl02"
+  },
+  {
+   "id": "H08",
+   "question": "I declared knee osteoarthritis when I bought the policy. After 30 months, can I claim a knee replacement?",
+   "expected": "Not yet: pre-existing (36 months) and on the 24-month list; the longer period (36 months) applies. Excl01, Excl02 (iii)"
+  },
+  {
+   "id": "H09",
+   "question": "After an emergency surgery in Singapore paid under my global cover, I do 2 months of physiotherapy in India. Is it paid on Optima Secure Global? On Global Plus?",
+   "expected": "No on both: Global excludes pre/post for an overseas claim even in India; Global Plus pays only pre/post incurred and paid overseas. Sections 4.9 B(ii), 4.10 (viii)"
+  },
+  {
+   "id": "H10",
+   "question": "Optima Secure Global, Rs. 1 crore, first year. An emergency in Dubai costs Rs. 1.6 crore. Can the Secure Benefit or Restore cover the part above Rs. 1 crore?",
+   "expected": "No: Secure and Restore apply only in India; the global cover pays at most Base SI + Plus (none in year 1), less a Rs 10,000 per-claim deductible. Section 2.1 note, 4.9"
+  },
+  {
+   "id": "H11",
+   "question": "The hospital billed laundry charges and mineral water. Does Optima Suraksha pay them? Does Optima Secure?",
+   "expected": "Suraksha: no (Annexure B non-medical items, no Protect Benefit). Secure: yes, under Protect Benefit for an admissible Section 3 claim. Sections 4.3, 10.2(k), Annexures A and B"
+  },
+  {
+   "id": "H12",
+   "question": "I have been insured for 9 continuous years and raised my Sum Insured from Rs. 10 to 20 lakh 3 years ago. Can the insurer contest a claim for non-disclosure?",
+   "expected": "Not on the original Rs 10 lakh (8-year moratorium done; only proven fraud or permanent exclusions). The extra Rs 10 lakh is still contestable (8 years from the increase). Section 12.6"
+  },
+  {
+   "id": "H13",
+   "question": "On Optima Super Secure, my doctor abroad advised 6 days in hospital and an attendant. Can I claim my wife's flights and hotel under Overseas Travel Secure?",
+   "expected": "No: Overseas Travel Secure exists only with Secure Global / Global Plus; Super Secure has no overseas cover. Section 4.11, Annexure A"
+  },
+  {
+   "id": "H14",
+   "question": "I ported my policy from another insurer last week. Can I return it in the free look period?",
+   "expected": "No: free look is for new policies only, not porting or renewal; you can cancel with 15 days' notice for a pro-rata refund if no claim was admitted. Sections 12.8, 12.12"
+  },
+  {
+   "id": "H15",
+   "question": "What is the sub-limit for AYUSH treatment on Optima Secure?",
+   "expected": "Not stated in this document; the sub-limit is in the Policy Schedule. Any figure is invented. Section 3.4"
+  }
+ ]
+}

@@ -1,0 +1,5 @@
+# Dense search only (no BM25): measures what the lexical leg adds. Retrieval only, minutes:
+#   policy-rag evaluate --config configs/experiments/dense_only.yaml --name dense_only --mode retrieval
+extends: ../default.yaml
+retrieval:
+  use_bm25: false

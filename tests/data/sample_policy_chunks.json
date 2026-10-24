@@ -1,0 +1,167 @@
+[
+ {
+  "section_id": "0",
+  "section_title": "Introduction",
+  "clause": null,
+  "kind": "text",
+  "group": "0",
+  "text": "Sample Health Shield is an invented indemnity health policy used only to test this software. It covers hospitalization due to illness or accident.",
+  "label": "Section 0 - Introduction",
+  "index": "policy",
+  "idx": 0
+ },
+ {
+  "section_id": "1",
+  "section_title": "Eligibility",
+  "clause": null,
+  "kind": "text",
+  "group": "1",
+  "text": "The policy covers persons aged 18 to 65 years at entry. Children from 91 days can be covered with a parent.",
+  "label": "Section 1 - Eligibility",
+  "index": "policy",
+  "idx": 1
+ },
+ {
+  "section_id": "3",
+  "section_title": "Base Cover",
+  "clause": null,
+  "kind": "text",
+  "group": "3",
+  "text": "The base cover pays the expenses listed in Sections 3.1 to 3.3 up to the Sum Insured.",
+  "label": "Section 3 - Base Cover",
+  "index": "policy",
+  "idx": 2
+ },
+ {
+  "section_id": "3.1",
+  "section_title": "Hospitalization Expenses",
+  "clause": null,
+  "kind": "text",
+  "group": "3.1",
+  "text": "Room rent, nursing, ICU charges and surgeon fees are paid for a hospital stay of at least 24 hours.",
+  "label": "Section 3.1 - Hospitalization Expenses",
+  "index": "policy",
+  "idx": 3
+ },
+ {
+  "section_id": "3.2",
+  "section_title": "Pre-hospitalization Expenses",
+  "clause": null,
+  "kind": "text",
+  "group": "3.2",
+  "text": "Medical expenses incurred in the 30 days before admission are paid if the hospitalization claim is admissible.",
+  "label": "Section 3.2 - Pre-hospitalization Expenses",
+  "index": "policy",
+  "idx": 4
+ },
+ {
+  "section_id": "3.3",
+  "section_title": "Post-hospitalization Expenses",
+  "clause": null,
+  "kind": "text",
+  "group": "3.3",
+  "text": "Medical expenses incurred in the 60 days after discharge are paid if the hospitalization claim is admissible.",
+  "label": "Section 3.3 - Post-hospitalization Expenses",
+  "index": "policy",
+  "idx": 5
+ },
+ {
+  "section_id": "4",
+  "section_title": "Optional Covers",
+  "clause": null,
+  "kind": "text",
+  "group": "4",
+  "text": "The following optional covers can be bought for an extra premium.",
+  "label": "Section 4 - Optional Covers",
+  "index": "policy",
+  "idx": 6
+ },
+ {
+  "section_id": "4.1",
+  "section_title": "Wellness Bonus",
+  "clause": null,
+  "kind": "text",
+  "group": "4.1",
+  "text": "The Wellness Bonus increases the Sum Insured by 10% for each claim-free year, up to 50%.",
+  "label": "Section 4.1 - Wellness Bonus",
+  "index": "policy",
+  "idx": 7
+ },
+ {
+  "section_id": "10",
+  "section_title": "Exclusions",
+  "clause": null,
+  "kind": "text",
+  "group": "10",
+  "text": "The policy does not pay for the following:",
+  "label": "Section 10 - Exclusions",
+  "index": "policy",
+  "idx": 8
+ },
+ {
+  "section_id": "10.1",
+  "section_title": "Waiting Periods",
+  "clause": null,
+  "kind": "text",
+  "group": "10.1",
+  "text": "Treatment of the conditions listed below is covered only after 24 months of continuous cover:",
+  "label": "Section 10.1 - Waiting Periods",
+  "index": "policy",
+  "idx": 9
+ },
+ {
+  "section_id": "10.1",
+  "section_title": "Waiting Periods",
+  "clause": null,
+  "kind": "table",
+  "group": "10.1",
+  "text": "Cataract; Hernia; Kidney stones; Joint replacement unless caused by an accident.",
+  "label": "Section 10.1 - Waiting Periods - list",
+  "index": "policy",
+  "idx": 10
+ },
+ {
+  "section_id": "10.2",
+  "section_title": "Permanent Exclusions",
+  "clause": null,
+  "kind": "text",
+  "group": "10.2",
+  "text": "Cosmetic surgery, experimental treatment and injuries from war are never covered.",
+  "label": "Section 10.2 - Permanent Exclusions",
+  "index": "policy",
+  "idx": 11
+ },
+ {
+  "section_id": "11",
+  "section_title": "Claims",
+  "clause": null,
+  "kind": "text",
+  "group": "11",
+  "text": "Notify the insurer within 48 hours of an emergency admission and submit the claim documents within 15 days of discharge.",
+  "label": "Section 11 - Claims",
+  "index": "policy",
+  "idx": 12
+ },
+ {
+  "section_id": "Annexure-C",
+  "section_title": "Premium Table",
+  "clause": null,
+  "kind": "table",
+  "group": "Annexure-C/1",
+  "text": "Annual premium (Rs, excl. GST), Sample Health Shield, Sum Insured 5 lakh / 10 lakh:\nAge 18-35: 6,000 / 9,000\nAge 36-45: 8,000 / 12,000",
+  "label": "Section Annexure-C - Premium Table - ages 18-45",
+  "index": "premium",
+  "idx": 13
+ },
+ {
+  "section_id": "Annexure-C",
+  "section_title": "Premium Table",
+  "clause": null,
+  "kind": "table",
+  "group": "Annexure-C/2",
+  "text": "Annual premium (Rs, excl. GST), Sample Health Shield, Sum Insured 5 lakh / 10 lakh:\nAge 46-55: 11,000 / 16,000\nAge 56-65: 15,000 / 22,000",
+  "label": "Section Annexure-C - Premium Table - ages 46-65",
+  "index": "premium",
+  "idx": 14
+ }
+]

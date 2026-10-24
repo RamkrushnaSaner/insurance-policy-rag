@@ -1,0 +1,32 @@
+group,measure,dev,test,all
+PRIMARY,Fully correct (all questions),18/25 = 72.0% (95% CI 52–86%),79/88 = 89.8% (95% CI 82–95%),97/113 = 85.8% (95% CI 78–91%)
+Answer correctness,fully correct: answerable,71.4%,87.7%,84.0%
+Answer correctness,key-fact recall (answerable),0.885,0.929,0.919
+Answer correctness,critical error rate,4.0%,1.1%,1.8%
+Answer correctness,plan-table values,"13/18 correct, 0 wrong",–,"13/18 correct, 0 wrong"
+Answer correctness,list completeness (list questions),0.833,0.970,0.949
+Faithfulness,"groundedness (supported sentences, HHEM)",0.809,0.863,0.851
+Faithfulness,hallucination rate (answers with an unsupported sentence),43.5%,30.9%,33.7%
+Faithfulness,answers with figures not in the context,0.0%,0.0%,0.0%
+Faithfulness,answers citing section numbers not in the context,0.0%,1.1%,0.9%
+Retrieval,context recall (evidence passages reaching the model),0.889,0.932,0.922
+Retrieval,search recall (evidence among the candidates),0.952,0.989,0.980
+Retrieval,MRR@10 (rank of the first relevant chunk),0.806,0.894,0.874
+Retrieval,context precision (share of context tokens that are evidence),0.391,0.280,0.305
+Retrieval,evidence present in the chunk file,1.000,1.000,1.000
+Abstention,correct abstention (not answerable),75.0%,100.0%,94.7%
+Abstention,false refusal rate (answerable),4.8%,4.1%,4.3%
+Abstention,answerable questions refused by the gate,0,0,0
+Robustness,everyday-wording gap (policy wording minus everyday wording),-5.8%,24.3%,18.0%
+Efficiency,"seconds per answer, median",58.3,46.2,47.4
+Efficiency,"seconds per answer, 95th percentile",148,116,131
+Efficiency,"prompt tokens, median",1622,1619,1620
+Efficiency,"answer tokens, median",128,114,114
+Efficiency,"thinking tokens, median",418,334,339
+Reliability,thinking stopped at the budget (told to answer),3,5,8
+Reliability,answers cut off at the length limit,0,0,0
+Reliability,pipeline errors / out-of-memory retries,0 / 0,0 / 0,0 / 0
+Abstention,gate separability (AUROC of the best reranker score),0.619,0.952,
+Abstention,evidence removed: answer says it is not shown,4/4,,
+Efficiency,tokens per second / peak GPU memory (GB),,,6.09 / 10.26
+Reliability,retrieval identical when repeated / regenerated answer identical,,,113/113 / True

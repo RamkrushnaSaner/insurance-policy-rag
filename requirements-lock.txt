@@ -1,0 +1,20 @@
+# Exact versions behind the published results (README, "Results"). For reproducing them; for normal use,
+# `pip install -e ".[models,ingest]"` (pyproject.toml) accepts newer versions.
+#
+# Recorded by the evaluation run itself (Google Colab, Tesla T4, Python 3.13, CUDA 13.0 build of PyTorch):
+torch==2.11.0
+transformers==5.20.1
+sentence-transformers==5.7.0
+bitsandbytes==0.50.2
+accelerate==1.15.0
+faiss-cpu==1.15.1
+rank-bm25==0.2.2
+langgraph==1.2.16
+# Not recorded by that run; these are the versions the package was tested with:
+numpy==2.5.4
+pandas==3.0.6
+PyYAML==6.0.3
+# Chunking the PDF (the chunk file behind the results is reproduced with these; see data/README.md)
+pdfplumber==0.11.10
+pdfminer.six==20260107
+tiktoken==0.14.0
