@@ -40,3 +40,31 @@ def build_prompt(query: str, context: str, template: str = "policy_analyst_v2_3"
 
 def is_no_answer(answer: str) -> bool:
     return (answer or "").strip().strip('"“”').strip() == NO_ANSWER_TEXT
+
+
+# ---------------------------------------------------------------------------------------------------- follow-ups
+# Conversation memory: a follow-up is rewritten into a standalone question before it is searched and answered
+# (policy_rag/memory.py). The rewrite runs on the answer model with its configured generation settings.
+CONDENSE_TEMPLATES = {
+    "condense_v1": """Rewrite the user's last question so that it can be understood without the conversation.
+Keep the user's meaning and wording. Add only what the question leaves out (the plan, cover, benefit, condition, person
+or amount it refers to), taken from the conversation. Do not answer the question and do not add facts.
+If the last question already makes sense on its own, or it starts a new topic, return it unchanged.
+Reply with the rewritten question only.
+
+CONVERSATION:
+{history}
+
+LAST QUESTION: {question}
+STANDALONE QUESTION:""",
+}
+
+
+def build_condense_prompt(history, question: str, template: str = "condense_v1") -> str:
+    """The rewrite prompt. ``history``: [{"question", "answer"}, ...], oldest first (already shortened)."""
+    try:
+        text = CONDENSE_TEMPLATES[template]
+    except KeyError:
+        raise KeyError(f"unknown condense template {template!r}; available: {sorted(CONDENSE_TEMPLATES)}") from None
+    turns = "\n".join(f"User: {h['question']}\nAssistant: {h['answer']}" for h in history)
+    return text.format(history=turns, question=question.strip())

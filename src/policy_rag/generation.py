@@ -218,13 +218,16 @@ class AnswerCache:
         return n
 
     def add_from(self, source: str) -> int:
-        """Merge answers from another cache file (.jsonl) or a results zip; returns how many were read."""
+        """Merge answers from another cache file (.jsonl), a results zip, or a saved run (run.json: its records hold
+        every generated answer with its cache key); returns how many were read."""
         p = Path(source)
         raw = p.read_bytes()
         if p.suffix.lower() == ".zip":
             z = zipfile.ZipFile(io.BytesIO(raw))
             names = [n for n in z.namelist() if n.endswith("answer_cache.jsonl")]
             raw = z.read(names[0]) if names else b""
+        if p.suffix.lower() == ".json":
+            raw = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in cache_records_from_run(json.loads(raw))).encode()
         lines = [l for l in raw.decode("utf-8").splitlines() if l.strip()]
         n = self._read_lines(lines)
         if self.enabled:
@@ -248,6 +251,20 @@ class AnswerCache:
         return len(self.records)
 
 
+def cache_records_from_run(run: dict) -> list:
+    """Answer-cache records rebuilt from a saved run's question records (answer, thinking and generation details)."""
+    out = []
+    for r in run.get("records", []):
+        g = r.get("gen") or {}
+        if not g.get("key") or r.get("answer") is None:
+            continue
+        out.append({"key": g["key"], "answer": r["answer"], "thinking": r.get("thinking") or "",
+                    **{k: g.get(k) for k in ("prompt_tokens", "think_tokens", "answer_tokens", "thinking_forced",
+                                             "hit_limit", "new_tokens", "seconds")},
+                    "created": run.get("started"), "source_run": run.get("name")})
+    return out
+
+
 class Answerer:
     """Generator + cache. The seed of each answer comes from its cache key, i.e. from the prompt and settings."""
 
@@ -262,8 +279,9 @@ class Answerer:
     def is_cached(self, prompt: str) -> bool:
         return self.cache.get(self.key(prompt)) is not None
 
-    def answer(self, prompt: str, use_cache: bool = True) -> dict:
-        """The generation record: key, answer, thinking, token counts, seconds, from_cache."""
+    def answer(self, prompt: str, use_cache: bool = True, label: str = "answer") -> dict:
+        """The generation record: key, answer, thinking, token counts, seconds, from_cache. ``label`` only names the
+        call in the progress line (e.g. "rewrite" for follow-up questions)."""
         key = self.key(prompt)
         hit = self.cache.get(key) if use_cache else None
         if hit is not None:
@@ -276,7 +294,7 @@ class Answerer:
         if use_cache:
             self.cache.put(rec)
         if self.verbose:
-            print(f"    answer: {rec['answer_tokens']} tokens" + (
+            print(f"    {label}: {rec['answer_tokens']} tokens" + (
                 f" after {rec['think_tokens']} thinking tokens"
                 + (" (thinking budget reached: told to answer)" if rec["thinking_forced"] else "") if rec["think_tokens"] else "")
                 + f" in {rec['seconds']:.0f}s" + (" (answer stopped at the length limit)" if rec["hit_limit"] else ""))

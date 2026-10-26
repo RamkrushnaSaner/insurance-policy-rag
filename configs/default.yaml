@@ -56,12 +56,20 @@ generator:
   sampling: true
   oom_retry_context_tokens: 1000
 
+memory:                                  # follow-up questions in a conversation (policy-rag chat)
+  enabled: true                          # acts only when a conversation is passed; single questions are unchanged
+  max_turns: 3                           # earlier turns the rewriter sees
+  answer_chars: 400                      # characters of each earlier answer it sees
+  max_question_chars: 400                # a longer rewrite is rejected (the question is used as asked)
+  template: condense_v1
+
 cache:
   enabled: true
   path: runs/answer_cache.jsonl
 
 evaluation:
   testset: testsets/optima_secure_v3.json
+  dialogues: testsets/optima_secure_followups.json
   splits: [dev, test]
   output_dir: runs
   groundedness: true

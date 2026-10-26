@@ -18,7 +18,7 @@ def test_yaml_values_equal_the_code_defaults():
     """configs/default.yaml writes every setting out; it must say the same as the dataclass defaults."""
     from policy_rag.config import Config
     cfg, defaults = load_config(ROOT / "configs" / "default.yaml").to_dict(), Config().to_dict()
-    for section in ("embedder", "reranker", "retrieval", "context", "gate", "prompt", "generator", "cache",
+    for section in ("embedder", "reranker", "retrieval", "context", "gate", "prompt", "generator", "memory", "cache",
                     "evaluation", "decision"):
         assert cfg[section] == defaults[section], section
 

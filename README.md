@@ -6,8 +6,9 @@
 
 This system answers questions about a health insurance policy (HDFC ERGO **my:Optima Secure**) from the policy text only. It
 cites the sections it used. When the text does not cover a question, it replies *"Not specified in the provided policy
-text."* Everything runs on open models on a free Colab T4 GPU, with no API keys. The repository also contains the
-evaluation that measured the system and the published results.
+text."* In a conversation it also understands follow-up questions ("and for Super Secure?"). Everything runs on open
+models on a free Colab T4 GPU, with no API keys. The repository also contains the evaluation that measured the
+system and the published results.
 
 > The answers come from a language model. They can be incomplete or wrong, so check them against the policy wording.
 > This project does not give insurance advice.
@@ -42,7 +43,8 @@ wrong conclusion. [docs/evaluation.md](docs/evaluation.md) lists every failure, 
 - **Where the answers came from:** they were generated once on Colab with the v3.1 notebook, then re-scored with the
   corrected checks in this repository (the corrections fixed false alarms and missed errors in v3.1's checks). The
   package's code was verified to reproduce that notebook exactly ([docs/evaluation.md](docs/evaluation.md#verification)).
-  It has not yet been rerun end to end on a GPU.
+  A later run of the package on a T4 with the real models (the thinking-off experiment) matched the published
+  retrieval exactly for all 113 questions.
 - **Who checked the checks:** the automatic verdicts agree with a manual review of all 113 answers made during
   development. That review was not blind, and independent human labels (`policy-rag agreement`) are still to be
   collected.
@@ -60,9 +62,11 @@ flowchart LR
     PDF[Policy PDF] --> CHK["chunk-pdf: sections, clauses, tables"] --> CF[(chunk file)]
   end
   subgraph "Per question (LangGraph)"
-    Q[Question] --> D["Dense search: bge-small + FAISS, top 32"]
-    Q --> B["BM25, top 32"]
-    Q -. cost question .-> P["Premium-table index, top 12 + 12"]
+    H[("Conversation: last 3 turns")] -. follow-ups only .-> W["Rewrite a follow-up into a complete question"]
+    Q[Question] --> W
+    W --> D["Dense search: bge-small + FAISS, top 32"]
+    W --> B["BM25, top 32"]
+    W -. cost question .-> P["Premium-table index, top 12 + 12"]
     D --> U["Union ordered by RRF + sections named in the question"]
     B --> U
     P --> U
@@ -80,6 +84,7 @@ flowchart LR
 | Stage | What it does | Code |
 |---|---|---|
 | Chunking (offline) | Reads the PDF's two-column layout, finds numbered sections, lettered clauses and exclusion codes, and turns tables into self-describing lines | [`ingest/optima_secure_pdf.py`](src/policy_rag/ingest/optima_secure_pdf.py) |
+| Memory | In a conversation, rewrites a follow-up into a complete question from the last 3 turns (one extra model call, thinking on). The answer prompt never contains the conversation | [`memory.py`](src/policy_rag/memory.py) |
 | Search | Dense ([BGE-small](https://huggingface.co/BAAI/bge-small-en-v1.5)) and BM25 legs, fused by reciprocal rank. Premium tables are a separate index, searched only for cost questions | [`retrieval.py`](src/policy_rag/retrieval.py) |
 | Reranking | A cross-encoder ([bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3)) scores every candidate | [`reranking.py`](src/policy_rag/reranking.py) |
 | Context | Pins sections whose heading the question names, adds dependent neighbours ("the list below"), keeps a token budget | [`context.py`](src/policy_rag/context.py) |
@@ -109,6 +114,7 @@ pip install -e ".[models,ingest]"
 
 policy-rag chunk-pdf path/to/prospectus.pdf data/policy_chunks.json   # see data/README.md
 policy-rag ask "What is the waiting period for pre-existing diseases?"
+policy-rag chat                         # a conversation: follow-up questions work; /help lists the commands
 ```
 
 The first answer downloads about 20 GB of models. From Python:
@@ -119,6 +125,11 @@ from policy_rag import RAGSystem
 rag = RAGSystem.from_config("configs/default.yaml")
 r = rag.ask("Is a knee replacement after a road accident covered in the first year?")
 r.answer, r.sources, r.route        # the answer, the passages it read, "answer" or "no_answer"
+
+chat = rag.new_conversation()       # follow-up questions
+rag.ask("What is the waiting period for kidney stones?", conversation=chat)
+r = rag.ask("Does it apply if the problem is caused by an accident?", conversation=chat)
+r.standalone                        # the complete question that was searched and answered
 ```
 
 ## Evaluate and experiment
@@ -133,8 +144,14 @@ policy-rag evaluate --name check --mode rescore --rescore-from runs/baseline/run
 Each run writes `runs/<name>/`: `report.md`, `results.csv` (every answer next to its reference),
 `scorecard.csv`, `run.json` and `labels_to_fill.csv`. Answers are cached by prompt and generation settings, so
 repeating a run, or running a variant that changes only retrieval for some questions, generates only what is new.
-`--resume-from answer_cache.jsonl` reuses the answers of an earlier session. The cache keys are the same as the v3.1
-notebook's, so its answer cache can be reused here.
+`--resume-from` reuses the answers of an earlier session: an `answer_cache.jsonl`, a results zip, or a run's
+`run.json` (its records hold every generated answer). The cache keys are the same as the v3.1 notebook's, so its
+answers can be reused here.
+
+**Conversation memory** has its own evaluation: `policy-rag evaluate-dialogues --name memory` answers the 26
+follow-ups in [`testsets/optima_secure_followups.json`](testsets/optima_secure_followups.json) three ways (as typed
+without memory, rewritten by memory, and as the complete question) and applies a decision rule fixed in advance. It
+has not been run with the real models yet; see [docs/evaluation.md](docs/evaluation.md#conversation-memory).
 
 [`testsets/optima_secure_hard_questions.json`](testsets/optima_secure_hard_questions.json) has 15 harder questions
 (calculations, combined conditions, traps) with expected answers to read side by side. They are not scored
@@ -166,16 +183,18 @@ insurance-policy-rag/
 │   ├── context.py         title pinning, neighbour expansion, token budget, passage formatting
 │   ├── prompts.py         prompt templates and the refusal text
 │   ├── generation.py      answer model (two-phase thinking), answer cache
+│   ├── memory.py          conversation memory: follow-up rewriting, conversations
+│   ├── chat.py            the interactive chat loop
 │   ├── pipeline.py        LangGraph pipeline and the RAGSystem entry point
 │   ├── registry.py        component types selected by name in the config
 │   ├── cli.py             the policy-rag command
 │   ├── ingest/            PDF -> chunk file for the my:Optima Secure layout
 │   └── evaluation/        test set, checks, groundedness, runner, report, statistics, comparison
 ├── configs/               default.yaml (the baseline), experiments/, a two-policy template
-├── testsets/              the 113-question test set and 15 extra hard questions
+├── testsets/              the 113-question test set, 23 follow-up dialogues, 15 extra hard questions
 ├── results/baseline/      the published scorecard and per-question verdicts (scores only)
 ├── notebooks/             Colab quick start; archive/ = the single-notebook version (v3.2)
-├── tests/                 31 tests with stand-in components (no GPU, no downloads, no policy text)
+├── tests/                 47 tests with stand-in components (no GPU, no downloads, no policy text)
 ├── docs/                  how it works, evaluation, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)
 ```
@@ -219,6 +238,11 @@ What is **not** there yet:
   which was set in v2 for a different reranker and has not been recalibrated.
 - **Latency.** Thinking makes answers slow: a median of 47 s per answer on a T4.
 - **English only.** Prompts, checks and test questions are all in English.
+- **Conversation memory is new and unmeasured.** It is tested for correctness of the code, but not yet evaluated
+  with the real models. Each follow-up costs one extra model call with thinking (expect tens of seconds on a T4). A
+  wrong rewrite leads to a wrong search, which is why the rewritten question is always shown. Conversations live in
+  memory (save them with `/save`), and the answer step never sees the conversation, so requests about the chat itself
+  ("summarise what you told me") are not supported.
 
 ### What is tuned by hand
 
@@ -233,7 +257,10 @@ sentence. Several rules were written by hand for this document and are applied w
 
 ## History
 
-- **v3.2 (this version):** the system as a Python package with configs, a command line, tests and docs. Its answers
+- **v3.3 (this version):** conversation memory: follow-up questions are rewritten into complete questions from the
+  last turns; `policy-rag chat`; a follow-up dialogue test set and `evaluate-dialogues`; resuming from a saved run.
+  Single questions are handled exactly as in v3.2. See [CHANGELOG.md](CHANGELOG.md).
+- **v3.2:** the system as a Python package with configs, a command line, tests and docs. Its answers
   are the same as the v3.1 notebook's, verified as described above. The single-notebook version is kept in
   [`notebooks/archive/`](notebooks/archive/).
 - **v3.1 / v3.2 notebooks:** chunk file from the PDF, the bge-reranker-v2-m3 reranker, Qwen3-8B with budgeted

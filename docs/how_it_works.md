@@ -146,14 +146,47 @@ calculations and "is X covered if Y" questions.
 ## 7. The pipeline graph
 
 [`pipeline.py`](../src/policy_rag/pipeline.py) wires the steps as a [LangGraph](https://github.com/langchain-ai/langgraph)
-state graph: `retrieve → rerank → gate → answer | no_answer`. Each node reads and writes one shared state
-(question, candidates, scores, context groups, answer, generation record, errors). On CUDA out-of-memory, the answer
-node retries once with a 1,000-token context. Errors are recorded in the state instead of stopping a long evaluation
-run.
+state graph: `condense → retrieve → rerank → gate → answer | no_answer`. Each node reads and writes one shared state
+(question, candidates, scores, context groups, answer, generation record, errors). `condense` does nothing unless
+earlier turns of a conversation are passed (next section). On CUDA out-of-memory, the answer node retries once with a
+1,000-token context. Errors are recorded in the state instead of stopping a long evaluation run.
 
-The graph is deliberately linear. Later steps such as rewriting a question, a second retrieval round or a
-calculator would be new nodes and edges in the same graph. None of them is implemented; the evaluation is there to
-show whether such a step helps.
+The graph is deliberately linear. Further steps, such as a second retrieval round or a calculator, would be new nodes
+and edges in the same graph. None of them is implemented; the evaluation is there to show whether such a step helps.
+
+## 7b. Follow-up questions (conversation memory)
+
+[`memory.py`](../src/policy_rag/memory.py)
+
+```python
+chat = rag.new_conversation()
+rag.ask("What is the waiting period for kidney stones?", conversation=chat)
+r = rag.ask("Does it apply if the problem is caused by an accident?", conversation=chat)
+r.standalone   # e.g. "Does the 24-month waiting period for kidney stones apply if it is caused by an accident?"
+```
+
+A follow-up such as *"does it apply after an accident?"* means nothing to a search engine: it has no topic. The
+`condense` node therefore rewrites it into a complete question before anything else happens:
+
+1. A `Conversation` (owned by the caller: `rag.ask(..., conversation=...)`, `rag.chat()`, `policy-rag chat`) keeps
+   the turns. For each new question it hands the pipeline the last 3 turns: each turn's complete question and the
+   first 400 characters of its answer (`memory` in the config).
+2. The answer model gets a short rewrite prompt (`CONDENSE_TEMPLATES` in [`prompts.py`](../src/policy_rag/prompts.py)):
+   add only what the question leaves out, don't answer it, leave a new topic unchanged. It runs with the generator's
+   configured settings, thinking included, and through the answer cache, so a repeated rewrite costs nothing.
+3. Guards reject a rewrite that is empty, longer than 400 characters, looks like an answer ("Yes, ..."), or brings in a
+   figure that appears neither in the question nor in the turns shown. The question is then searched as typed.
+4. Only the complete question is searched, reranked and answered. The answer prompt has exactly the same form as for
+   a single question and never contains the conversation, so answers still come from the policy text alone. The
+   rewritten question is shown (`searched as:`) so a wrong rewrite is visible.
+
+The first question of a conversation, and every question asked without one, skips the rewrite completely, so the
+test-set evaluation and its cache keys are unchanged. The conversation keeps its document filter across turns.
+
+*Why this design:* putting the whole conversation into the answer prompt would make every prompt longer on a T4 and
+let the model answer from its own earlier answers instead of the policy. A running summary needs a model call every
+turn and drops details such as the plan or the year. Rewriting only the question keeps the grounded pipeline as it is
+and costs one extra model call per follow-up.
 
 ## 8. Several documents
 

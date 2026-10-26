@@ -23,7 +23,8 @@ def fake_config(tmp_path, documents=None, **sections):
         "reranker": {"type": "fake_overlap"},
         "generator": {"type": "fake_extractive"},
         "cache": {"path": str(tmp_path / "cache.jsonl")},
-        "evaluation": {"testset": str(DATA / "sample_testset.json"), "output_dir": str(tmp_path / "runs"),
+        "evaluation": {"testset": str(DATA / "sample_testset.json"), "dialogues": str(DATA / "sample_dialogues.json"),
+                       "output_dir": str(tmp_path / "runs"),
                        "groundedness": False},
         "retrieval": {"k_dense": 8, "k_bm25": 8},
     }

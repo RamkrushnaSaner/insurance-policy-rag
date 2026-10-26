@@ -3,11 +3,13 @@
     policy-rag chunk-pdf policy.pdf data/policy_chunks.json      # PDF -> chunk file (CPU, seconds)
     policy-rag info                                              # what the config loads
     policy-rag ask "What is the waiting period for pre-existing diseases?"
+    policy-rag chat                                              # conversation with follow-up questions
     policy-rag evaluate --name baseline                          # full evaluation (GPU)
     policy-rag evaluate --name retr --mode retrieval             # retrieval only (no answer model)
     policy-rag evaluate --name check --mode rescore --rescore-from runs/baseline/run.json
     policy-rag compare runs/baseline/run.json runs/candidate/run.json
     policy-rag agreement runs/baseline/run.json labels_filled.csv
+    policy-rag evaluate-dialogues --name memory                  # follow-up questions with and without memory
 
 Every command takes ``--config`` (default ``configs/default.yaml``) and ``--set key=value`` overrides.
 """
@@ -78,6 +80,22 @@ def cmd_ask(args):
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(args.out, index=False)
         print(f"\nSaved {args.out}")
+
+
+def cmd_chat(args):
+    from .memory import Conversation
+    from .pipeline import RAGSystem
+    rag = RAGSystem.from_config(args.config, args.set)
+    conv = Conversation.load(args.load) if args.load else rag.new_conversation(args.document)
+    rag.chat(conv)
+
+
+def cmd_evaluate_dialogues(args):
+    from .evaluation.dialogues import DialogueEvaluation
+    cfg = _config(args)
+    run = DialogueEvaluation(cfg, args.name, args.splits, args.conditions, args.resume_from).run(make_zip_file=args.zip)
+    if run.get("zip"):
+        print(f"Zip: {run['zip']}")
 
 
 def cmd_evaluate(args):
@@ -157,15 +175,29 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", help="save the answers as CSV")
     p.set_defaults(func=cmd_ask)
 
+    p = common(sub.add_parser("chat", help="interactive questions with conversation memory (follow-ups)"))
+    p.add_argument("--document", action="append", help="search only this document id (repeatable)")
+    p.add_argument("--load", help="continue a conversation saved with /save")
+    p.set_defaults(func=cmd_chat)
+
     p = common(sub.add_parser("evaluate", help="run the test set and write a report"))
     p.add_argument("--name", required=True, help="run name: results go to <output_dir>/<name>/")
     p.add_argument("--mode", default="full", choices=["full", "retrieval", "rescore"])
     p.add_argument("--splits", nargs="+", choices=["dev", "test"], help="default: evaluation.splits in the config")
     p.add_argument("--rescore-from", help="mode rescore: the saved run (run.json or results zip)")
     p.add_argument("--contexts-from", help="answer the saved contexts of this run again (run.json or zip)")
-    p.add_argument("--resume-from", action="append", help="add answers from an answer_cache.jsonl or results zip")
+    p.add_argument("--resume-from", action="append", help="add answers from an answer_cache.jsonl, results zip or run.json")
     p.add_argument("--zip", action="store_true", help="also write one zip of the results folder")
     p.set_defaults(func=cmd_evaluate)
+
+    p = common(sub.add_parser("evaluate-dialogues", help="follow-up questions with and without conversation memory"))
+    p.add_argument("--name", required=True, help="results go to <output_dir>/<name>/")
+    p.add_argument("--splits", nargs="+", choices=["dev", "test"], help="default: evaluation.splits in the config")
+    p.add_argument("--conditions", nargs="+", choices=["no_memory", "memory", "gold"],
+                   help="default: all three (memory always runs)")
+    p.add_argument("--resume-from", action="append", help="add answers from an answer_cache.jsonl, results zip or run.json")
+    p.add_argument("--zip", action="store_true", help="also write one zip of the results folder")
+    p.set_defaults(func=cmd_evaluate_dialogues)
 
     p = common(sub.add_parser("compare", help="paired comparison of runs and the adopt/keep decision"))
     p.add_argument("baseline")

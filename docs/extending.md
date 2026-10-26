@@ -99,8 +99,14 @@ The tests use the same mechanism with tiny stand-in components ([`tests/fakes.py
 - **A check**: add it to `score_answer` in [`evaluation/checks.py`](../src/policy_rag/evaluation/checks.py) with a
   stage and a kind, and decide whether the kind is critical (`CRITICAL`) or incomplete (`INCOMPLETE`). Changing the
   checks changes the scores, so re-score the baseline (`--mode rescore`) before comparing.
-- **A pipeline step** (question rewriting, a second retrieval round): a new node in the LangGraph graph in
-  [`pipeline.py`](../src/policy_rag/pipeline.py). Measure it like any other change.
+- **Conversation memory**: the `memory` section of the config (`enabled`, `max_turns`, `answer_chars`,
+  `max_question_chars`, `template`). A new rewrite instruction is a template in `CONDENSE_TEMPLATES` in
+  [`prompts.py`](../src/policy_rag/prompts.py); a new safety check for rewrites goes in `check_rewrite` in
+  [`memory.py`](../src/policy_rag/memory.py). Measure any change with `policy-rag evaluate-dialogues` and add
+  conversations to [`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) for a new
+  policy (each follow-up's complete form must be a question in that policy's test set).
+- **A pipeline step** (a second retrieval round, say): a new node in the LangGraph graph in
+  [`pipeline.py`](../src/policy_rag/pipeline.py), as the rewrite step (`condense`) is. Measure it like any other change.
 
 ## Running the tests
 
@@ -109,7 +115,8 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-The 31 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
+The 47 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
 They cover configuration, chunk loading for one or several documents, routing, title pinning, neighbours, the
-budget, the gate, the cache, the checks, the statistics and the evaluation commands. GitHub Actions runs them on
+budget, the gate, the cache, the checks, the statistics, the evaluation commands and conversation memory (rewriting,
+its safety checks, the chat commands and the dialogue evaluation). GitHub Actions runs them on
 Python 3.10, 3.12 and 3.13 ([`.github/workflows/tests.yml`](../.github/workflows/tests.yml)).

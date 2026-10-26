@@ -89,6 +89,19 @@ class PromptConfig:
 
 
 @dataclass
+class MemoryConfig:
+    """Conversation memory: a follow-up question ("and for Super Secure?") is rewritten into a standalone question from
+    the last turns, then searched and answered like any question. It acts only when a conversation is passed
+    (``rag.ask(..., conversation=...)``, ``policy-rag chat``); single questions and the test-set evaluation are
+    unchanged. The rewrite uses the answer model with its configured settings (thinking included)."""
+    enabled: bool = True
+    max_turns: int = 3                   # previous turns shown to the rewriter
+    answer_chars: int = 400              # characters of each previous answer shown to the rewriter
+    max_question_chars: int = 400        # a longer rewrite is rejected (the original question is used)
+    template: str = "condense_v1"        # prompts.CONDENSE_TEMPLATES
+
+
+@dataclass
 class GeneratorConfig:
     type: str = "hf_causal_lm"
     model: str = "Qwen/Qwen3-8B"
@@ -110,6 +123,7 @@ class CacheConfig:
 @dataclass
 class EvaluationConfig:
     testset: str = "testsets/optima_secure_v3.json"
+    dialogues: str = "testsets/optima_secure_followups.json"   # follow-up conversations (evaluate-dialogues)
     splits: List[str] = field(default_factory=lambda: ["dev", "test"])
     output_dir: str = "runs"
     groundedness: bool = True
@@ -139,6 +153,7 @@ class Config:
     gate: GateConfig = field(default_factory=GateConfig)
     prompt: PromptConfig = field(default_factory=PromptConfig)
     generator: GeneratorConfig = field(default_factory=GeneratorConfig)
+    memory: MemoryConfig = field(default_factory=MemoryConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     decision: DecisionConfig = field(default_factory=DecisionConfig)

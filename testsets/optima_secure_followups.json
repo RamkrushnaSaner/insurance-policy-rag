@@ -1,0 +1,536 @@
+{
+ "name": "my:Optima Secure follow-up dialogues v1",
+ "description": "Short conversations for evaluating conversation memory. Turn 1 is a test-set question; each later turn is a follow-up whose complete form is the test-set question named in 'item', so its answer key scores the answer. must_mention: alternatives the rewritten question must contain; must_not_mention: terms of the earlier topic it must not pull in.",
+ "testset": "optima_secure_v3",
+ "testset_version": "7313dd7571",
+ "dialogues": [
+  {
+   "id": "D01",
+   "turns": [
+    {
+     "question": "For how many days before admission is pre hospitalisation covered?",
+     "item": "X07"
+    },
+    {
+     "question": "And how many days after discharge?",
+     "item": "X08",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "hospitali",
+       "expense"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D02",
+   "turns": [
+    {
+     "question": "What are the exact inclusions for pre-hospitalization expenses?",
+     "item": "G03"
+    },
+    {
+     "question": "And for post-hospitalization?",
+     "item": "G04",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "expense",
+       "inclusion",
+       "covered"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D03",
+   "turns": [
+    {
+     "question": "What is the grace period for renewing the policy?",
+     "item": "F07"
+    },
+    {
+     "question": "How does that differ for monthly and yearly instalments?",
+     "item": "C04",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "grace"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D04",
+   "turns": [
+    {
+     "question": "What is the waiting period for pre-existing diseases?",
+     "item": "F05"
+    },
+    {
+     "question": "What can the company do if I didn't disclose one?",
+     "item": "L10",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "pre existing",
+       "ped"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D05",
+   "turns": [
+    {
+     "question": "What is the Protect Benefit?",
+     "item": "D01"
+    },
+    {
+     "question": "Does it pay for gloves and food charges in a hospitalization claim?",
+     "item": "AB01",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "protect benefit"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D06",
+   "turns": [
+    {
+     "question": "What is the maximum amount payable for all hospitalization claims in a policy year under Optima Super Secure in Year 2?",
+     "item": "T01"
+    },
+    {
+     "question": "And for a single claim on Optima Secure, how does it change from Year 1 to Year 3?",
+     "item": "C01",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "maximum",
+       "amount",
+       "payable",
+       "limit"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D07",
+   "turns": [
+    {
+     "question": "What is the Plus Benefit? Explain in detail.",
+     "item": "G02"
+    },
+    {
+     "question": "What happens to it if the Sum Insured is reduced at renewal?",
+     "item": "K10",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "plus benefit"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D08",
+   "turns": [
+    {
+     "question": "How does the Cumulative Bonus work and which plan does it apply to?",
+     "item": "F18"
+    },
+    {
+     "question": "On a family floater, how is it added and when is it reduced?",
+     "item": "K11",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "cumulative bonus",
+       "cb"
+      ]
+     ],
+     "must_not_mention": []
+    },
+    {
+     "question": "And what happens to it if a claim from the expiring year is notified after the renewal premium is accepted?",
+     "item": "K12",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "cumulative bonus",
+       "cb"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D09",
+   "turns": [
+    {
+     "question": "What are the specific exclusions for the Global Health Cover (Emergency Treatments Only)?",
+     "item": "L03"
+    },
+    {
+     "question": "What is the per claim deductible under it?",
+     "item": "F10",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "global"
+      ]
+     ],
+     "must_not_mention": []
+    },
+    {
+     "question": "What limits and conditions apply to its claims?",
+     "item": "M04",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "global"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "turns": [
+    {
+     "question": "Which benefits does the Global Health Cover (Emergency & Planned Treatments) extend outside India?",
+     "item": "L04"
+    },
+    {
+     "question": "What is the procedure for cashless claims there?",
+     "item": "P01",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "outside india",
+       "abroad",
+       "overseas"
+      ]
+     ],
+     "must_not_mention": []
+    },
+    {
+     "question": "And which additional documents are needed for such a claim?",
+     "item": "L08",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "outside india",
+       "abroad",
+       "overseas"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D11",
+   "turns": [
+    {
+     "question": "What is Home Health Care cover?",
+     "item": "D07"
+    },
+    {
+     "question": "How does cashless approval work for it?",
+     "item": "P02",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "home health care"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D12",
+   "turns": [
+    {
+     "question": "What is the age range of people covered under this policy?",
+     "item": "F01"
+    },
+    {
+     "question": "And what is the maximum entry age for a dependent child?",
+     "item": "F02",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "age"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D13",
+   "turns": [
+    {
+     "question": "Is cataract surgery covered from day one?",
+     "item": "X02"
+    },
+    {
+     "question": "What is the sub-limit for it per eye?",
+     "item": "FP05",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "cataract"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D14",
+   "turns": [
+    {
+     "question": "How to file reimbursement claims? Give me step wise complete procedure.",
+     "item": "G05"
+    },
+    {
+     "question": "And for cashless claims in India?",
+     "item": "G06",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "procedure",
+       "step",
+       "process",
+       "how"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D15",
+   "turns": [
+    {
+     "question": "If I made claims last year, do I still get the extra 50% added when I renew?",
+     "item": "K05"
+    },
+    {
+     "question": "Does unused Secure Benefit carry forward to the next year?",
+     "item": "K06",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "secure benefit"
+      ]
+     ],
+     "must_not_mention": [
+      "plus benefit",
+      "50%"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D16",
+   "turns": [
+    {
+     "question": "For how many days before admission is pre hospitalisation covered?",
+     "item": "X07"
+    },
+    {
+     "question": "Is dental treatment covered?",
+     "item": "X12",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "dental"
+      ]
+     ],
+     "must_not_mention": [
+      "pre hospitali",
+      "before admission"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D17",
+   "turns": [
+    {
+     "question": "What discount is given to NRI policyholders?",
+     "item": "F12"
+    },
+    {
+     "question": "Is cataract surgery covered from day one?",
+     "item": "X02",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "cataract"
+      ]
+     ],
+     "must_not_mention": [
+      "nri",
+      "discount"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D18",
+   "turns": [
+    {
+     "question": "What is the difference between Optima Secure and Optima Super Secure plans? Give complete details.",
+     "item": "G09"
+    },
+    {
+     "question": "How long is the free look period?",
+     "item": "F08",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "free look"
+      ]
+     ],
+     "must_not_mention": [
+      "super secure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D19",
+   "turns": [
+    {
+     "question": "I got hurt while scuba diving as a professional diver. Will I be covered?",
+     "item": "X05"
+    },
+    {
+     "question": "Can I pay my premium every month?",
+     "item": "X15",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "premium"
+      ]
+     ],
+     "must_not_mention": [
+      "scuba",
+      "diving",
+      "sport"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D20",
+   "turns": [
+    {
+     "question": "What does the AYUSH Treatment cover include?",
+     "item": "D04"
+    },
+    {
+     "question": "What is the moratorium period?",
+     "item": "F13",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "moratorium"
+      ]
+     ],
+     "must_not_mention": [
+      "ayush"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D21",
+   "turns": [
+    {
+     "question": "How much is the maternity benefit after the 9-month waiting period?",
+     "item": "FP03"
+    },
+    {
+     "question": "So will the policy pay for my wife's delivery?",
+     "item": "X03",
+     "kind": "after_refusal",
+     "must_mention": [
+      [
+       "delivery",
+       "childbirth",
+       "maternity"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D22",
+   "turns": [
+    {
+     "question": "What is the annual premium for Optima Suraksha for a 30-year-old?",
+     "item": "N12"
+    },
+    {
+     "question": "What about Optima Secure with a Rs. 10 lakh Sum Insured for a 30-year-old living in Mumbai?",
+     "item": "PR01",
+     "kind": "after_refusal",
+     "must_mention": [
+      [
+       "premium"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "D23",
+   "turns": [
+    {
+     "question": "What does the Optima Restore plan cover?",
+     "item": "N04"
+    },
+    {
+     "question": "Then what is the Automatic Restore Benefit?",
+     "item": "D02",
+     "kind": "after_refusal",
+     "must_mention": [
+      [
+       "restore"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  }
+ ]
+}

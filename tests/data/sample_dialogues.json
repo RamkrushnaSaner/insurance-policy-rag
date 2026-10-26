@@ -1,0 +1,68 @@
+{
+ "name": "sample dialogues",
+ "testset_version": null,
+ "dialogues": [
+  {
+   "id": "SD1",
+   "turns": [
+    {
+     "question": "What is the Wellness Bonus?",
+     "item": "S03"
+    },
+    {
+     "question": "How much can it grow at most?",
+     "item": "S03",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "wellness bonus"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "SD2",
+   "turns": [
+    {
+     "question": "What is the waiting period for kidney stones?",
+     "item": "S01"
+    },
+    {
+     "question": "Is joint replacement after an accident subject to that?",
+     "item": "S06",
+     "kind": "follow_up",
+     "must_mention": [
+      [
+       "waiting period"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "SD3",
+   "turns": [
+    {
+     "question": "What is the Wellness Bonus?",
+     "item": "S03"
+    },
+    {
+     "question": "How many days before admission are medical bills paid?",
+     "item": "S02",
+     "kind": "topic_switch",
+     "must_mention": [
+      [
+       "admission"
+      ]
+     ],
+     "must_not_mention": [
+      "wellness"
+     ]
+    }
+   ]
+  }
+ ]
+}

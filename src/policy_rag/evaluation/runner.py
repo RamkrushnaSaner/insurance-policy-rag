@@ -63,6 +63,22 @@ def gate_report(recs, threshold: float) -> dict:
     return out
 
 
+def build_record(item: dict, st: dict, context, gate) -> dict:
+    """One question's record (as saved in run.json) from a pipeline state: retrieval, context, gate; no verdict yet."""
+    cands, scores = st.get("candidates") or [], st.get("scores") or []
+    ranked = sorted(([int(i), round(float(s), 4)] for i, s in zip(cands, scores)), key=lambda x: (-x[1], x[0]))
+    groups = [[int(i) for i in g] for g in st.get("groups", [])]
+    top = st.get("top_score", -np.inf)
+    return {"id": item["id"], "split": item["split"], "type": item["type"], "answerable": item["answerable"],
+            "paraphrase": item["paraphrase"], "question": item["question"],
+            "premium_routed": "premium" in (st.get("routes") or []), "routes": st.get("routes") or [],
+            "candidates": [int(i) for i in cands], "ranked": ranked, "groups": groups,
+            "context": context.format(groups), "context_tokens": context.tokens(groups),
+            "top_score": float(top) if top is not None and np.isfinite(top) else None,
+            "gate_route": gate(st), "answer": None, "gen": None, "error": st.get("error"),
+            "oom_retry": bool(st.get("oom_retry")), "retrieval": {}, "verdict": None, "grounding": None}
+
+
 class Evaluation:
     def __init__(self, cfg: Config, name: str, mode: str = "full", splits: Optional[List[str]] = None,
                  rescore_from=None, contexts_from=None, resume_from: Optional[List[str]] = None, log=print,
@@ -136,18 +152,7 @@ class Evaluation:
             self._print(f"  test set vs chunk file: {p['id']}: {p['problem']} ({p['detail']})")
 
     def _record(self, item: dict, st: dict) -> dict:
-        cands, scores = st.get("candidates") or [], st.get("scores") or []
-        ranked = sorted(([int(i), round(float(s), 4)] for i, s in zip(cands, scores)), key=lambda x: (-x[1], x[0]))
-        groups = [[int(i) for i in g] for g in st.get("groups", [])]
-        top = st.get("top_score", -np.inf)
-        return {"id": item["id"], "split": item["split"], "type": item["type"], "answerable": item["answerable"],
-                "paraphrase": item["paraphrase"], "question": item["question"],
-                "premium_routed": "premium" in (st.get("routes") or []), "routes": st.get("routes") or [],
-                "candidates": [int(i) for i in cands], "ranked": ranked, "groups": groups,
-                "context": self.context.format(groups), "context_tokens": self.context.tokens(groups),
-                "top_score": float(top) if top is not None and np.isfinite(top) else None,
-                "gate_route": self.system.pipeline.gate(st), "answer": None, "gen": None, "error": st.get("error"),
-                "oom_retry": bool(st.get("oom_retry")), "retrieval": {}, "verdict": None, "grounding": None}
+        return build_record(item, st, self.context, self.system.pipeline.gate)
 
     # ------------------------------------------------------------------ the run
     def run(self, make_zip_file: bool = False) -> dict:

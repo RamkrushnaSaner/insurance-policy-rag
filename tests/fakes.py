@@ -82,7 +82,9 @@ class ExtractiveGenerator:
     decoding = {"do_sample": False}
 
     def __init__(self):
-        self.calls = 0
+        self.calls = 0                # answer calls
+        self.rewrite_calls = 0        # follow-up rewrite calls (the condense prompt)
+        self.rewrites = {}            # scripted rewrites: follow-up question -> model reply
 
     @classmethod
     def from_config(cls, cfg, **_):
@@ -103,8 +105,23 @@ class ExtractiveGenerator:
     def tokens_per_second(self, prompt):
         return 1000.0
 
+    def _rewrite(self, prompt):
+        """A follow-up rewrite: the scripted reply if there is one; otherwise questions with a reference word ("it",
+        "that", "and ...") get the previous question added, other questions come back unchanged."""
+        self.rewrite_calls += 1
+        question = prompt.rsplit("LAST QUESTION:", 1)[1].rsplit("STANDALONE QUESTION:", 1)[0].strip()
+        if question in self.rewrites:
+            return self.rewrites[question]
+        previous = [l[len("User: "):] for l in prompt.splitlines() if l.startswith("User: ")][-1]
+        refers = re.search(r"\b(it|its|that|there|this|one|them|those)\b|^(and|so|then|what about|how about)\b", question, re.I)
+        return f"{previous.rstrip('?')}: {question}" if refers else question
+
     def generate(self, prompt, seed):
         """The context passage that shares most content words with the question, or the refusal."""
+        if prompt.rstrip().endswith("STANDALONE QUESTION:"):
+            text = self._rewrite(prompt)
+            return {"answer": text, "thinking": "", "prompt_tokens": len(prompt.split()), "think_tokens": 0,
+                    "answer_tokens": len(text.split()), "thinking_forced": False, "hit_limit": False}
         self.calls += 1
         context = prompt.split("CONTEXT:", 1)[1].rsplit("QUESTION:", 1)[0].strip()
         question = prompt.rsplit("QUESTION:", 1)[1].rsplit("ANSWER:", 1)[0]
