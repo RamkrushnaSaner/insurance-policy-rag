@@ -57,6 +57,23 @@ CONVERSATION:
 
 LAST QUESTION: {question}
 STANDALONE QUESTION:""",
+    # v2 (after the first dialogue run, where v1 rewrites copied figures and sentences from earlier answers)
+    "condense_v2": """Rewrite the user's last question so that it can be understood without the conversation.
+Replace words such as "it", "that", "those", "there" or "the first one" with the name they stand for: the plan, cover,
+benefit, condition or person. If the question leaves out what is asked (as in "And for X?"), take that from the user's
+earlier question, and keep what the user asks about (for example the premium, the waiting period, the limit or the
+documents).
+Figures may come only from the user's own questions. Take nothing else from the assistant's answers: no amounts,
+periods, percentages, section numbers, conditions or explanations.
+Do not answer the question. Keep the user's wording for everything else.
+If the last question already makes sense on its own, or it starts a new topic, return it unchanged.
+Reply with the rewritten question only, on one line.
+
+CONVERSATION:
+{history}
+
+LAST QUESTION: {question}
+STANDALONE QUESTION:""",
 }
 
 

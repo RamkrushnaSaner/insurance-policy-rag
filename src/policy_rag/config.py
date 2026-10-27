@@ -98,7 +98,8 @@ class MemoryConfig:
     max_turns: int = 3                   # previous turns shown to the rewriter
     answer_chars: int = 400              # characters of each previous answer shown to the rewriter
     max_question_chars: int = 400        # a longer rewrite is rejected (the original question is used)
-    template: str = "condense_v1"        # prompts.CONDENSE_TEMPLATES
+    copy_words: int = 6                  # a rewrite repeating this many words of an earlier answer is rejected (0: off)
+    template: str = "condense_v2"        # prompts.CONDENSE_TEMPLATES (condense_v1: first dialogue run)
 
 
 @dataclass

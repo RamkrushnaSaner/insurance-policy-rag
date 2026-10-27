@@ -8,14 +8,24 @@ follow-up is answered three ways:
 - ``memory``: the system's own rewrite from the conversation (what memory does);
 - ``gold``: the hand-written complete question (the best a rewrite could achieve; usually cached from a full run).
 
-Each rewrite is also checked against the dialogue's keywords (``must_mention``: alternatives that must appear;
-``must_not_mention``: terms of an earlier topic that must not be pulled in). Kinds: ``follow_up``, ``topic_switch``
-(a new, complete question: the rewriter should leave it alone), ``after_refusal`` (a follow-up to a refused answer).
+Each rewrite is also checked against the dialogue's keywords (``subject``: names of what the follow-up refers to,
+one of which the rewrite must contain; ``must_mention``: further groups of alternatives that must appear;
+``must_not_mention``: terms of an earlier topic that must not be pulled in).
 
-Decision rule (fixed before the first run), on the test split: memory is adopted if follow-up answers (kinds
-follow_up and after_refusal) are significantly more often fully correct with memory than without (McNemar exact
-test, ``decision.alpha``) and no topic-switch turn becomes wrong. Single questions take the same path as before
-memory existed; that part of the rule is checked by the unchanged test-set evaluation.
+Kinds of follow-up:
+
+- ``follow_up``: needs the conversation ("Does it cover gloves?"); ``after_refusal``: the same after a refused answer;
+- ``self_contained``: a follow-up that names its subject; memory must not make it worse;
+- ``topic_switch``: a new, complete question; the rewriter should leave it alone.
+
+A file with ``"follow_ups_need_context": true`` is checked when loaded: every follow_up and after_refusal turn has a
+``subject``, and the follow-up as typed contains none of its alternatives (it really leaves its subject out).
+
+Decision rule (fixed before the first run), on the test split: memory is adopted if the answers to follow-ups that
+need the conversation (follow_up and after_refusal) are significantly more often fully correct with memory than
+without (McNemar exact test, ``decision.alpha``) and no harm-check turn (self_contained, topic_switch) becomes
+wrong. Single questions take the same path as before memory existed; that part of the rule is checked by the
+unchanged test-set evaluation.
 """
 from __future__ import annotations
 
@@ -38,26 +48,40 @@ from .scoring import Scorer
 from .stats import mcnemar_exact, wilson
 from .testset import load_testset, norm_text
 
-KINDS = ("follow_up", "topic_switch", "after_refusal")
+KINDS = ("follow_up", "after_refusal", "self_contained", "topic_switch")
+NEEDS_CONTEXT = ("follow_up", "after_refusal")          # the primary comparison
+HARM_CHECKS = ("self_contained", "topic_switch")         # memory must not make these worse
 CONDITIONS = ("no_memory", "memory", "gold")
 
 
 def load_dialogues(path) -> dict:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
+    ids = [d.get("id") for d in data["dialogues"]]
+    if len(ids) != len(set(ids)):
+        raise ValueError("dialogue ids must be unique")
     for d in data["dialogues"]:
         if len(d.get("turns", [])) < 2:
             raise ValueError(f"dialogue {d.get('id')}: needs at least two turns")
-        for t in d["turns"][1:]:
-            if t.get("kind", "follow_up") not in KINDS:
-                raise ValueError(f"dialogue {d['id']}: unknown kind {t.get('kind')!r}; use one of {KINDS}")
+        for k, t in enumerate(d["turns"][1:], start=2):
+            kind = t.get("kind", "follow_up")
+            if kind not in KINDS:
+                raise ValueError(f"dialogue {d['id']}: unknown kind {kind!r}; use one of {KINDS}")
+            if data.get("follow_ups_need_context") and kind in NEEDS_CONTEXT:
+                if not t.get("subject"):
+                    raise ValueError(f"dialogue {d['id']} turn {k}: a {kind} turn needs a subject")
+                named = [a for a in t["subject"] if norm_text(a) in norm_text(t["question"])]
+                if named:
+                    raise ValueError(f"dialogue {d['id']} turn {k}: the follow-up names its subject ({named[0]!r}), "
+                                     "so it does not need the conversation; make it a self_contained turn")
     data["version"] = hashlib.sha1(json.dumps(data["dialogues"], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:10]
     return data
 
 
 def rewrite_check(turn: dict, rewritten: str):
-    """(ok, problem): every must_mention group has one alternative in the rewrite; no must_not_mention term was added."""
+    """(ok, problem): the rewrite names the subject (if given) and has one alternative of every must_mention group;
+    no must_not_mention term was added."""
     text, asked = norm_text(rewritten), norm_text(turn["question"])
-    for group in turn.get("must_mention", []):
+    for group in ([turn["subject"]] if turn.get("subject") else []) + turn.get("must_mention", []):
         if not any(norm_text(a) in text for a in group):
             return False, f"does not mention {group[0]!r}"
     for term in turn.get("must_not_mention", []):
@@ -179,7 +203,7 @@ class DialogueEvaluation:
                     vals = [fc(r, c) for r in ks if fc(r, c) is not None]
                     if vals:
                         out["by_condition"].setdefault(c, {}).setdefault(split, {})[kind] = (sum(vals), len(vals))
-        mem = [r for r in rows if r["kind"] != "topic_switch"]
+        mem = [r for r in rows if r["kind"] in NEEDS_CONTEXT]
         fresh = [r["rewrite_seconds"] for r in rows if r.get("rewrite_seconds") and not r.get("rewrite_from_cache")]
         thinks = [r["rewrite_think_tokens"] for r in rows if r.get("rewrite_think_tokens") is not None]
         out["rewrite"] = {"turns": len(rows), "rewritten": sum(r["rewritten"] for r in rows),
@@ -187,15 +211,17 @@ class DialogueEvaluation:
                           "keywords_ok_follow_ups": f"{sum(r['rewrite_ok'] for r in mem)}/{len(mem)}",
                           "topic_switch_ok": f"{sum(r['rewrite_ok'] for r in rows if r['kind'] == 'topic_switch')}/"
                                              f"{sum(r['kind'] == 'topic_switch' for r in rows)}",
-                          "median_seconds": statistics.median(fresh) if fresh else None,
+                          "topic_switch_unchanged": f"{sum(r['rewrite'] == r['asked'] for r in rows if r['kind'] == 'topic_switch')}/"
+                                                    f"{sum(r['kind'] == 'topic_switch' for r in rows)}",
+                          "median_seconds": round(statistics.median(fresh), 1) if fresh else None,
                           "median_think_tokens": statistics.median(thinks) if thinks else None}
         if "no_memory" not in self.conditions or "test" not in self.splits:
             return out, "No decision: it needs the no_memory condition on the test split."
         test = [r for r in rows if r["split"] == "test"]
-        fu = [r for r in test if r["kind"] != "topic_switch"]
+        fu = [r for r in test if r["kind"] in NEEDS_CONTEXT]
         fixed = [r for r in fu if fc(r, "memory") and not fc(r, "no_memory")]
         broken = [r for r in fu if fc(r, "no_memory") and not fc(r, "memory")]
-        ts_broken = [r for r in test if r["kind"] == "topic_switch" and fc(r, "no_memory") and not fc(r, "memory")]
+        ts_broken = [r for r in test if r["kind"] in HARM_CHECKS and fc(r, "no_memory") and not fc(r, "memory")]
         p = mcnemar_exact(len(broken), len(fixed))
         out["primary"] = {"n": len(fu), "memory": sum(bool(fc(r, "memory")) for r in fu),
                           "no_memory": sum(bool(fc(r, "no_memory")) for r in fu),
@@ -208,7 +234,8 @@ class DialogueEvaluation:
             reasons.append(f"follow-ups not significantly better with memory (fixed {len(fixed)}, broken "
                            f"{len(broken)}, p = {p:.3f})")
         if ts_broken:
-            reasons.append(f"{len(ts_broken)} topic-switch turn(s) became wrong")
+            reasons.append(f"{len(ts_broken)} harm-check turn(s) (self-contained follow-up or topic switch) became "
+                           f"wrong: {', '.join(out['primary']['topic_switch_broken'])}")
         verdict = "ADOPT MEMORY" if not reasons else "DO NOT ADOPT MEMORY: " + "; ".join(reasons)
         return out, verdict
 
@@ -239,18 +266,20 @@ class DialogueEvaluation:
              f"policy_rag {run['version']} | dialogues {run['dialogues_version']} | test set {run['testset_version']} | "
              f"{run['started']} | {len(rows)} follow-up turns | conditions {', '.join(run['conditions'])}", "",
              "## Decision", "", run["decision"], "",
-             "Rule (fixed before the first run): on the test split, follow-up answers must be significantly more "
-             "often fully correct with memory than without (McNemar exact test), and no topic-switch turn may become "
-             "wrong. Single questions take the same path as before memory; the test-set evaluation checks that.", ""]
+             "Rule (fixed before the run): on the test split, answers to follow-ups that need the conversation "
+             "(follow_up, after_refusal) must be significantly more often fully correct with memory than without "
+             "(McNemar exact test), and no harm-check turn (self_contained, topic_switch) may become wrong. Single "
+             "questions take the same path as before memory; the test-set evaluation checks that.", ""]
         if pr:
-            L += [f"Test follow-ups (follow_up + after_refusal): {pr['n']} turns; fully correct without memory "
+            L += [f"Test follow-ups that need the conversation: {pr['n']} turns; fully correct without memory "
                   f"{pr['no_memory']}, with memory {pr['memory']}" + (f", gold question {pr['gold']}" if pr['gold'] is not None else "")
                   + f". Fixed by memory: {', '.join(pr['fixed']) or 'none'}; broken: {', '.join(pr['broken']) or 'none'}; "
-                  f"McNemar p = {pr['p_mcnemar']:.4f}. Topic-switch turns broken: {', '.join(pr['topic_switch_broken']) or 'none'}.", ""]
+                  f"McNemar p = {pr['p_mcnemar']:.4f}. Harm-check turns broken: {', '.join(pr['topic_switch_broken']) or 'none'}.", ""]
         L += ["## Fully correct by condition", "", md_table(pd.DataFrame(table)), "",
               "## Rewrites", "",
               f"Rewritten {rw['rewritten']}/{rw['turns']} turns; guard fallbacks {rw['fallbacks']}; keywords right on "
-              f"follow-ups {rw['keywords_ok_follow_ups']}; topic switches left alone {rw['topic_switch_ok']}; median "
+              f"follow-ups that need the conversation {rw['keywords_ok_follow_ups']}; topic switches without earlier-topic terms "
+              f"{rw['topic_switch_ok']}, unchanged {rw['topic_switch_unchanged']}; median "
               f"rewrite time " + (f"{rw['median_seconds']} s" if rw["median_seconds"] is not None else
                                   "– (all rewrites from the cache)")
               + f", median rewrite thinking tokens {rw['median_think_tokens']}.", "",

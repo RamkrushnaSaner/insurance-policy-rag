@@ -171,11 +171,16 @@ A follow-up such as *"does it apply after an accident?"* means nothing to a sear
 1. A `Conversation` (owned by the caller: `rag.ask(..., conversation=...)`, `rag.chat()`, `policy-rag chat`) keeps
    the turns. For each new question it hands the pipeline the last 3 turns: each turn's complete question and the
    first 400 characters of its answer (`memory` in the config).
-2. The answer model gets a short rewrite prompt (`CONDENSE_TEMPLATES` in [`prompts.py`](../src/policy_rag/prompts.py)):
-   add only what the question leaves out, don't answer it, leave a new topic unchanged. It runs with the generator's
-   configured settings, thinking included, and through the answer cache, so a repeated rewrite costs nothing.
-3. Guards reject a rewrite that is empty, longer than 400 characters, looks like an answer ("Yes, ..."), or brings in a
-   figure that appears neither in the question nor in the turns shown. The question is then searched as typed.
+2. The answer model gets a short rewrite prompt (`condense_v2` in [`prompts.py`](../src/policy_rag/prompts.py)):
+   replace "it", "that" or "the first one" with the name it stands for, take what is asked from the user's earlier
+   question when it is left out ("And for X?"), take figures only from the user's questions and nothing else from the
+   answers, don't answer, and leave a new topic unchanged. It runs with the generator's configured settings, thinking
+   included, and through the answer cache, so a repeated rewrite costs nothing.
+3. Guards reject a rewrite that is empty, longer than 400 characters, looks like an answer ("Yes, ..."), contains a
+   figure the user did not type, or repeats 6 or more words in a row from an earlier answer that the user never typed
+   (`memory.copy_words`). The question is then searched as typed. Answers may supply only a name ("it" -> "the Plus
+   Benefit"): in the first evaluation, rewrites that copied figures or sentences from answers put wrong or unsupported
+   claims into the question, and the answer model repeated them.
 4. Only the complete question is searched, reranked and answered. The answer prompt has exactly the same form as for
    a single question and never contains the conversation, so answers still come from the policy text alone. The
    rewritten question is shown (`searched as:`) so a wrong rewrite is visible.

@@ -13,12 +13,11 @@
      "question": "How much can it grow at most?",
      "item": "S03",
      "kind": "follow_up",
-     "must_mention": [
-      [
-       "wellness bonus"
-      ]
-     ],
-     "must_not_mention": []
+     "must_mention": [],
+     "must_not_mention": [],
+     "subject": [
+      "wellness bonus"
+     ]
     }
    ]
   },
@@ -60,6 +59,24 @@
      ],
      "must_not_mention": [
       "wellness"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SD4",
+   "turns": [
+    {
+     "question": "What is the waiting period for kidney stones?",
+     "item": "S01"
+    },
+    {
+     "question": "And is joint replacement after an accident subject to the waiting period?",
+     "item": "S06",
+     "kind": "self_contained",
+     "must_mention": [],
+     "must_not_mention": [
+      "kidney"
      ]
     }
    ]

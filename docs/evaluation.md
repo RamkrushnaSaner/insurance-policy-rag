@@ -204,11 +204,9 @@ D07), said "not shown" for facts in its context (C02, D07) and refused a premium
 
 ## Conversation memory
 
-Memory (v3.3) is evaluated on its own test set, because the 113 questions are all single questions:
-[`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) has 23 short conversations with
-26 follow-ups (17 follow-ups, 6 topic switches, 3 follow-ups after a refused answer; 22 of the 26 on the test split).
-Turn 1 is a test-set question; each follow-up's complete form is another test-set question, so the existing answer
-keys score it. `policy-rag evaluate-dialogues --name memory` answers every follow-up three ways:
+Memory (v3.3) is evaluated on its own conversations, because the 113 questions are all single questions. Turn 1 is a
+question; each later turn's complete form is a test-set question, so the existing answer keys score it.
+`policy-rag evaluate-dialogues --name memory` answers every later turn three ways:
 
 | Condition | What is asked | Role |
 |---|---|---|
@@ -216,19 +214,67 @@ keys score it. `policy-rag evaluate-dialogues --name memory` answers every follo
 | `memory` | the system's own rewrite | what memory does |
 | `gold` | the complete test-set question | the best a rewrite can achieve (usually cached from a full run) |
 
-Each rewrite is also checked against keywords: what it must name (the plan, cover or condition the follow-up refers
-to) and, for topic switches, earlier-topic terms it must not pull in.
+Each rewrite is also checked against keywords: the name of what the follow-up refers to (`subject`), and for topic
+switches, earlier-topic terms it must not pull in.
 
-**Decision rule (fixed before the first run):** on the test split, follow-up answers (follow-ups and follow-ups after a
-refusal, 16 turns) must be significantly more often fully correct with memory than without (McNemar exact test,
-p < 0.05), and no topic-switch turn may become wrong. Passing needs at least 6 follow-ups that memory makes correct
-and none that it makes wrong (or 8 and 1). Single questions take exactly the same path as before
-memory (verified below), so the 113-question results are unaffected.
+### First run: not adopted
 
-**Status: not yet run with the real models.** The code is covered by tests with stand-in components, and a full run
-with tiny random models exercised every step with the real generator code (thinking on): those models write
-nonsense, so the guards rejected all 26 rewrites, as intended. Expect about 45–60 minutes on a T4 with thinking on, less
-when turn-1 and gold answers come from the cache (`--resume-from` the baseline's `run.json` or results zip).
+Colab T4, 27 October 2026, rewrite prompt `condense_v1`, conversations now in
+[`testsets/optima_secure_followups_practice.json`](../testsets/optima_secure_followups_practice.json) (version
+`861c4640a2`; 16 test follow-ups decide). Rule fixed beforehand: follow-ups significantly more often fully correct with
+memory (McNemar exact, p < 0.05) and no topic switch made wrong.
+
+| Test split | Without memory | With memory | Complete question |
+|---|---|---|---|
+| Follow-ups that decide (16) | 11 | 12: 2 fixed (D01.2, D11.2), 1 broken (D23.2), p = 1.0 | 15 |
+| Topic switches (6) | 4 | 4, all left unchanged | 4 |
+
+**Decision: do not adopt.** Two reasons, both fixed for the next run:
+
+1. **The conversations were too easy.** 11 of the 16 follow-ups still named their subject ("Does it pay for gloves and
+   food charges in a hospitalization claim?") and were answered correctly without memory. Only 5 could be fixed, and
+   5 fixed with none broken gives p = 0.0625: the rule could not be passed even by perfect rewrites.
+2. **The rewriter copied from earlier answers.** The prompt allowed adding an "amount" from the conversation, and the
+   figure guard accepted figures from earlier answers. 4 of 18 rewrites took figures or sentences from an answer, one
+   with a wrong figure (D02.2: "up to 60 days after discharge"; post-hospitalization is 180 days), one pasting most of
+   the previous answer into the question (D23.2, the turn memory broke: the answer repeated a figure not in its
+   context).
+
+Also seen: the remaining misses were not rewrite failures alone. In D09.3 and D10.2 the rewrite was right and the
+evidence was retrieved, but the answer said a fact was not shown (the test-set wording was answered correctly); in
+D22.2 the rewrite dropped "premium", so the premium tables were not searched. A rewrite took a median of 48 s
+(thinking on), one 6.4 minutes; a follow-up takes about twice as long as a single question. Single questions were
+unchanged in the same session: all 113 answers came from the published run's cache.
+
+### Changes after the first run
+
+- Rewrite prompt `condense_v2`: replace "it", "that", "the first one" with the name it stands for, keep what is asked
+  (premium, waiting period, documents), take figures only from the user's questions and nothing else from answers.
+- Guards: a figure must appear in the user's questions (not in answers); a rewrite repeating 6 or more words in a row
+  from an earlier answer, which the user never typed, is rejected (`memory.copy_words`). Replayed on the first run's
+  rewrites, these reject exactly the four that copied from answers (D02.2, D12.2, D22.2, D23.2) and none of the others.
+- Known cost of the stricter figure rule: a follow-up whose missing piece is a figure from an answer ("when he reaches
+  that age") is searched as typed.
+
+### Second run: the deciding set (not yet run)
+
+[`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) (version `fbf48a727e`), written
+and frozen before any run with the changes above: 38 conversations, 42 later turns, all on the test split, each the
+complete form of a test question answered correctly in the published baseline (so a correct answer is possible).
+
+| Kind | Turns | What it checks |
+|---|---|---|
+| `follow_up`, `after_refusal` | 28 | follow-ups that leave out their subject ("Is there a deductible on those claims?"); checked when the file is loaded: none contains its subject's name |
+| `self_contained` | 8 | follow-ups that name their subject; memory must not make them worse |
+| `topic_switch` | 6 | new questions, asked exactly as in the test set; the rewriter should leave them alone |
+
+Six complete questions were also complete questions in the practice set (F10, K06, K10, K11, L08, PR01), in new
+conversations and wording.
+
+**Decision rule (fixed before the run):** on the 28 follow-ups that need the conversation, memory must be fully
+correct significantly more often than without memory (McNemar exact, p < 0.05), and no `self_contained` or
+`topic_switch` turn may become wrong. Single questions must still come from the published cache (check 1 of the Colab
+notebook). Expect about 1 hour 45 minutes on a T4 with thinking on.
 
 ## Hard questions (not scored)
 
@@ -253,11 +299,11 @@ last ran without the real models (none can be downloaded in the environment wher
 | Re-scoring the saved v3.1 answers, notebook v3.2 vs package | 113/113 identical verdicts: 97/113 fully correct |
 | After adding conversation memory (v3.3): the five checks above repeated (single questions, no conversation) | all identical; prompts and cache keys unchanged |
 | **Real models on a T4** (package v3.2, thinking-off experiment, 25 Oct 2026): retrieval vs the published run | 113/113 identical candidates, reranker scores, contexts and gate decisions |
+| **Real models on a T4** (package v3.3 with memory, 27 Oct 2026): all 113 questions with the default configuration | 113/113 identical contexts and answers; all 108 answers from the v3.1 cache, none generated; 97/113 fully correct. Groundedness measured with the package's sentence splitting: 0.886 (the published 0.851 used v3.1's splitting) |
 
 Still open:
 
-- a run of the default configuration (thinking on) with the package on a GPU; its answers should match the published
-  ones, since its prompts and cache keys are identical;
+- regenerating the answers (not from the cache) with the package on a GPU;
 - a check that the published chunk file is reproduced byte for byte from the PDF. The chunker's text, sections and
   table chunks match, and the remaining check needs the `tiktoken` vocabulary download, which was blocked in the
   build environment.

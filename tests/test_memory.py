@@ -6,7 +6,7 @@ import pytest
 from policy_rag.memory import Conversation, check_rewrite
 from policy_rag.pipeline import RAGSystem
 
-from conftest import DATA, fake_config
+from conftest import DATA, ROOT, fake_config
 
 WELLNESS = "What is the Wellness Bonus?"
 FOLLOW = "How much can it grow at most?"
@@ -88,11 +88,32 @@ def test_guards_fall_back_to_the_question_as_asked(system, reply, reason):
     assert r.state["query"] == FOLLOW and reason in r.state["rewrite"]["fallback"]
 
 
-def test_guard_accepts_figures_from_the_conversation():
-    history = [{"question": "What is the waiting period for kidney stones?", "answer": "It is 24 months (Section 10.1)."}]
+def test_figures_may_come_only_from_the_users_questions():
+    history = [{"question": "Is there a 24-month waiting period for kidney stones?",
+                "answer": "Yes. Kidney stones have a 24-month waiting period; hernia also has one (Section 10.1)."}]
     q, why = check_rewrite('Standalone question: "Does the 24-month waiting period apply after an accident?"',
                            "Does it apply after an accident?", history)
     assert why is None and q == "Does the 24-month waiting period apply after an accident?"
+    history = [{"question": "What is the waiting period for kidney stones?", "answer": "It is 24 months (Section 10.1)."}]
+    q, why = check_rewrite("Does the 24-month waiting period for kidney stones apply after an accident?",
+                           "Does it apply after an accident?", history)
+    assert q == "Does it apply after an accident?" and "not in the user's questions: 24" in why
+
+
+def test_a_rewrite_may_take_a_name_but_not_sentences_from_an_answer():
+    history = [{"question": "Do I get extra cover when I renew?",
+                "answer": "Yes. The Plus Benefit increases the base sum insured automatically at each renewal, "
+                          "irrespective of claims."}]
+    q, why = check_rewrite("How does the Plus Benefit change if I lower my sum insured?",
+                           "How does it change if I lower my sum insured?", history)
+    assert why is None                                                       # a name from the answer is fine
+    q, why = check_rewrite("How does the Plus Benefit, which increases the base sum insured automatically at each "
+                           "renewal, change?", "How does it change?", history)
+    assert q == "How does it change?" and "copies an earlier answer" in why
+    q, why = check_rewrite("Do I get extra cover when I renew if I made claims?", "And if I made claims?", history)
+    assert why is None                                                       # the user's own words are fine
+    assert check_rewrite("How does the Plus Benefit, which increases the base sum insured automatically at each "
+                         "renewal, change?", "How does it change?", history, copy_words=0)[1] is None
 
 
 def test_a_failing_rewrite_does_not_lose_the_turn(system, monkeypatch):
@@ -148,7 +169,7 @@ def test_dialogue_evaluation_end_to_end(tmp_path):
                                    "Is joint replacement after an accident subject to the waiting period?"})
     run = DialogueEvaluation(None, "dlg", system=rag, log=lambda *_: None).run()
     turns = {f"{t['dialogue']}.{t['turn']}": t for t in run["turns"]}
-    assert set(turns) == {"SD1.2", "SD2.2", "SD3.2"}
+    assert set(turns) == {"SD1.2", "SD2.2", "SD3.2", "SD4.2"} and turns["SD4.2"]["kind"] == "self_contained"
     assert turns["SD1.2"]["rewrite"] == STANDALONE and turns["SD1.2"]["rewrite_ok"]
     assert turns["SD3.2"]["rewrite"] == "How many days before admission are medical bills paid?"   # topic switch kept
     assert set(turns["SD1.2"]["conditions"]) == {"no_memory", "memory", "gold"}
@@ -166,3 +187,52 @@ def test_resume_from_a_saved_run_reuses_its_answers(tmp_path):
     assert n == sum(1 for r in first["records"] if r.get("gen"))
     again = Evaluation(None, "again", "full", system=rag, log=lambda *_: None).run()
     assert again["llm_calls"]["generated"] == 0
+
+
+def _row(n, kind, no_memory, memory, split="test"):
+    return {"dialogue": f"T{n}", "turn": 2, "kind": kind, "split": split, "asked": "q", "rewrite": "q",
+            "rewritten": False, "fallback": None, "rewrite_ok": True, "rewrite_seconds": 1.0, "rewrite_from_cache": False,
+            "rewrite_think_tokens": 10, "conditions": {"no_memory": {"fully_correct": no_memory},
+                                                       "memory": {"fully_correct": memory},
+                                                       "gold": {"fully_correct": True}}}
+
+
+def test_decision_counts_follow_ups_that_need_context_and_guards_the_rest(tmp_path):
+    from policy_rag.evaluation.dialogues import DialogueEvaluation
+    ev = DialogueEvaluation(fake_config(tmp_path), "x", splits=["dev", "test"])
+    fixed = [_row(n, "follow_up", False, True) for n in range(8)]
+    keep = [_row(10, "topic_switch", True, True), _row(11, "self_contained", True, True),
+            _row(12, "follow_up", True, True, split="dev")]
+    summary, verdict = ev._summarize(fixed + keep)
+    assert verdict == "ADOPT MEMORY" and summary["primary"]["n"] == 8 and len(summary["primary"]["fixed"]) == 8
+    _, verdict = ev._summarize(fixed + keep + [_row(13, "self_contained", True, False)])
+    assert verdict.startswith("DO NOT ADOPT") and "harm-check" in verdict and "T13.2" in verdict
+    _, verdict = ev._summarize([_row(n, "follow_up", False, True) for n in range(5)] + keep)
+    assert "not significantly better" in verdict                       # 5 fixed, 0 broken: p = 0.0625
+
+
+def test_follow_up_files_that_need_context_are_checked(tmp_path):
+    from policy_rag.evaluation.dialogues import load_dialogues
+    def write(turn):
+        p = tmp_path / "d.json"
+        p.write_text(json.dumps({"follow_ups_need_context": True, "dialogues": [
+            {"id": "A", "turns": [{"question": WELLNESS, "item": "S03"}, {"item": "S03", **turn}]}]}))
+        return p
+    assert load_dialogues(write({"question": FOLLOW, "kind": "follow_up", "subject": ["wellness bonus"]}))
+    with pytest.raises(ValueError, match="names its subject"):
+        load_dialogues(write({"question": "How much can the Wellness Bonus grow?", "kind": "follow_up",
+                              "subject": ["wellness bonus"]}))
+    with pytest.raises(ValueError, match="needs a subject"):
+        load_dialogues(write({"question": FOLLOW, "kind": "follow_up"}))
+    assert load_dialogues(write({"question": "How much can the Wellness Bonus grow?", "kind": "self_contained"}))
+
+
+def test_the_shipped_follow_up_set_follows_its_rules():
+    from policy_rag.evaluation.dialogues import HARM_CHECKS, NEEDS_CONTEXT, load_dialogues
+    from policy_rag.evaluation.testset import load_testset
+    data = load_dialogues(ROOT / "testsets" / "optima_secure_followups.json")      # checks the subject rule
+    by_id = load_testset(ROOT / "testsets" / "optima_secure_v3.json").by_id
+    turns = [t for d in data["dialogues"] for t in d["turns"][1:]]
+    assert data["follow_ups_need_context"] and all(by_id[t["item"]]["split"] == "test" for t in turns)
+    assert sum(t["kind"] in NEEDS_CONTEXT for t in turns) >= 25 and sum(t["kind"] in HARM_CHECKS for t in turns) >= 10
+    assert all(t["question"] == by_id[t["item"]]["question"] for t in turns if t["kind"] == "topic_switch")

@@ -9,8 +9,9 @@ How it works:
    question in standalone form ("And after discharge?" -> "How many days of post-hospitalization expenses are
    covered after discharge?"). It uses the answer model with its configured settings, thinking included, and the
    answer cache, so a repeated rewrite costs nothing.
-3. Guards reject a rewrite that is empty, too long, looks like an answer, or brings in a figure that is neither in
-   the question nor in the conversation; the original question is then used.
+3. Guards reject a rewrite that is empty, too long, looks like an answer, contains a figure the user did not type,
+   or copies a run of words from an earlier answer (answers may only supply a name, "it" -> "the Plus Benefit");
+   the original question is then used.
 4. Only the standalone question is searched and answered. The answer prompt never contains the conversation, so
    answers still come from the policy text alone, and a question without earlier turns is handled exactly as before.
 """
@@ -80,13 +81,25 @@ _LABEL = re.compile(r"^(standalone question|rewritten question|last question|que
 _ANSWER_START = re.compile(r"^(yes|no)\b[\s,.:;!-]", re.I)
 
 
+_WORD = re.compile(r"[a-z0-9]+")
+
+
 def _numbers(text: str) -> set:
     return {n.replace(",", "") for n in _NUMBER.findall(text or "")}
 
 
-def check_rewrite(raw: str, question: str, history: List[dict], max_chars: int = 400) -> Tuple[str, Optional[str]]:
+def _ngrams(text: str, n: int) -> list:
+    w = _WORD.findall((text or "").lower())
+    return [tuple(w[i:i + n]) for i in range(len(w) - n + 1)]
+
+
+def check_rewrite(raw: str, question: str, history: List[dict], max_chars: int = 400,
+                  copy_words: int = 6) -> Tuple[str, Optional[str]]:
     """(question to use, reason for falling back or None). The rewrite is the first line of the model's reply,
-    without a label or quotes."""
+    without a label or quotes. What the user typed (this question and the earlier questions) is the only source a
+    rewrite may take figures or longer phrases from; the assistant's answers may only supply a name ("it" -> "the
+    Plus Benefit"). ``copy_words``: a run of this many words that the rewrite shares with an earlier answer, and that
+    the user never typed, rejects the rewrite (0 turns the check off)."""
     original = question.strip()
     lines = [l.strip() for l in (raw or "").splitlines() if l.strip()]
     q = _LABEL.sub("", lines[0]).strip().strip('"“”\'').strip() if lines else ""
@@ -96,10 +109,16 @@ def check_rewrite(raw: str, question: str, history: List[dict], max_chars: int =
         return original, "rewrite too long"
     if q == NO_ANSWER_TEXT or _ANSWER_START.match(q):
         return original, "rewrite looks like an answer"
-    known = _numbers(question) | {n for h in history for n in _numbers(h["question"] + " " + h["answer"])}
-    new = _numbers(q) - known
+    typed = [question] + [h["question"] for h in history]
+    new = _numbers(q) - {n for t in typed for n in _numbers(t)}
     if new:
-        return original, f"rewrite adds figures not in the conversation: {', '.join(sorted(new))}"
+        return original, f"rewrite adds figures that are not in the user's questions: {', '.join(sorted(new))}"
+    if copy_words > 0:
+        said = {g for t in typed for g in _ngrams(t, copy_words)}
+        answers = {g for h in history for g in _ngrams(h["answer"], copy_words)}
+        copied = [g for g in _ngrams(q, copy_words) if g in answers and g not in said]
+        if copied:
+            return original, f"rewrite copies an earlier answer: '{' '.join(copied[0])} ...'"
     return q, None
 
 
@@ -117,7 +136,8 @@ class QuestionRewriter:
             return {"question": question.strip(), "rewritten": False, "fallback": None, "turns_used": 0}
         prompt = build_condense_prompt(history, question, self.cfg.template)
         gen = self.answerer.answer(prompt, label="rewrite")
-        standalone, reason = check_rewrite(gen["answer"], question, history, self.cfg.max_question_chars)
+        standalone, reason = check_rewrite(gen["answer"], question, history, self.cfg.max_question_chars,
+                                           self.cfg.copy_words)
         return {"question": standalone, "rewritten": standalone != question.strip(), "fallback": reason,
                 "turns_used": len(history), "raw": (gen["answer"] or "")[:500], "key": gen.get("key"),
                 "seconds": gen.get("seconds"), "think_tokens": gen.get("think_tokens"),
