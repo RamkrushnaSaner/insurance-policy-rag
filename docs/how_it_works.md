@@ -162,7 +162,7 @@ and edges in the same graph. None of them is implemented; the evaluation is ther
 chat = rag.new_conversation()
 rag.ask("What is the waiting period for kidney stones?", conversation=chat)
 r = rag.ask("Does it apply if the problem is caused by an accident?", conversation=chat)
-r.standalone   # e.g. "Does the 24-month waiting period for kidney stones apply if it is caused by an accident?"
+r.standalone   # e.g. "Does the waiting period for kidney stones apply if the problem is caused by an accident?"
 ```
 
 A follow-up such as *"does it apply after an accident?"* means nothing to a search engine: it has no topic. The
@@ -171,16 +171,22 @@ A follow-up such as *"does it apply after an accident?"* means nothing to a sear
 1. A `Conversation` (owned by the caller: `rag.ask(..., conversation=...)`, `rag.chat()`, `policy-rag chat`) keeps
    the turns. For each new question it hands the pipeline the last 3 turns: each turn's complete question and the
    first 400 characters of its answer (`memory` in the config).
-2. The answer model gets a short rewrite prompt (`condense_v2` in [`prompts.py`](../src/policy_rag/prompts.py)):
-   replace "it", "that" or "the first one" with the name it stands for, take what is asked from the user's earlier
-   question when it is left out ("And for X?"), take figures only from the user's questions and nothing else from the
-   answers, don't answer, and leave a new topic unchanged. It runs with the generator's configured settings, thinking
-   included, and through the answer cache, so a repeated rewrite costs nothing.
-3. Guards reject a rewrite that is empty, longer than 400 characters, looks like an answer ("Yes, ..."), contains a
-   figure the user did not type, or repeats 6 or more words in a row from an earlier answer that the user never typed
-   (`memory.copy_words`). The question is then searched as typed. Answers may supply only a name ("it" -> "the Plus
-   Benefit"): in the first evaluation, rewrites that copied figures or sentences from answers put wrong or unsupported
-   claims into the question, and the answer model repeated them.
+2. A question that does not point back to the conversation (no "it", "that", "they", "the first one", and no start
+   such as "And ..." or "What about ...") is complete: it skips the rewrite and goes straight to search, with no
+   model call (`memory.skip_complete`, `needs_rewrite` in [`memory.py`](../src/policy_rag/memory.py)).
+3. Otherwise the answer model gets a short rewrite prompt (`condense_v3` in
+   [`prompts.py`](../src/policy_rag/prompts.py)): replace each word that points back with the exact name of what it
+   points to (never "the policy" or "the plan"), take what is asked from the user's earlier question when it is left
+   out ("And for X?"), keep every other word and detail, take figures only from the user's questions, and don't
+   answer. Two invented examples show the form. It runs with the generator's configured settings, thinking
+   included, except that the answer of a rewrite is capped at 64 tokens (`memory.max_new_tokens`): a rewrite is one
+   line. It goes through the answer cache, so a repeated rewrite costs nothing.
+   Guards reject a rewrite that is empty, longer than 400 characters, cut off at the cap, looks like an answer
+   ("Yes, ..."), contains a figure the user did not type or drops one the user typed, adds nothing specific (only
+   "the policy", "the plan", ...), or repeats 8 or more words in a row from an earlier answer that the user never
+   typed (`memory.copy_words`). The question is then searched as typed. Answers may supply only a name ("it" -> "the
+   Plus Benefit"). These rules come from the two evaluations so far
+   ([docs/evaluation.md](evaluation.md#conversation-memory)).
 4. Only the complete question is searched, reranked and answered. The answer prompt has exactly the same form as for
    a single question and never contains the conversation, so answers still come from the policy text alone. The
    rewritten question is shown (`searched as:`) so a wrong rewrite is visible.
@@ -191,7 +197,7 @@ test-set evaluation and its cache keys are unchanged. The conversation keeps its
 *Why this design:* putting the whole conversation into the answer prompt would make every prompt longer on a T4 and
 let the model answer from its own earlier answers instead of the policy. A running summary needs a model call every
 turn and drops details such as the plan or the year. Rewriting only the question keeps the grounded pipeline as it is
-and costs one extra model call per follow-up.
+and costs one extra model call per follow-up that points back.
 
 ## 8. Several documents
 

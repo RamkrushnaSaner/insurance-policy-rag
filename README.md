@@ -148,10 +148,11 @@ repeating a run, or running a variant that changes only retrieval for some quest
 `run.json` (its records hold every generated answer). The cache keys are the same as the v3.1 notebook's, so its
 answers can be reused here.
 
-**Conversation memory** has its own evaluation: `policy-rag evaluate-dialogues --name memory` answers the 42
+**Conversation memory** has its own evaluation: `policy-rag evaluate-dialogues --name memory` answers the 44
 follow-ups in [`testsets/optima_secure_followups.json`](testsets/optima_secure_followups.json) three ways (as typed
-without memory, rewritten by memory, and as the complete question) and applies a decision rule fixed in advance. A
-first run on an easier set did not adopt memory; the rewriter was tightened and this set written for the next run.
+without memory, rewritten by memory, and as the complete question) and applies a decision rule fixed in advance. Two
+earlier runs did not adopt memory; after each, the rewriter was fixed and new conversations were written. The next
+run is the last: memory is adopted only if it passes.
 See [docs/evaluation.md](docs/evaluation.md#conversation-memory).
 
 [`testsets/optima_secure_hard_questions.json`](testsets/optima_secure_hard_questions.json) has 15 harder questions
@@ -192,10 +193,10 @@ insurance-policy-rag/
 │   ├── ingest/            PDF -> chunk file for the my:Optima Secure layout
 │   └── evaluation/        test set, checks, groundedness, runner, report, statistics, comparison
 ├── configs/               default.yaml (the baseline), experiments/, a two-policy template
-├── testsets/              the 113-question test set, follow-up dialogues (38, plus a practice set), 15 hard questions
+├── testsets/              the 113-question test set, follow-up dialogues (44, plus 2 practice sets), 15 hard questions
 ├── results/baseline/      the published scorecard and per-question verdicts (scores only)
 ├── notebooks/             Colab quick start; archive/ = the single-notebook version (v3.2)
-├── tests/                 51 tests with stand-in components (no GPU, no downloads, no policy text)
+├── tests/                 70 tests with stand-in components (no GPU, no downloads, no policy text)
 ├── docs/                  how it works, evaluation, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)
 ```
@@ -239,11 +240,12 @@ What is **not** there yet:
   which was set in v2 for a different reranker and has not been recalibrated.
 - **Latency.** Thinking makes answers slow: a median of 47 s per answer on a T4.
 - **English only.** Prompts, checks and test questions are all in English.
-- **Conversation memory is not adopted yet.** Its first real-model evaluation did not pass the decision rule: the
-  test conversations were too easy (most follow-ups were answered correctly without memory) and the rewriter copied
-  facts from earlier answers into the question. Both are fixed; the next evaluation decides. Each follow-up costs one
-  extra model call with thinking (a median of 48 s on a T4). A rewrite that needs a figure from an earlier answer
-  ("when he reaches that age") is rejected and the question is searched as typed. A wrong rewrite leads to a wrong
+- **Conversation memory is not adopted yet.** Two real-model evaluations did not pass the decision rule. In the
+  second, memory answered 21 of 28 follow-ups correctly against 16 without it, but vague rewrites ("the policy"
+  instead of the cover's name) and a reworded complete question cost the pass. Both are fixed; the final evaluation
+  decides. Each follow-up that points back costs one extra model call with thinking (a median of 38 s on a T4);
+  complete questions skip it. Follow-ups that point back only through "the" ("the papers") are answered as typed, and
+  a rewrite that needs a figure from an earlier answer ("when he reaches that age") is rejected. A wrong rewrite leads to a wrong
   search, which is why the rewritten question is always shown. Conversations live in
   memory (save them with `/save`), and the answer step never sees the conversation, so requests about the chat itself
   ("summarise what you told me") are not supported.

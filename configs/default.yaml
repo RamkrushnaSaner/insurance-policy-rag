@@ -61,8 +61,10 @@ memory:                                  # follow-up questions in a conversation
   max_turns: 3                           # earlier turns the rewriter sees
   answer_chars: 400                      # characters of each earlier answer it sees
   max_question_chars: 400                # a longer rewrite is rejected (the question is used as asked)
-  copy_words: 6                          # a rewrite repeating this many words of an earlier answer is rejected (0: off)
-  template: condense_v2                  # condense_v1: the template of the first dialogue run
+  copy_words: 8                          # a rewrite repeating this many words of an earlier answer is rejected (0: off)
+  skip_complete: true                    # questions that do not point back ("it", "that", "And ...") are not rewritten
+  max_new_tokens: 64                     # answer length of a rewrite (one line); the thinking settings are unchanged
+  template: condense_v3                  # condense_v1, condense_v2: the first and second dialogue runs
 
 cache:
   enabled: true

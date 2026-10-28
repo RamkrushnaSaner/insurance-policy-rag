@@ -145,9 +145,11 @@ class HFCausalLMGenerator:
         new = self._generate(enc["input_ids"], max_new_tokens, self._eos, seed, min_new_tokens)
         return strip_thinking(self.tokenizer.decode(new, skip_special_tokens=True)), int(enc["input_ids"].shape[1]), int(len(new))
 
-    def generate(self, prompt: str, seed: int) -> dict:
+    def generate(self, prompt: str, seed: int, max_new_tokens: Optional[int] = None) -> dict:
+        """``max_new_tokens`` overrides the answer length of this call only (the thinking budget is unchanged)."""
         import torch
         self.load()
+        limit = max_new_tokens or self.max_new_tokens
         tok = self.tokenizer
         enc = self._inputs(prompt)
         ids, n_in = enc["input_ids"], int(enc["input_ids"].shape[1])
@@ -168,10 +170,10 @@ class HFCausalLMGenerator:
                 prefix = torch.cat([ids[0], new1, force])
             thinking = strip_thinking(tok.decode(new1[:cut], skip_special_tokens=True))
             n_think, ids = cut, prefix.unsqueeze(0)
-        new2 = self._generate(ids, self.max_new_tokens, self._eos, seed + 1)
+        new2 = self._generate(ids, limit, self._eos, seed + 1)
         return {"answer": strip_thinking(tok.decode(new2, skip_special_tokens=True)), "thinking": thinking,
                 "prompt_tokens": n_in, "think_tokens": n_think, "answer_tokens": int(len(new2)),
-                "thinking_forced": forced, "hit_limit": int(len(new2)) >= self.max_new_tokens}
+                "thinking_forced": forced, "hit_limit": int(len(new2)) >= limit}
 
     def self_check(self) -> list:
         """Load the model and run two quick checks; returns problems (empty list = fine)."""
@@ -273,21 +275,27 @@ class Answerer:
         self.cache = cache if cache is not None else AnswerCache(None, enabled=False)   # (an empty cache is falsy)
         self._sig = json.dumps(generator.signature(), sort_keys=True)
 
-    def key(self, prompt: str) -> str:
-        return hashlib.sha256((self._sig + "\n" + prompt).encode()).hexdigest()[:24]
+    def key(self, prompt: str, max_new_tokens: Optional[int] = None) -> str:
+        """sha256(signature + prompt); a call with its own answer length adds it to the key."""
+        sig = self._sig if not max_new_tokens else self._sig + f"\nmax_new_tokens={max_new_tokens}"
+        return hashlib.sha256((sig + "\n" + prompt).encode()).hexdigest()[:24]
 
     def is_cached(self, prompt: str) -> bool:
         return self.cache.get(self.key(prompt)) is not None
 
-    def answer(self, prompt: str, use_cache: bool = True, label: str = "answer") -> dict:
+    def answer(self, prompt: str, use_cache: bool = True, label: str = "answer",
+               max_new_tokens: Optional[int] = None) -> dict:
         """The generation record: key, answer, thinking, token counts, seconds, from_cache. ``label`` only names the
-        call in the progress line (e.g. "rewrite" for follow-up questions)."""
-        key = self.key(prompt)
+        call in the progress line (e.g. "rewrite" for follow-up questions). ``max_new_tokens`` shortens the answer of
+        this call (rewrites need one line); the thinking settings stay as configured."""
+        key = self.key(prompt, max_new_tokens)
         hit = self.cache.get(key) if use_cache else None
         if hit is not None:
             return dict(hit, from_cache=True)
         t0 = time.perf_counter()
-        out = self.generator.generate(prompt, seed=int(key[:8], 16))
+        seed = int(key[:8], 16)
+        out = (self.generator.generate(prompt, seed=seed, max_new_tokens=max_new_tokens) if max_new_tokens
+               else self.generator.generate(prompt, seed=seed))
         rec = {"key": key, **out, "new_tokens": (out.get("think_tokens") or 0) + (out.get("answer_tokens") or 0),
                "seconds": round(time.perf_counter() - t0, 2),
                "created": datetime.datetime.now().isoformat(timespec="seconds")}

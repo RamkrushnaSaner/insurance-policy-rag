@@ -163,6 +163,7 @@ class DialogueEvaluation:
                 r = self.system.ask(t["question"], conversation=conv, show_sources=False)
                 rw = r.state.get("rewrite") or {}
                 row.update(rewrite=r.state["query"], rewritten=bool(rw.get("rewritten")), fallback=rw.get("fallback"),
+                           skipped=bool(rw.get("skipped")),
                            rewrite_seconds=rw.get("seconds"), rewrite_think_tokens=rw.get("think_tokens"),
                            rewrite_from_cache=rw.get("from_cache"))
                 row["rewrite_ok"], row["rewrite_problem"] = rewrite_check(t, r.state["query"])
@@ -207,6 +208,7 @@ class DialogueEvaluation:
         fresh = [r["rewrite_seconds"] for r in rows if r.get("rewrite_seconds") and not r.get("rewrite_from_cache")]
         thinks = [r["rewrite_think_tokens"] for r in rows if r.get("rewrite_think_tokens") is not None]
         out["rewrite"] = {"turns": len(rows), "rewritten": sum(r["rewritten"] for r in rows),
+                          "skipped": sum(bool(r.get("skipped")) for r in rows),
                           "fallbacks": sum(bool(r["fallback"]) for r in rows),
                           "keywords_ok_follow_ups": f"{sum(r['rewrite_ok'] for r in mem)}/{len(mem)}",
                           "topic_switch_ok": f"{sum(r['rewrite_ok'] for r in rows if r['kind'] == 'topic_switch')}/"
@@ -277,7 +279,8 @@ class DialogueEvaluation:
                   f"McNemar p = {pr['p_mcnemar']:.4f}. Harm-check turns broken: {', '.join(pr['topic_switch_broken']) or 'none'}.", ""]
         L += ["## Fully correct by condition", "", md_table(pd.DataFrame(table)), "",
               "## Rewrites", "",
-              f"Rewritten {rw['rewritten']}/{rw['turns']} turns; guard fallbacks {rw['fallbacks']}; keywords right on "
+              f"Rewritten {rw['rewritten']}/{rw['turns']} turns; not sent to the rewriter (complete questions) "
+              f"{rw.get('skipped', 0)}; guard fallbacks {rw['fallbacks']}; keywords right on "
               f"follow-ups that need the conversation {rw['keywords_ok_follow_ups']}; topic switches without earlier-topic terms "
               f"{rw['topic_switch_ok']}, unchanged {rw['topic_switch_unchanged']}; median "
               f"rewrite time " + (f"{rw['median_seconds']} s" if rw["median_seconds"] is not None else

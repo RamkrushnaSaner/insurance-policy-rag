@@ -236,3 +236,68 @@ def test_the_shipped_follow_up_set_follows_its_rules():
     assert data["follow_ups_need_context"] and all(by_id[t["item"]]["split"] == "test" for t in turns)
     assert sum(t["kind"] in NEEDS_CONTEXT for t in turns) >= 25 and sum(t["kind"] in HARM_CHECKS for t in turns) >= 10
     assert all(t["question"] == by_id[t["item"]]["question"] for t in turns if t["kind"] == "topic_switch")
+
+
+@pytest.mark.parametrize("question, refers", [
+    ("Is it covered?", True), ("Does that apply to day care too?", True), ("What does the first one exclude?", True),
+    ("And for hernia?", True), ("What about my parents?", True), ("Is there one for NRIs?", True),
+    ("Can they refuse to renew my policy?", True), ("If I do that, do I keep my waiting period?", True),
+    ("How long is the free look period?", False), ("Is there a waiting period for cataract?", False),
+    ("Does this policy cover treatment taken outside India?", False), ("Is cataract surgery covered from day one?", False),
+    ("What is domiciliary hospitalization and when is it covered?", False),
+    ("What is the 10% co-payment that applies to every claim?", False),
+])
+def test_needs_rewrite_finds_questions_that_point_back(question, refers):
+    from policy_rag.memory import needs_rewrite
+    assert needs_rewrite(question) is refers
+
+
+def test_the_single_questions_of_the_test_set_are_all_complete():
+    from policy_rag.memory import needs_rewrite
+    from policy_rag.evaluation.testset import load_testset
+    flagged = [i["id"] for i in load_testset(ROOT / "testsets" / "optima_secure_v3.json").items if needs_rewrite(i["question"])]
+    assert flagged == []
+
+
+def test_a_complete_question_in_a_conversation_is_not_rewritten(system):
+    chat = system.new_conversation()
+    system.ask(WELLNESS, conversation=chat, show_sources=False)
+    r = system.ask("What is the waiting period for kidney stones?", conversation=chat, show_sources=False)
+    assert system.generator.rewrite_calls == 0 and r.state["rewrite"]["skipped"] == "complete question"
+    assert r.standalone is None and r.state["query"] == "What is the waiting period for kidney stones?"
+
+
+def test_rewrites_must_keep_typed_figures_and_name_something_specific():
+    history = [{"question": "What does the Wellness Bonus give for a 40-year-old?", "answer": "It adds 10% a year."}]
+    q, why = check_rewrite("What does the Wellness Bonus give?", "And what does it give for a 40-year-old?", history)
+    assert "drops figures the user typed: 40" in why
+    q, why = check_rewrite("What does the policy not pay for?", "What does it not pay for?", history)
+    assert q == "What does it not pay for?" and "names nothing specific" in why
+    q, why = check_rewrite("What does the Wellness Bonus not pay for?", "What does it not pay for?", history)
+    assert why is None
+
+
+def test_the_rewrite_answer_is_short_and_keyed_separately(system):
+    system.generator.rewrites[FOLLOW] = STANDALONE
+    chat = system.new_conversation()
+    system.ask(WELLNESS, conversation=chat, show_sources=False)
+    r = system.ask(FOLLOW, conversation=chat, show_sources=False)
+    assert system.generator.rewrite_max_new_tokens == system.cfg.memory.max_new_tokens == 64
+    assert system.cfg.generator.max_new_tokens == 1000 and system.cfg.generator.think_budget == 1024   # unchanged
+    from policy_rag.prompts import build_condense_prompt
+    prompt = build_condense_prompt(chat.recent(3, 400)[:1], FOLLOW, system.cfg.memory.template)
+    assert r.state["rewrite"]["key"] == system.answerer.key(prompt, 64) != system.answerer.key(prompt)
+
+
+def test_a_rewrite_cut_off_at_the_length_limit_is_not_used(system, monkeypatch):
+    real = system.generator.generate
+    def cut(prompt, seed, max_new_tokens=None):
+        out = real(prompt, seed, max_new_tokens)
+        if prompt.rstrip().endswith("STANDALONE QUESTION:"):
+            out.update(answer="How much can the Wellness Bonus grow at", hit_limit=True)
+        return out
+    monkeypatch.setattr(system.generator, "generate", cut)
+    chat = system.new_conversation()
+    system.ask(WELLNESS, conversation=chat, show_sources=False)
+    r = system.ask(FOLLOW, conversation=chat, show_sources=False)
+    assert r.state["query"] == FOLLOW and r.state["rewrite"]["fallback"] == "rewrite cut off at the length limit"

@@ -256,25 +256,68 @@ unchanged in the same session: all 113 answers came from the published run's cac
 - Known cost of the stricter figure rule: a follow-up whose missing piece is a figure from an answer ("when he reaches
   that age") is searched as typed.
 
-### Second run: the deciding set (not yet run)
+### Second run: not adopted
 
-[`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) (version `fbf48a727e`), written
-and frozen before any run with the changes above: 38 conversations, 42 later turns, all on the test split, each the
-complete form of a test question answered correctly in the published baseline (so a correct answer is possible).
+Colab T4, 27 October 2026, `condense_v2`, conversations now in
+[`testsets/optima_secure_followups_practice2.json`](../testsets/optima_secure_followups_practice2.json) (version
+`fbf48a727e`, written before the run). Single questions were unchanged in the same session (all 113 answers from the
+cache, 97/113).
 
-| Kind | Turns | What it checks |
+| Test split | Without memory | With memory | Complete question |
+|---|---|---|---|
+| Follow-ups that need the conversation (28) | 16 | 21: 6 fixed, 1 broken (Q13.2), p = 0.125 | 28 |
+| Self-contained follow-ups (8) | 8 | 7: Q28.2 made wrong | 8 |
+| Topic switches (6) | 6 | 6 | 6 |
+
+**Decision: do not adopt.** Copying from answers was gone (no rewrite took a figure or sentence from an answer), but:
+
+1. **Vague rewrites.** The model often replaced "it" with a general word instead of the name: "What does it not pay
+   for?" became "What does the policy not pay for?" (the organ donor cover was meant), and "how long is it valid?"
+   became "how long is the approval valid?" (cashless pre-authorization; the answer was then refused: the broken turn).
+   5 of the 7 failures. The v2 prompt listed "the plan, cover, benefit" as kinds of names, and the model used those
+   words literally.
+2. **Complete questions were reworded.** 7 of the 14 self-contained follow-ups and topic switches were changed; in
+   Q28.2 "my 3-year-old" became "the dependent child" and the answer flipped to a wrong "yes".
+
+Also: the copied-words check rejected a long cover name (harmless here), and one rewrite took 14 minutes (thinking
+and the answer ran to their limits). Median rewrite time 38 s.
+
+### Changes after the second run
+
+- **Complete questions are not rewritten** (`memory.skip_complete`): a question without a word that points back
+  ("it", "that", "they", "the first one", or a start such as "And ..." / "What about ...") goes straight to search,
+  with no model call. Tuned on the 113 single questions (none sent to the rewriter) and the two practice sets (46 of
+  their 48 follow-ups that need the conversation recognised; none of their 12 topic switches sent). It does not
+  recognise follow-ups that point back only through "the" ("the papers") or "the emergency-only one".
+- **Rewrite prompt `condense_v3`:** name the exact cover, benefit, condition, plan or person, never "the policy" or
+  "the plan"; keep every other word and detail of the question; two invented examples.
+- **Checks:** a rewrite must keep the figures the user typed and must add something specific (one that only adds
+  "the policy", "the plan", "the cover" is rejected); the copied-words limit is 8 words, so long cover names pass.
+- **Rewrite answer capped at 64 tokens** (`memory.max_new_tokens`; the thinking budget and all other generation
+  settings unchanged); a rewrite cut off at the cap is not used. Rewrites with the cap have their own cache keys.
+- Replayed on the second run's rewrites, the new rules avoid both turns memory made wrong: Q28.2 is not sent to the
+  rewriter, Q13.2's vague rewrite is rejected.
+
+### Final run: the deciding set (not yet run)
+
+[`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) (version `a9a5aa60b1`), written
+and frozen after the changes above and before any run with them: 44 conversations, 44 later turns, all on the test
+split, each the complete form of a test question answered correctly in the published baseline.
+
+| Kind | Turns | Notes |
 |---|---|---|
-| `follow_up`, `after_refusal` | 28 | follow-ups that leave out their subject ("Is there a deductible on those claims?"); checked when the file is loaded: none contains its subject's name |
-| `self_contained` | 8 | follow-ups that name their subject; memory must not make them worse |
-| `topic_switch` | 6 | new questions, asked exactly as in the test set; the rewriter should leave them alone |
+| `follow_up`, `after_refusal` | 32 | written as people ask them; 28 contain a word that points back, 4 refer back only implicitly ("Is there a similar window if I am late renewing?") and are answered as typed |
+| `self_contained` | 6 | 2 of them start with "So" or say "they", so they reach the rewriter |
+| `topic_switch` | 6 | asked exactly as in the test set |
 
-Six complete questions were also complete questions in the practice set (F10, K06, K10, K11, L08, PR01), in new
-conversations and wording.
+35 of the 44 complete questions were also used in a practice set, in different conversations and wording; the
+practice sets were used to design the changes, never this set.
 
-**Decision rule (fixed before the run):** on the 28 follow-ups that need the conversation, memory must be fully
-correct significantly more often than without memory (McNemar exact, p < 0.05), and no `self_contained` or
-`topic_switch` turn may become wrong. Single questions must still come from the published cache (check 1 of the Colab
-notebook). Expect about 1 hour 45 minutes on a T4 with thinking on.
+**Decision rule (the same, fixed before the run):** on the 32 follow-ups that need the conversation, memory must be
+fully correct significantly more often than without it (McNemar exact, p < 0.05), and no `self_contained` or
+`topic_switch` turn may become wrong. Single questions must still come from the published cache. **This is the last
+attempt:** if it does not pass, memory ships switched off (`memory.enabled: false`) and stays documented here.
+Expect about 1.5–2 hours on a T4.
 
 ## Hard questions (not scored)
 

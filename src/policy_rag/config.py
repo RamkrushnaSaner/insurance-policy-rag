@@ -98,8 +98,10 @@ class MemoryConfig:
     max_turns: int = 3                   # previous turns shown to the rewriter
     answer_chars: int = 400              # characters of each previous answer shown to the rewriter
     max_question_chars: int = 400        # a longer rewrite is rejected (the original question is used)
-    copy_words: int = 6                  # a rewrite repeating this many words of an earlier answer is rejected (0: off)
-    template: str = "condense_v2"        # prompts.CONDENSE_TEMPLATES (condense_v1: first dialogue run)
+    copy_words: int = 8                  # a rewrite repeating this many words of an earlier answer is rejected (0: off)
+    skip_complete: bool = True           # questions that do not point back ("it", "that", "And ...") are not rewritten
+    max_new_tokens: int = 64             # answer length of a rewrite (one line); thinking settings are unchanged
+    template: str = "condense_v3"        # prompts.CONDENSE_TEMPLATES (v1, v2: first and second dialogue runs)
 
 
 @dataclass

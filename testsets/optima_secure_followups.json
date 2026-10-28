@@ -1,23 +1,24 @@
 {
- "name": "my:Optima Secure follow-up dialogues v2",
- "description": "Conversations for evaluating conversation memory, written and frozen before any run with them. Each later turn's complete form is the test-set question named in 'item' (all on the test split and answered correctly in the published baseline), so its answer key scores the answer. follow_up / after_refusal: the follow-up leaves out its subject (checked when loaded); subject: names of what it refers to, one of which the rewrite must contain. self_contained: a follow-up that names its subject. topic_switch: a new question asked exactly as in the test set. must_mention: further groups the rewrite must contain; must_not_mention: earlier-topic terms it must not pull in.",
+ "name": "my:Optima Secure follow-up dialogues v3 (final deciding set)",
+ "description": "Conversations for the final evaluation of conversation memory, written and frozen before any run with them, after the second run. Each later turn's complete form is the test-set question named in 'item' (test split, answered correctly in the published baseline). Follow-ups are written as people ask them, including some that refer back without a pointing word. follow_up / after_refusal: the follow-up leaves out its subject (checked when loaded); self_contained: it names it; topic_switch: a new question asked exactly as in the test set.",
  "testset": "optima_secure_v3",
  "testset_version": "7313dd7571",
  "follow_ups_need_context": true,
  "dialogues": [
   {
-   "id": "Q01",
+   "id": "R01",
    "turns": [
     {
-     "question": "What is the initial waiting period for illnesses after the policy starts?",
-     "item": "F06"
+     "question": "For how many days before admission is pre hospitalisation covered?",
+     "item": "X07"
     },
     {
-     "question": "Does it still apply if I have been continuously insured for more than a year?",
-     "item": "K08",
+     "question": "What about after I'm discharged?",
+     "item": "X08",
      "kind": "follow_up",
      "subject": [
-      "waiting period"
+      "hospitali",
+      "expense"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -25,178 +26,38 @@
    ]
   },
   {
-   "id": "Q02",
+   "id": "R02",
    "turns": [
     {
-     "question": "What is the waiting period for pre-existing diseases?",
-     "item": "F05"
+     "question": "What are the exact inclusions for post-hospitalization expenses?",
+     "item": "G04"
     },
     {
-     "question": "And for other illnesses in the first days after the policy starts?",
-     "item": "F06",
-     "kind": "follow_up",
-     "subject": [
-      "waiting period"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q03",
-   "turns": [
-    {
-     "question": "Does this policy cover treatment taken outside India?",
-     "item": "M03"
-    },
-    {
-     "question": "Is there a deductible on those claims?",
-     "item": "F10",
-     "kind": "follow_up",
-     "subject": [
-      "global health cover",
-      "outside india",
-      "abroad",
-      "overseas"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q04",
-   "turns": [
-    {
-     "question": "What is the difference between the Global Health Cover for emergency treatments only and the one for emergency and planned treatments?",
-     "item": "C02"
-    },
-    {
-     "question": "What does the first one exclude?",
-     "item": "L03",
-     "kind": "follow_up",
-     "subject": [
-      "emergency treatments only",
-      "emergency treatment only",
-      "emergency only"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    },
-    {
-     "question": "And which benefits does the second one extend outside India?",
-     "item": "L04",
-     "kind": "follow_up",
-     "subject": [
-      "planned"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q05",
-   "turns": [
-    {
-     "question": "If I made claims last year, do I still get the extra 50% added when I renew?",
-     "item": "K05"
-    },
-    {
-     "question": "What happens to that extra if I reduce my Sum Insured at renewal?",
-     "item": "K10",
-     "kind": "follow_up",
-     "subject": [
-      "plus benefit",
-      "extra 50",
-      "50%"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q06",
-   "turns": [
-    {
-     "question": "What is the Secure Benefit?"
-    },
-    {
-     "question": "Does any unused part of it carry forward to the next year?",
-     "item": "K06",
-     "kind": "follow_up",
-     "subject": [
-      "secure benefit"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q07",
-   "turns": [
-    {
-     "question": "When can the Aggregate Deductible be waived or reduced?",
-     "item": "K03"
-    },
-    {
-     "question": "Which covers is it not applied to at all?",
-     "item": "M02",
-     "kind": "follow_up",
-     "subject": [
-      "aggregate deductible",
-      "deductible"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q08",
-   "turns": [
-    {
-     "question": "What is the E-Opinion for Critical Illness cover?",
-     "item": "D05"
-    },
-    {
-     "question": "Which illnesses does it treat as major?",
-     "item": "L07",
-     "kind": "follow_up",
-     "subject": [
-      "e opinion"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q09",
-   "turns": [
-    {
-     "question": "Which expenses are covered under Hospitalization Expenses?",
-     "item": "L01"
-    },
-    {
-     "question": "How long do I have to be admitted for a claim to count?",
-     "item": "F04",
+     "question": "And how many days before admission?",
+     "item": "X07",
      "kind": "follow_up",
      "subject": [
       "hospitali"
      ],
      "must_mention": [],
      "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R03",
+   "turns": [
+    {
+     "question": "What can the company do if a pre-existing disease was not disclosed?",
+     "item": "L10"
     },
     {
-     "question": "Does it also pay for the ambulance that takes me there?",
-     "item": "X11",
+     "question": "And if I do disclose it, how long before it is covered?",
+     "item": "F05",
      "kind": "follow_up",
      "subject": [
-      "hospital"
+      "pre existing",
+      "disease"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -204,17 +65,18 @@
    ]
   },
   {
-   "id": "Q10",
+   "id": "R04",
    "turns": [
     {
-     "question": "Does the policy pay the expenses of an organ donor?"
+     "question": "How long is the free look period?",
+     "item": "F08"
     },
     {
-     "question": "What does it not pay for?",
-     "item": "L02",
+     "question": "Is there a similar window if I am late renewing?",
+     "item": "F07",
      "kind": "follow_up",
      "subject": [
-      "organ donor"
+      "grace"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -222,20 +84,19 @@
    ]
   },
   {
-   "id": "Q11",
+   "id": "R05",
    "turns": [
     {
-     "question": "How and when must a claim be notified to the insurer?",
-     "item": "P03"
+     "question": "Do I get rewarded for a year without claims?"
     },
     {
-     "question": "And for a planned admission, how far ahead?",
-     "item": "F16",
+     "question": "Which plan does that apply to, and how does it work?",
+     "item": "F18",
      "kind": "follow_up",
      "subject": [
-      "notif",
-      "inform",
-      "intimat"
+      "cumulative bonus",
+      "bonus",
+      "reward"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -243,95 +104,22 @@
    ]
   },
   {
-   "id": "Q12",
+   "id": "R06",
    "turns": [
     {
-     "question": "How to file reimbursement claims? Give me step wise complete procedure.",
-     "item": "G05"
+     "question": "If I move my policy to another insurer, do I keep the waiting period I have already served?",
+     "item": "X14"
     },
     {
-     "question": "Once I have sent all the papers, how soon will I get the money?",
-     "item": "X13",
+     "question": "How early do I have to ask for that?",
+     "item": "F19",
      "kind": "follow_up",
      "subject": [
-      "claim",
-      "reimburs"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q13",
-   "turns": [
-    {
-     "question": "What is the procedure for cashless claims in India? Give me step wise complete procedure.",
-     "item": "G06"
-    },
-    {
-     "question": "Once the approval is given, how long is it valid?",
-     "item": "F15",
-     "kind": "follow_up",
-     "subject": [
-      "cashless",
-      "pre authori",
-      "preauthori"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q14",
-   "turns": [
-    {
-     "question": "Do I pay less if I buy the policy on the website?",
-     "item": "X09"
-    },
-    {
-     "question": "What is the most I can save if I combine it with other ones?",
-     "item": "F11",
-     "kind": "follow_up",
-     "subject": [
-      "discount"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    },
-    {
-     "question": "Is there a special one for NRI policyholders?",
-     "item": "F12",
-     "kind": "follow_up",
-     "subject": [
-      "discount"
-     ],
-     "must_mention": [],
-     "must_not_mention": []
-    }
-   ]
-  },
-  {
-   "id": "Q15",
-   "turns": [
-    {
-     "question": "How early must a portability request be made?",
-     "item": "F19"
-    },
-    {
-     "question": "If I do that, do I keep the waiting period I have already served?",
-     "item": "X14",
-     "kind": "follow_up",
-     "subject": [
-      "portab",
-      "port my",
-      "port the",
-      "port to",
+      "port",
+      "move",
       "another insurer",
       "other insurer",
-      "new insurer",
-      "move",
+      "transfer",
       "switch"
      ],
      "must_mention": [],
@@ -340,18 +128,20 @@
    ]
   },
   {
-   "id": "Q16",
+   "id": "R07",
    "turns": [
     {
-     "question": "What is the maximum entry age for a dependent child?",
-     "item": "F02"
+     "question": "How to file reimbursement claims? Give me step wise complete procedure.",
+     "item": "G05"
     },
     {
-     "question": "What happens to my son's cover when he reaches that age?",
-     "item": "X10",
+     "question": "How soon do I need to tell them about the claim?",
+     "item": "P03",
      "kind": "follow_up",
      "subject": [
-      "25"
+      "insurer",
+      "company",
+      "hdfc"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -359,25 +149,114 @@
    ]
   },
   {
-   "id": "Q17",
+   "id": "R08",
    "turns": [
     {
-     "question": "What is the annual premium for Optima Secure with a Rs. 10 lakh Sum Insured for a 30-year-old living in Mumbai?",
-     "item": "PR01"
+     "question": "Are gloves and food charges paid in a hospitalization claim?",
+     "item": "AB01"
     },
     {
-     "question": "Do those rates include GST?",
-     "item": "PR03",
+     "question": "What exactly is that benefit?",
+     "item": "D01",
      "kind": "follow_up",
      "subject": [
-      "premium"
+      "protect benefit"
      ],
      "must_mention": [],
      "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R09",
+   "turns": [
+    {
+     "question": "How does cashless approval work for Home Health Care?",
+     "item": "P02"
     },
     {
-     "question": "Under which section of the Income Tax Act can I claim it as a deduction?",
-     "item": "F14",
+     "question": "What is it, exactly?",
+     "item": "D07",
+     "kind": "follow_up",
+     "subject": [
+      "home health care"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R10",
+   "turns": [
+    {
+     "question": "What is the maximum total discount when discounts are combined?",
+     "item": "F11"
+    },
+    {
+     "question": "Do I get one for buying on the website?",
+     "item": "X09",
+     "kind": "follow_up",
+     "subject": [
+      "discount"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R11",
+   "turns": [
+    {
+     "question": "How does the Cumulative Bonus work and which plan does it apply to?",
+     "item": "F18"
+    },
+    {
+     "question": "Can it be taken back if an old claim turns up after I renew?",
+     "item": "K12",
+     "kind": "follow_up",
+     "subject": [
+      "cumulative bonus",
+      "bonus"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R12",
+   "turns": [
+    {
+     "question": "Does this policy cover treatment taken outside India?",
+     "item": "M03"
+    },
+    {
+     "question": "How do I get cashless treatment there?",
+     "item": "P01",
+     "kind": "follow_up",
+     "subject": [
+      "outside india",
+      "abroad",
+      "overseas",
+      "global health cover"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R13",
+   "turns": [
+    {
+     "question": "What is the grace period for renewing the policy?",
+     "item": "F07"
+    },
+    {
+     "question": "Can I pay it month by month instead?",
+     "item": "X15",
      "kind": "follow_up",
      "subject": [
       "premium"
@@ -388,13 +267,112 @@
    ]
   },
   {
-   "id": "Q18",
+   "id": "R14",
    "turns": [
     {
-     "question": "Is there a cash benefit if I stay in a shared room?"
+     "question": "Can a 3-year-old child be insured without a parent on the policy?",
+     "item": "K01"
     },
     {
-     "question": "Is it paid for days spent in the ICU?",
+     "question": "And up to what age can they stay covered as dependants?",
+     "item": "F02",
+     "kind": "follow_up",
+     "subject": [
+      "child"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R15",
+   "turns": [
+    {
+     "question": "What happens if I use up my whole sum insured in a year?"
+    },
+    {
+     "question": "What is that benefit called and how does it work?",
+     "item": "D02",
+     "kind": "follow_up",
+     "subject": [
+      "automatic restore",
+      "restore"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R16",
+   "turns": [
+    {
+     "question": "What is the waiting period for pre-existing diseases?",
+     "item": "F05"
+    },
+    {
+     "question": "What can they do if I don't mention one when I buy the policy?",
+     "item": "L10",
+     "kind": "follow_up",
+     "subject": [
+      "pre existing",
+      "disease"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R17",
+   "turns": [
+    {
+     "question": "What can the company do if a pre-existing disease was not disclosed?",
+     "item": "L10"
+    },
+    {
+     "question": "After how many years can they no longer do that?",
+     "item": "F13",
+     "kind": "follow_up",
+     "subject": [
+      "moratorium",
+      "disclos",
+      "contest"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R18",
+   "turns": [
+    {
+     "question": "How and when must a claim be notified to the insurer?",
+     "item": "P03"
+    },
+    {
+     "question": "Once they have all my documents, how long do they have to pay?",
+     "item": "F09",
+     "kind": "follow_up",
+     "subject": [
+      "claim",
+      "settle"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R19",
+   "turns": [
+    {
+     "question": "What is the Daily Cash for Shared Room benefit?"
+    },
+    {
+     "question": "Do I still get it if I am moved to the ICU?",
      "item": "K04",
      "kind": "follow_up",
      "subject": [
@@ -407,19 +385,17 @@
    ]
   },
   {
-   "id": "Q19",
+   "id": "R20",
    "turns": [
     {
-     "question": "Does the policy cover Ayurveda or homeopathy treatment?"
+     "question": "Are my organ donor's hospital expenses covered?"
     },
     {
-     "question": "What exactly does that cover include?",
-     "item": "D04",
+     "question": "Which of those expenses are not paid?",
+     "item": "L02",
      "kind": "follow_up",
      "subject": [
-      "ayush",
-      "ayurveda",
-      "homeopathy"
+      "organ donor"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -427,20 +403,18 @@
    ]
   },
   {
-   "id": "Q20",
+   "id": "R21",
    "turns": [
     {
-     "question": "Can I add extra covers to my policy?"
+     "question": "How does the Aggregate Deductible work?"
     },
     {
-     "question": "Which ones are offered?",
-     "item": "L05",
+     "question": "Are there covers it doesn't apply to?",
+     "item": "M02",
      "kind": "follow_up",
      "subject": [
-      "add on",
-      "addon",
-      "optional",
-      "extra cover"
+      "aggregate deductible",
+      "deductible"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -448,20 +422,80 @@
    ]
   },
   {
-   "id": "Q21",
+   "id": "R22",
    "turns": [
     {
-     "question": "What is the procedure for cashless claims outside India?",
-     "item": "P01"
+     "question": "Can I get a second opinion on a serious diagnosis?"
     },
     {
-     "question": "And if I pay first and claim later, which extra papers do I need?",
+     "question": "Which illnesses qualify for that?",
+     "item": "L07",
+     "kind": "follow_up",
+     "subject": [
+      "e opinion",
+      "second opinion",
+      "opinion"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R23",
+   "turns": [
+    {
+     "question": "Which expenses are covered under Hospitalization Expenses?",
+     "item": "L01"
+    },
+    {
+     "question": "What's the shortest stay that counts?",
+     "item": "F04",
+     "kind": "follow_up",
+     "subject": [
+      "hospitali"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R24",
+   "turns": [
+    {
+     "question": "How to file reimbursement claims? Give me step wise complete procedure.",
+     "item": "G05"
+    },
+    {
+     "question": "After I send everything, when do I get my money?",
+     "item": "X13",
+     "kind": "follow_up",
+     "subject": [
+      "claim",
+      "reimburs"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R25",
+   "turns": [
+    {
+     "question": "Does this policy cover treatment taken outside India?",
+     "item": "M03"
+    },
+    {
+     "question": "If I pay myself and claim later, what extra documents do I need for that?",
      "item": "L08",
      "kind": "follow_up",
      "subject": [
       "outside india",
       "abroad",
-      "overseas"
+      "overseas",
+      "global health cover"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -469,19 +503,18 @@
    ]
   },
   {
-   "id": "Q22",
+   "id": "R26",
    "turns": [
     {
-     "question": "What are the specific exclusions for the Global Health Cover (Emergency Treatments Only)?",
-     "item": "L03"
+     "question": "Which benefits does the Global Health Cover (Emergency & Planned Treatments) extend outside India?",
+     "item": "L04"
     },
     {
-     "question": "How is it different from the version that also covers planned treatments?",
+     "question": "How is that different from the emergency-only version?",
      "item": "C02",
      "kind": "follow_up",
      "subject": [
-      "global health cover",
-      "emergency"
+      "global health cover"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -489,19 +522,18 @@
    ]
   },
   {
-   "id": "Q23",
+   "id": "R27",
    "turns": [
     {
-     "question": "How does the Cumulative Bonus work and which plan does it apply to?",
-     "item": "F18"
+     "question": "What is the difference between the Global Health Cover for emergency treatments only and the one for emergency and planned treatments?",
+     "item": "C02"
     },
     {
-     "question": "How does that work when the whole family shares one floater sum insured?",
-     "item": "K11",
+     "question": "What does the emergency-only one exclude?",
+     "item": "L03",
      "kind": "follow_up",
      "subject": [
-      "cumulative bonus",
-      "bonus"
+      "global health cover"
      ],
      "must_mention": [],
      "must_not_mention": []
@@ -509,14 +541,80 @@
    ]
   },
   {
-   "id": "Q24",
+   "id": "R28",
+   "turns": [
+    {
+     "question": "What is the annual premium for a 40-year-old living in a Tier 2 city?",
+     "item": "N05"
+    },
+    {
+     "question": "Is GST included in that figure?",
+     "item": "PR03",
+     "kind": "follow_up",
+     "subject": [
+      "premium",
+      "rate"
+     ],
+     "must_mention": [
+      [
+       "gst"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R29",
+   "turns": [
+    {
+     "question": "What is the annual premium for Optima Secure with a Rs. 10 lakh Sum Insured for a 30-year-old living in Mumbai?",
+     "item": "PR01"
+    },
+    {
+     "question": "Can I get a tax deduction on what I pay?",
+     "item": "F14",
+     "kind": "follow_up",
+     "subject": [
+      "premium"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R30",
+   "turns": [
+    {
+     "question": "What is the minimum duration of hospitalization for a claim to be admissible?",
+     "item": "F04"
+    },
+    {
+     "question": "Does it pay for the ambulance to get there?",
+     "item": "X11",
+     "kind": "follow_up",
+     "subject": [
+      "hospital"
+     ],
+     "must_mention": [
+      [
+       "ambulance"
+      ]
+     ],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R31",
    "turns": [
     {
      "question": "What is the annual premium for Optima Suraksha for a 30-year-old?",
      "item": "N12"
     },
     {
-     "question": "Then what would Optima Secure with Rs. 10 lakh cover cost at that age in Mumbai?",
+     "question": "OK, and for Optima Secure with Rs. 10 lakh cover, same age, in Mumbai?",
      "item": "PR01",
      "kind": "after_refusal",
      "subject": [
@@ -538,88 +636,108 @@
    ]
   },
   {
-   "id": "Q25",
+   "id": "R32",
    "turns": [
     {
-     "question": "What is the grace period for renewing the policy?",
-     "item": "F07"
+     "question": "Does the policy cover trip cancellation or flight delays?",
+     "item": "N09"
     },
     {
-     "question": "Can they refuse to renew my policy because I made claims?",
+     "question": "What about getting treated abroad, then?",
+     "item": "M03",
+     "kind": "after_refusal",
+     "subject": [
+      "cover",
+      "pay"
+     ],
+     "must_mention": [],
+     "must_not_mention": []
+    }
+   ]
+  },
+  {
+   "id": "R33",
+   "turns": [
+    {
+     "question": "Do I pay less if I buy the policy on the website?",
+     "item": "X09"
+    },
+    {
+     "question": "Is there a discount for NRI policyholders?",
+     "item": "F12",
+     "kind": "self_contained",
+     "must_mention": [],
+     "must_not_mention": [
+      "website",
+      "online"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R34",
+   "turns": [
+    {
+     "question": "Within how many days must the company settle a claim after receiving the last necessary document?",
+     "item": "F09"
+    },
+    {
+     "question": "So how long is a cashless pre-authorization valid?",
+     "item": "F15",
+     "kind": "self_contained",
+     "must_mention": [],
+     "must_not_mention": [
+      "settle"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R35",
+   "turns": [
+    {
+     "question": "How early must a portability request be made?",
+     "item": "F19"
+    },
+    {
+     "question": "Can they refuse to renew my policy just because I made claims?",
      "item": "K09",
      "kind": "self_contained",
      "must_mention": [],
      "must_not_mention": [
-      "grace"
+      "portab"
      ]
     }
    ]
   },
   {
-   "id": "Q26",
+   "id": "R36",
    "turns": [
     {
-     "question": "How long is the free look period?",
-     "item": "F08"
+     "question": "What is the moratorium period?",
+     "item": "F13"
     },
     {
-     "question": "If I cancel the policy later, how much notice do I give and what is refunded?",
-     "item": "F20",
+     "question": "What's the highest medical underwriting loading the insurer can apply?",
+     "item": "F17",
      "kind": "self_contained",
      "must_mention": [],
      "must_not_mention": [
-      "free look"
+      "moratorium"
      ]
     }
    ]
   },
   {
-   "id": "Q27",
+   "id": "R37",
    "turns": [
     {
-     "question": "What is the age range of people covered under this policy?",
-     "item": "F01"
+     "question": "What is the initial waiting period for illnesses after the policy starts?",
+     "item": "F06"
     },
     {
-     "question": "How many adults and children can a family floater policy cover?",
-     "item": "F03",
-     "kind": "self_contained",
-     "must_mention": [],
-     "must_not_mention": [
-      "age range",
-      "65"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q28",
-   "turns": [
-    {
-     "question": "How many adults and children can be covered in a family floater policy?",
-     "item": "F03"
-    },
-    {
-     "question": "Can my 3-year-old be insured without a parent on the policy?",
-     "item": "K01",
-     "kind": "self_contained",
-     "must_mention": [],
-     "must_not_mention": [
-      "floater"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q29",
-   "turns": [
-    {
-     "question": "What are the specific exclusions listed in Section 10.2?",
-     "item": "L06"
-    },
-    {
-     "question": "So can I claim for new spectacles?",
-     "item": "X06",
+     "question": "Does the 30-day waiting period still apply if I've been continuously insured for over a year?",
+     "item": "K08",
      "kind": "self_contained",
      "must_mention": [],
      "must_not_mention": []
@@ -627,128 +745,16 @@
    ]
   },
   {
-   "id": "Q30",
-   "turns": [
-    {
-     "question": "What can the company do if a pre-existing disease was not disclosed?",
-     "item": "L10"
-    },
-    {
-     "question": "What is the maximum medical underwriting loading they can apply?",
-     "item": "F17",
-     "kind": "self_contained",
-     "must_mention": [],
-     "must_not_mention": [
-      "pre existing",
-      "disclos"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q31",
-   "turns": [
-    {
-     "question": "What is the room rent limit of 1% of the Sum Insured per day?",
-     "item": "FP02"
-    },
-    {
-     "question": "So which hospitalization expenses does the policy pay?",
-     "item": "L01",
-     "kind": "self_contained",
-     "must_mention": [],
-     "must_not_mention": [
-      "room rent",
-      "1%"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q32",
-   "turns": [
-    {
-     "question": "What are the standard exclusions under the my:Optima Secure policy? Give complete details.",
-     "item": "G08"
-    },
-    {
-     "question": "Am I covered if I get hurt scuba diving as a professional diver?",
-     "item": "X05",
-     "kind": "self_contained",
-     "must_mention": [],
-     "must_not_mention": [
-      "standard exclusion"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q33",
-   "turns": [
-    {
-     "question": "What is the per claim deductible under the Global Health Cover?",
-     "item": "F10"
-    },
-    {
-     "question": "Which cities are classified as Tier 1 for premium calculation?",
-     "item": "L09",
-     "kind": "topic_switch",
-     "must_mention": [],
-     "must_not_mention": [
-      "global health",
-      "deductible"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q34",
-   "turns": [
-    {
-     "question": "Does the policy pay for an ambulance to take me to the hospital?",
-     "item": "X11"
-    },
-    {
-     "question": "What is the moratorium period?",
-     "item": "F13",
-     "kind": "topic_switch",
-     "must_mention": [],
-     "must_not_mention": [
-      "ambulance"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q35",
-   "turns": [
-    {
-     "question": "What is the waiting period for pre-existing diseases?",
-     "item": "F05"
-    },
-    {
-     "question": "What is the Preventive Health Check-up benefit?",
-     "item": "D06",
-     "kind": "topic_switch",
-     "must_mention": [],
-     "must_not_mention": [
-      "pre existing",
-      "waiting period"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "Q36",
+   "id": "R38",
    "turns": [
     {
      "question": "What does the AYUSH Treatment cover include?",
      "item": "D04"
     },
     {
-     "question": "Within how many days must the company settle a claim after receiving the last necessary document?",
-     "item": "F09",
-     "kind": "topic_switch",
+     "question": "Can my 4-year-old daughter be insured without a parent on the policy?",
+     "item": "K01",
+     "kind": "self_contained",
      "must_mention": [],
      "must_not_mention": [
       "ayush"
@@ -757,11 +763,30 @@
    ]
   },
   {
-   "id": "Q37",
+   "id": "R39",
    "turns": [
     {
      "question": "What discount is given to NRI policyholders?",
      "item": "F12"
+    },
+    {
+     "question": "Which cities are classified as Tier 1 for premium calculation?",
+     "item": "L09",
+     "kind": "topic_switch",
+     "must_mention": [],
+     "must_not_mention": [
+      "nri",
+      "discount"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R40",
+   "turns": [
+    {
+     "question": "I got hurt while scuba diving as a professional diver. Will I be covered?",
+     "item": "X05"
     },
     {
      "question": "What is domiciliary hospitalization and when is it covered?",
@@ -769,27 +794,82 @@
      "kind": "topic_switch",
      "must_mention": [],
      "must_not_mention": [
-      "discount",
-      "nri"
+      "diving",
+      "hazardous"
      ]
     }
    ]
   },
   {
-   "id": "Q38",
+   "id": "R41",
+   "turns": [
+    {
+     "question": "How much notice is needed for the policyholder to cancel the policy, and what is refunded?",
+     "item": "F20"
+    },
+    {
+     "question": "What is the Preventive Health Check-up benefit?",
+     "item": "D06",
+     "kind": "topic_switch",
+     "must_mention": [],
+     "must_not_mention": [
+      "cancel",
+      "refund"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R42",
    "turns": [
     {
      "question": "What happens to the Plus Benefit if the Sum Insured is reduced at renewal?",
      "item": "K10"
     },
     {
-     "question": "Does this policy cover treatment taken outside India?",
-     "item": "M03",
+     "question": "Can I claim the cost of new spectacles?",
+     "item": "X06",
      "kind": "topic_switch",
      "must_mention": [],
      "must_not_mention": [
-      "plus benefit",
-      "sum insured"
+      "plus benefit"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R43",
+   "turns": [
+    {
+     "question": "What is the maximum medical underwriting loading?",
+     "item": "F17"
+    },
+    {
+     "question": "What add-on covers are offered with my:Optima Secure?",
+     "item": "L05",
+     "kind": "topic_switch",
+     "must_mention": [],
+     "must_not_mention": [
+      "loading"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "R44",
+   "turns": [
+    {
+     "question": "On a family floater policy, how is the Cumulative Bonus added and when is it reduced?",
+     "item": "K11"
+    },
+    {
+     "question": "What limits and conditions apply to claims under the Global Health Cover?",
+     "item": "M04",
+     "kind": "topic_switch",
+     "must_mention": [],
+     "must_not_mention": [
+      "cumulative bonus",
+      "floater"
      ]
     }
    ]

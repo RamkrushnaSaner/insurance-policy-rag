@@ -116,9 +116,10 @@ class ExtractiveGenerator:
         refers = re.search(r"\b(it|its|that|there|this|one|them|those)\b|^(and|so|then|what about|how about)\b", question, re.I)
         return f"{previous.rstrip('?')}: {question}" if refers else question
 
-    def generate(self, prompt, seed):
+    def generate(self, prompt, seed, max_new_tokens=None):
         """The context passage that shares most content words with the question, or the refusal."""
         if prompt.rstrip().endswith("STANDALONE QUESTION:"):
+            self.rewrite_max_new_tokens = max_new_tokens
             text = self._rewrite(prompt)
             return {"answer": text, "thinking": "", "prompt_tokens": len(prompt.split()), "think_tokens": 0,
                     "answer_tokens": len(text.split()), "thinking_forced": False, "hit_limit": False}

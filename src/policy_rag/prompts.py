@@ -74,6 +74,35 @@ CONVERSATION:
 
 LAST QUESTION: {question}
 STANDALONE QUESTION:""",
+    # v3 (after the second dialogue run, where v2 rewrites often used "the policy" or "the plan" instead of the name,
+    # and reworded complete questions). The examples are invented, so no policy wording is suggested.
+    "condense_v3": """Rewrite the user's last question so that it can be understood without the conversation.
+Replace each word that points back to the conversation ("it", "its", "that", "those", "they", "there", "the first
+one", "the same") with the exact name of what it points to, written as in the conversation: the specific cover,
+benefit, condition, plan or person, never a general word such as "the policy", "the plan", "the cover" or "the
+benefit" (unless the user means the policy itself).
+If the question leaves out what is asked (as in "And for X?"), take that from the user's earlier question.
+Keep every other word and detail of the last question: ages, amounts, periods, places and names.
+Figures may come only from the user's questions. Take nothing else from the assistant's answers: no amounts,
+periods, percentages, section numbers, conditions or explanations.
+Do not answer the question. Reply with the rewritten question only, on one line.
+
+Examples (invented):
+User: What does the Sunrise Recovery Benefit pay?
+Assistant: It pays a daily allowance after discharge ...
+Last question: Is it paid for ICU days too?
+Standalone question: Is the Sunrise Recovery Benefit paid for ICU days too?
+
+User: How long is the waiting period for knee surgery under the Gold plan?
+Assistant: It is 24 months ...
+Last question: And for hernia?
+Standalone question: How long is the waiting period for hernia under the Gold plan?
+
+CONVERSATION:
+{history}
+
+LAST QUESTION: {question}
+STANDALONE QUESTION:""",
 }
 
 
