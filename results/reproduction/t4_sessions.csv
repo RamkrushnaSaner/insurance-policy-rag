@@ -1,0 +1,5 @@
+run,started,package,gpu,transformers,answers_generated,answers_from_cache,answers_identical,candidates_identical,rerank_scores_identical,contexts_identical,gate_identical,questions,fully_correct,fully_correct_test,groundedness_mean,answers_with_unsupported_sentence,sha256
+check_v33,2026-10-27T11:02:52,3.3.0,Tesla T4,5.20.2,0,108,113,113,113,113,113,113,97,79,0.886,28/99,238dbf4481db75af2950fbe93cb89ebb986375deda7a17c50787b9f41eb9971f
+check_single,2026-10-27T21:18:46,3.3.0,Tesla T4,5.20.2,0,108,113,113,113,113,113,113,97,79,0.886,28/99,d8fec62fa493008fdcc36133656d638370229fa00591e8c58617398c2b051b17
+check_single,2026-10-29T04:34:40,3.3.0,Tesla T4,5.20.2,0,108,113,113,113,113,113,113,97,79,0.886,28/99,eb75e6610ac752e536ffe7609958f362396264d6c559171312e5708cb905fe8c
+no_thinking,2026-10-25T05:31:36,3.2.0,Tesla T4,5.20.2,108,0,9,113,113,113,113,113,90,72,0.927,14/89,fedb335146dfef709c8e551f67f1374bda1fa8639ed0bcd4272911f3e5d86fbf

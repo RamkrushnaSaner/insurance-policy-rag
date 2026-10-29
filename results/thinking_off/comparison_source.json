@@ -1,0 +1,20 @@
+{
+ "inputs": [
+  {
+   "file": "t4_check_2026-10-29/run.json",
+   "sha256": "eb75e6610ac752e536ffe7609958f362396264d6c559171312e5708cb905fe8c"
+  },
+  {
+   "file": "thinking_off_2026-10-25/run.json",
+   "sha256": "fedb335146dfef709c8e551f67f1374bda1fa8639ed0bcd4272911f3e5d86fbf"
+  }
+ ],
+ "exported_with": "scripts/export_results.py",
+ "baseline": "thinking on (baseline)",
+ "candidate": "thinking off",
+ "splits": [
+  "dev",
+  "test"
+ ],
+ "testset_version": "7313dd7571"
+}

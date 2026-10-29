@@ -1,0 +1,2 @@
+split,baseline,candidate,n,fully_correct_base,fully_correct_candidate,diff,ci,fixed,broken,p_mcnemar,p_holm,decision
+dev,v2.6 (Mistral-7B),v3.1 (Qwen3-8B),24,0.458,0.708,0.25,+0.083 to +0.417,6,0,0.0312,0.0312,"dev only: guides debugging, no decision"

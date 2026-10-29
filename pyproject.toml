@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "policy-rag"
-version = "3.3.0"
+version = "3.3.1"
 description = "Grounded question answering over insurance policy documents, with a reproducible evaluation"
 readme = "README.md"
 license = { text = "MIT" }

@@ -120,8 +120,11 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-The 72 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
+The 80 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
 They cover configuration, chunk loading for one or several documents, routing, title pinning, neighbours, the
 budget, the gate, the cache, the checks, the statistics, the evaluation commands and conversation memory (rewriting,
-its safety checks, the chat commands and the dialogue evaluation). GitHub Actions runs them on
+its safety checks, the chat commands and the dialogue evaluation). Eight of them recompute the published headline
+numbers from [`results/`](../results/) ([`test_published_results.py`](../tests/test_published_results.py)); after
+publishing a new result with [`scripts/export_results.py`](../scripts/export_results.py), update them together with
+the documents. GitHub Actions runs them on
 Python 3.10, 3.12 and 3.13 ([`.github/workflows/tests.yml`](../.github/workflows/tests.yml)).

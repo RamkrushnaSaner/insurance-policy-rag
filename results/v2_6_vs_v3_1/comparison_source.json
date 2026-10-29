@@ -1,0 +1,19 @@
+{
+ "inputs": [
+  {
+   "file": "v2_6_compact_2026-10-20/compact_baseline.json",
+   "sha256": "47ac42d70bb167ac7dae0d621608281b5567fa9b500d6ebcccd824659ff928ef"
+  },
+  {
+   "file": "v3_1_generation_2026-10-22/run.json",
+   "sha256": "07b3e8f6228d16088fbf188149945dacda8213b025bef4b0f64d8992df899df1"
+  }
+ ],
+ "exported_with": "scripts/export_results.py",
+ "baseline": "v2.6 (Mistral-7B)",
+ "candidate": "v3.1 (Qwen3-8B)",
+ "splits": [
+  "dev"
+ ],
+ "testset_version": "7313dd7571"
+}

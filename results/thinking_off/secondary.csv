@@ -1,0 +1,15 @@
+split,metric,n,base,candidate,diff,ci_low,ci_high,verdict
+dev,key_fact_recall,21,0.885,0.853,-0.032,-0.095,0.02,no clear change
+dev,critical_error,25,0.04,0.08,0.04,0.0,0.12,no clear change
+dev,groundedness,20,0.905,0.916,0.011,-0.057,0.069,no clear change
+dev,hallucinated,20,0.35,0.2,-0.15,-0.35,0.05,no clear change
+dev,correct_abstention,4,0.75,0.75,0.0,0.0,0.0,no clear change
+dev,context_recall,21,0.889,0.889,0.0,0.0,0.0,no clear change
+dev,mrr10,21,0.806,0.806,0.0,0.0,0.0,no clear change
+test,key_fact_recall,73,0.929,0.884,-0.046,-0.087,-0.014,worse
+test,critical_error,88,0.011,0.034,0.023,0.0,0.057,no clear change
+test,groundedness,69,0.94,0.93,-0.01,-0.054,0.034,no clear change
+test,hallucinated,69,0.203,0.145,-0.058,-0.159,0.043,no clear change
+test,correct_abstention,15,1.0,1.0,0.0,0.0,0.0,no clear change
+test,context_recall,73,0.932,0.932,0.0,0.0,0.0,no clear change
+test,mrr10,73,0.894,0.894,0.0,0.0,0.0,no clear change

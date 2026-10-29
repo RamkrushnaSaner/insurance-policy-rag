@@ -1,0 +1,4 @@
+split,metric,n,base,candidate,diff,ci_low,ci_high,verdict
+dev,key_fact_recall,20,0.794,0.879,0.085,0.0,0.2,no clear change
+dev,critical_error,24,0.208,0.042,-0.167,-0.333,-0.042,better
+dev,correct_abstention,3,0.667,0.667,0.0,0.0,0.0,no clear change

@@ -111,8 +111,9 @@ which makes a new checks version, and runs are re-scored.
 
 - During development, all 113 baseline answers were read and judged by hand, not blind. That reading is by the AI
   assistant that wrote the checks, not by an independent person.
-- Before the fixes, the v3.1 checks agreed with that reading on 107 of 113 answers (kappa about 0.80). Five correct
-  answers had been marked wrong, and one known false statement had been missed.
+- Before the fixes, the v3.1 checks agreed with that reading on 107 of 113 answers (Cohen's kappa 0.80): five correct
+  answers had been marked wrong (L04, K04, D02, D03, D07), and one known false statement had been missed (X01). The
+  v3.1 checks gave 93/113 (75/88 on test); the corrected checks give 97/113 (79/88).
 - The checks were corrected (v3.2) and now agree with that reading on all 113.
 
 ## Baseline results
@@ -120,9 +121,12 @@ which makes a new checks version, and runs are re-scored.
 **System:** [`configs/default.yaml`](../configs/default.yaml): bge-small-en-v1.5 + BM25, bge-reranker-v2-m3,
 Qwen3-8B 4-bit with thinking (budget 1,024 tokens), 1,500-token context, gate at −5. The chunk file has sha256
 `74aa551c…`. **Answers** were generated on 22 October 2026 on Google Colab (Tesla T4) by the v3.1 notebook, then
-re-scored with the current checks and test set `7313dd7571`. **Groundedness and retrieval metrics** are as measured
-in that run. Full scorecard: [`results/baseline/scorecard.md`](../results/baseline/scorecard.md); per question:
-[`results/baseline/per_question.csv`](../results/baseline/per_question.csv).
+re-scored with the current checks and test set `7313dd7571`. **Retrieval metrics and groundedness** were measured by
+package v3.3 on a T4 on 29 October 2026, which rebuilt the same contexts and took the answers from the cache (timing,
+speed and memory are from the generating run). Full scorecard:
+[`results/baseline/scorecard.md`](../results/baseline/scorecard.md); per question:
+[`results/baseline/per_question.csv`](../results/baseline/per_question.csv); sources and the groundedness correction:
+[`results/baseline/README.md`](../results/baseline/README.md).
 
 | | dev (25) | test (88) | all (113) |
 |---|---|---|---|
@@ -130,7 +134,7 @@ in that run. Full scorecard: [`results/baseline/scorecard.md`](../results/baseli
 | Key-fact recall (answerable) | 0.885 | 0.929 | 0.919 |
 | Critical error rate | 4.0% | 1.1% | 1.8% |
 | Plan-table values | 13/18 correct, 0 wrong | – | 13/18 correct, 0 wrong |
-| Groundedness (HHEM) / answers with an unsupported sentence | 0.809 / 43.5% | 0.863 / 30.9% | 0.851 / 33.7% |
+| Groundedness (HHEM) / answers with an unsupported sentence | 0.862 / 38.1% | 0.892 / 25.6% | 0.886 / 28.3% |
 | Figures not in the context | 0% | 0% | 0% |
 | Search recall / context recall | 0.952 / 0.889 | 0.989 / 0.932 | 0.980 / 0.922 |
 | MRR@10 / context precision | 0.806 / 0.391 | 0.894 / 0.280 | 0.874 / 0.305 |
@@ -181,20 +185,24 @@ Read the gate AUROC on dev with care: dev has only 4 not-answerable questions.
 ### Compared with the v2.6 baseline
 
 On the 24 dev questions shared with the v2.6 baseline (Mistral-7B, text-file chunks, bge-reranker-base), fully
-correct went from 11 to 17: 6 questions were fixed and none broke (McNemar p = 0.031). These numbers come from the
-v3.1 checks. The comparison is on dev, and three things changed at once (chunks from the PDF, reranker, answer model),
-so it shows the new system is better on these questions, not which change mattered.
+correct went from 11 to 17: 6 questions were fixed (G03, G04, G07, K07, M01, N05) and none broke (McNemar p = 0.031);
+critical errors fell from 5 to 1. Both systems' answers are re-scored with the current checks (the v3.1 checks gave
+the same counts). The comparison is on dev, and three things changed at once (chunks from the PDF, reranker, answer
+model), so it shows the new system is better on these questions, not which change mattered. Evidence:
+[`results/v2_6_vs_v3_1/`](../results/v2_6_vs_v3_1/).
 
 ## Experiments
 
 **Thinking off** (`configs/experiments/no_thinking.yaml`, run on a Colab T4 on 25 October 2026, package v3.2), judged
-by the decision rule above. Speed and memory figures are over all 113 questions.
+by the decision rule above. Speed and memory figures are over all 113 questions; groundedness is compared on the 69
+test answers HHEM scored in both runs. Evidence: [`results/thinking_off/`](../results/thinking_off/).
 
 | | Thinking on (baseline) | Thinking off |
 |---|---|---|
 | Fully correct, test | 79/88 | 72/88: 7 lost, 0 gained (McNemar p = 0.016) |
 | Key-fact recall, test | 0.929 | 0.884 |
 | Critical errors, test | 1 | 3 (two wrong yes/no answers: K01, K08) |
+| Groundedness / answers with an unsupported sentence, test (paired, 69) | 0.940 / 20.3% | 0.930 / 14.5% (no clear change) |
 | Seconds per answer, median / 95th percentile | 47 / 131 | 9.5 / 52 |
 | Peak GPU memory | 10.3 GB | 8.7 GB |
 
@@ -218,6 +226,8 @@ Each rewrite is also checked against keywords: the name of what the follow-up re
 switches, earlier-topic terms it must not pull in.
 
 ### First run: not adopted
+
+Evidence: [`results/memory/run1/`](../results/memory/run1/summary.md).
 
 Colab T4, 27 October 2026, rewrite prompt `condense_v1`, conversations now in
 [`testsets/optima_secure_followups_practice.json`](../testsets/optima_secure_followups_practice.json) (version
@@ -257,6 +267,8 @@ unchanged in the same session: all 113 answers came from the published run's cac
   that age") is searched as typed.
 
 ### Second run: not adopted
+
+Evidence: [`results/memory/run2/`](../results/memory/run2/summary.md).
 
 Colab T4, 27 October 2026, `condense_v2`, conversations now in
 [`testsets/optima_secure_followups_practice2.json`](../testsets/optima_secure_followups_practice2.json) (version
@@ -300,6 +312,8 @@ and the answer ran to their limits). Median rewrite time 38 s.
 
 ### Final run: not adopted
 
+Evidence: [`results/memory/run3/`](../results/memory/run3/summary.md).
+
 [`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) (version `a9a5aa60b1`), written
 and frozen after the changes above and before any run with them: 44 conversations, 44 later turns, all on the test
 split, each the complete form of a test question answered correctly in the published baseline.
@@ -329,7 +343,8 @@ the cache, 97/113).
 **Decision: do not adopt; memory ships switched off** (`memory.enabled: false`). The fixes worked as intended:
 complete questions were never reworded (14 turns skipped the rewriter; the one harm-check turn it saw changed only
 "they" to "the insurer"), no rewrite copied
-figures from an answer, and the 64-token cap held (median rewrite 44 s). But the rewriter often chose the wrong
+figures from an answer, and the 64-token cap held (median rewrite 44 s; the longest, 5.5 minutes, was spent
+thinking). But the rewriter often chose the wrong
 thing or garbled it: "After how many years can they no longer do that?" (the insurer's action on non-disclosure)
 became "... no longer Incorporate an additional Waiting Period?", "Are there covers it doesn't apply to?" became
 "Are there Individual Policies or Family Policies the Aggregate Deductible doesn't apply to?", "What is it,
@@ -361,10 +376,10 @@ itself. With memory off, a conversation still keeps its document choice, and eve
 
 [`testsets/optima_secure_hard_questions.json`](../testsets/optima_secure_hard_questions.json) has 15 questions
 beyond the test set, such as multi-claim calculations, deductibles across a family floater, deadlines with dates
-and interacting waiting periods. Each comes with an expected answer for a person to compare. In an earlier
-development run, judged by reading (not by the checks), about 5 of 15 were right without thinking and 6 of 15 with
-thinking under the old single token limit. In that run, 6 answers were lost to cut-off thinking, which led to the
-thinking budget. They have not been rerun with the current budget.
+and interacting waiting periods. Each comes with an expected answer for a person to compare. They were only tried in
+an early development run under the old single token limit, judged by reading (not by the checks); its outputs were
+not kept, so the figures noted then (about 5 of 15 right without thinking and 6 with thinking, 6 answers lost to
+cut-off thinking, which led to the thinking budget) **cannot be verified**. They have not been rerun since.
 
 ## Verification
 
@@ -379,8 +394,9 @@ last ran without the real models (none can be downloaded in the environment wher
 | Full run on dev with a small stand-in answer model: two-phase thinking, seeded sampling, cache, checks, evidence-removed test, repeat check, groundedness | 25/25 identical answers, keys and verdicts |
 | Re-scoring the saved v3.1 answers, notebook v3.2 vs package | 113/113 identical verdicts: 97/113 fully correct |
 | After adding conversation memory (v3.3): the five checks above repeated (single questions, no conversation) | all identical; prompts and cache keys unchanged |
+| Rebuilding the published baseline files from the run files with [`scripts/export_results.py`](../scripts/export_results.py) (29 Oct 2026) | identical in every column and row except groundedness (now the package's measurement; see [results/baseline](../results/baseline/README.md)) |
 | **Real models on a T4** (package v3.2, thinking-off experiment, 25 Oct 2026): retrieval vs the published run | 113/113 identical candidates, reranker scores, contexts and gate decisions |
-| **Real models on a T4** (package v3.3 with memory, 27 Oct 2026): all 113 questions with the default configuration | 113/113 identical contexts and answers; all 108 answers from the v3.1 cache, none generated; 97/113 fully correct. Groundedness measured with the package's sentence splitting: 0.886 (the published 0.851 used v3.1's splitting) |
+| **Real models on a T4** (package v3.3, three sessions on 27 Oct (two) and 29 Oct 2026): all 113 questions with the default configuration | in every session: 113/113 identical candidates, reranker scores, contexts and gate decisions; all 108 answers found in the v3.1 cache under the same keys (none generated); 97/113 fully correct; groundedness 0.886 ([results/reproduction](../results/reproduction/)) |
 
 Still open:
 

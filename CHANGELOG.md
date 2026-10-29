@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.3.1 (29 October 2026)
+
+Every experiment re-verified against its run files; no change to how the system answers.
+
+- **Evidence published** in [`results/`](results/) for every experiment, scores only (no policy text): baseline,
+  reproduction on a T4, thinking off, v2.6 against v3.1, and the three conversation-memory runs. Each folder records
+  the sha256 of the private run file it was built from.
+- [`scripts/export_results.py`](scripts/export_results.py) rebuilds those files from run files;
+  [`tests/test_published_results.py`](tests/test_published_results.py) recomputes the headline numbers from them
+  (80 tests in total).
+- [docs/experiments.md](docs/experiments.md): objective, method, result, limitations and evidence for each
+  experiment, and what has not been run or cannot be verified.
+- **Corrected:** groundedness of the baseline is 0.886 (28.3% of answers with an unsupported sentence), the package's
+  own measurement on a T4, the same in three sessions. The earlier 0.851 (33.7%) was the v3.1 notebook's measurement
+  with a different sentence splitter. Rebuilding the baseline files changed nothing else.
+- **Added to the thinking-off results:** groundedness compared on the same 69 answers (0.940 with thinking, 0.930
+  without: no clear change).
+- **Labelled as unverified:** the hard-question figures from an early development run (outputs not kept), the
+  model download size and the answer model's memory use (estimates).
+- **Corrected in 3.3.0's notes:** the 64-token cap shortened rewrites, but the longest rewrite in the final run still
+  took 5.5 minutes, because thinking itself is slow.
+
 ## 3.3.0 (29 October 2026)
 
 An interactive chat, and conversation memory for follow-up questions such as "Does that apply to day care treatment
@@ -79,8 +101,8 @@ be switched on for experiments (`--set memory.enabled=true`, `rag.set_memory(Tru
 - A follow-up whose missing piece is a figure from an earlier answer ("when he reaches that age") is searched as typed,
   because rewrites may take figures only from the user's questions.
 - When switched on, each follow-up that points back costs one more model call with thinking (a median of 44 s on a
-  T4 in the final run; the 64-token cap removed the worst cases of 6 and 14 minutes); complete questions cost nothing
-  extra.
+  T4 in the final run, at most 5.5 minutes; before the 64-token cap the longest rewrites took 6.4 and 14.4 minutes);
+  complete questions cost nothing extra.
 - Only the last 3 turns are used, and answers are cut to 400 characters; something said earlier can be lost.
 - A wrong rewrite that passes the checks leads to a correct answer to the wrong question; the reply shows the
   question that was searched ("searched as: ...") so the user can see it.

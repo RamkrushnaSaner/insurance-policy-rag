@@ -5,8 +5,8 @@ Answer correctness,key-fact recall (answerable),0.885,0.929,0.919
 Answer correctness,critical error rate,4.0%,1.1%,1.8%
 Answer correctness,plan-table values,"13/18 correct, 0 wrong",–,"13/18 correct, 0 wrong"
 Answer correctness,list completeness (list questions),0.833,0.970,0.949
-Faithfulness,"groundedness (supported sentences, HHEM)",0.809,0.863,0.851
-Faithfulness,hallucination rate (answers with an unsupported sentence),43.5%,30.9%,33.7%
+Faithfulness,"groundedness (supported sentences, HHEM)",0.862,0.892,0.886
+Faithfulness,hallucination rate (answers with an unsupported sentence),38.1%,25.6%,28.3%
 Faithfulness,answers with figures not in the context,0.0%,0.0%,0.0%
 Faithfulness,answers citing section numbers not in the context,0.0%,1.1%,0.9%
 Retrieval,context recall (evidence passages reaching the model),0.889,0.932,0.922

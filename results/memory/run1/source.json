@@ -1,0 +1,14 @@
+{
+ "inputs": [
+  {
+   "file": "memory_run1_2026-10-27/dialogues.json",
+   "sha256": "8411240f7976cac253ad3adb1774a8e75c4377c45db9a1b659b47f53b4d117be"
+  }
+ ],
+ "exported_with": "scripts/export_results.py",
+ "run_name": "memory",
+ "started": "2026-10-27T11:08:23",
+ "dialogues_version": "861c4640a2",
+ "template": "condense_v1",
+ "decision": "DO NOT ADOPT MEMORY: follow-ups not significantly better with memory (fixed 2, broken 1, p = 1.000)"
+}

@@ -1,5 +1,5 @@
 """Grounded question answering over insurance policy documents (retrieval-augmented generation)."""
-__version__ = "3.3.0"
+__version__ = "3.3.1"
 
 from .config import Config, load_config  # noqa: E402,F401
 from .corpus import Corpus, load_corpus  # noqa: E402,F401

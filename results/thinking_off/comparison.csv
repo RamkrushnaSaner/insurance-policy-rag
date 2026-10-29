@@ -1,0 +1,3 @@
+split,baseline,candidate,n,fully_correct_base,fully_correct_candidate,diff,ci,fixed,broken,p_mcnemar,p_holm,decision
+dev,thinking on (baseline),thinking off,25,0.72,0.72,0.0,+0.000 to +0.000,0,0,1.0,1.0,"dev only: guides debugging, no decision"
+test,thinking on (baseline),thinking off,88,0.898,0.818,-0.08,-0.136 to -0.034,0,7,0.0156,0.0156,KEEP THE BASELINE: fully correct not significantly better (p = 0.016)

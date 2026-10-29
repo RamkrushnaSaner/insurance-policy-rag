@@ -62,8 +62,8 @@ len(cands), routes
 **Routed index (premium tables).** Chunks whose `index` field is `premium` are kept out of the two main lists and
 searched as their own index, with 12 candidates per leg, but only when the question asks what the policy costs (the
 pattern is in `retrieval.routed_indexes` in the config). The 76 premium chunks are near-identical rows of numbers.
-In the shared BM25 ranking, the premium rows ranked 36th to 75th for premium questions, below the cut-off of 32; in
-their own small index they are found.
+In one BM25 index over all 208 chunks, the rows that answer the three premium questions of the test set (PR01, PR02,
+N05) rank 36th to 75th, below the cut-off of 32; in their own small index they are found.
 
 ## 2. Reranking: read every candidate with the question
 
@@ -125,13 +125,14 @@ context", it has scope rules that came from mistakes in earlier recorded answers
 
 [`generation.py`](../src/policy_rag/generation.py)
 
-[Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) runs in 4-bit NF4 with fp16 compute (a T4 has no bfloat16), using
-about 6.5 GB. With *thinking* on, it first reasons in a hidden `<think>` block, which helps with conditions,
+[Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) runs in 4-bit NF4 with fp16 compute (a T4 has no bfloat16). The
+published run used 7.9 GB of GPU memory after loading its models and peaked at 10.3 GB. With *thinking* on, it first reasons in a hidden `<think>` block, which helps with conditions,
 calculations and "is X covered if Y" questions.
 
-- **Thinking budget.** At first a single 1,000-token limit covered thinking and answer together. On 15 hard
-  questions, 6 ran out of tokens while still thinking and produced no answer at all. Now generation runs in two
-  phases. Phase 1 thinks until `</think>`, or for at most 1,024 tokens. At the limit, Qwen3's own budget sentence is
+- **Thinking budget.** At first a single 1,000-token limit covered thinking and answer together. In an early
+  development run on the 15 hard questions, 6 ran out of tokens while still thinking and produced no answer at all
+  (that run's outputs were not kept, so this is a development note, not a published result). Now generation runs in
+  two phases. Phase 1 thinks until `</think>`, or for at most 1,024 tokens. At the limit, Qwen3's own budget sentence is
   appended ("Considering the limited time by the user, I have to give the solution based on the thinking directly
   now.") and the thinking block is closed. Phase 2 writes the answer with its own 1,000 tokens. In the baseline the
   median was 339 thinking tokens, the budget was reached 8 times, and no answer was cut off. The thinking is saved
