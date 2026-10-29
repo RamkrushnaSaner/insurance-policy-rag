@@ -175,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", help="save the answers as CSV")
     p.set_defaults(func=cmd_ask)
 
-    p = common(sub.add_parser("chat", help="interactive questions with conversation memory (follow-ups)"))
+    p = common(sub.add_parser("chat", help="interactive questions (follow-up memory is off by default: --set memory.enabled=true)"))
     p.add_argument("--document", action="append", help="search only this document id (repeatable)")
     p.add_argument("--load", help="continue a conversation saved with /save")
     p.set_defaults(func=cmd_chat)

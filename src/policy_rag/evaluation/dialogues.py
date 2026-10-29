@@ -141,8 +141,9 @@ class DialogueEvaluation:
         corpus = self.system.corpus
         scope = [testset.document] if corpus.multi_document else None
         self.scorer = Scorer(testset, corpus, self.system.context, testset.document if corpus.multi_document else None)
-        if self.system.rewriter is None:
-            notes.append("memory is off (memory.enabled: false): the memory condition only keeps the document filter")
+        if self.system.rewriter is None:            # off by default; this evaluation is about memory, so turn it on
+            self.system.set_memory(True)
+            notes.append("memory is off in the config (memory.enabled: false); it was turned on for this evaluation")
         for n in notes:
             self.log("  NOTE: " + n)
         dialogues = [d for d in data["dialogues"]

@@ -156,9 +156,13 @@ and edges in the same graph. None of them is implemented; the evaluation is ther
 
 ## 7b. Follow-up questions (conversation memory)
 
-[`memory.py`](../src/policy_rag/memory.py)
+[`memory.py`](../src/policy_rag/memory.py) · **Off by default.** Three evaluations did not show a significant gain
+([docs/evaluation.md](evaluation.md#conversation-memory)); switch it on for experiments with
+`--set memory.enabled=true` or `rag.set_memory(True)`. With memory off, the `condense` node passes every question
+through unchanged.
 
 ```python
+rag.set_memory(True)
 chat = rag.new_conversation()
 rag.ask("What is the waiting period for kidney stones?", conversation=chat)
 r = rag.ask("Does it apply if the problem is caused by an accident?", conversation=chat)

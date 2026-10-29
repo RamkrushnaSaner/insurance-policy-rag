@@ -57,7 +57,7 @@ generator:
   oom_retry_context_tokens: 1000
 
 memory:                                  # follow-up questions in a conversation (policy-rag chat)
-  enabled: true                          # acts only when a conversation is passed; single questions are unchanged
+  enabled: false                         # not adopted: three evaluations showed no significant gain (docs/evaluation.md)
   max_turns: 3                           # earlier turns the rewriter sees
   answer_chars: 400                      # characters of each earlier answer it sees
   max_question_chars: 400                # a longer rewrite is rejected (the question is used as asked)

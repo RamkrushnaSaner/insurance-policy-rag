@@ -251,6 +251,14 @@ class RAGSystem:
         return Answer(question, st["answer"], sources, route,
                       top if top is not None and top != float("-inf") else None, st, standalone)
 
+    def set_memory(self, enabled: bool = True) -> "RAGSystem":
+        """Turn conversation memory (follow-up rewriting) on or off for this system. It is off by default: three
+        evaluations did not show a significant gain (docs/evaluation.md#conversation-memory)."""
+        self.cfg.memory.enabled = bool(enabled)
+        self.rewriter = QuestionRewriter(self.answerer, self.cfg.memory) if enabled else None
+        self.pipeline.rewriter = self.rewriter
+        return self
+
     def new_conversation(self, documents=None) -> Conversation:
         """An empty conversation (optionally limited to some document ids) to pass to ``ask``."""
         if documents:

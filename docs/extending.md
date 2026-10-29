@@ -99,16 +99,17 @@ The tests use the same mechanism with tiny stand-in components ([`tests/fakes.py
 - **A check**: add it to `score_answer` in [`evaluation/checks.py`](../src/policy_rag/evaluation/checks.py) with a
   stage and a kind, and decide whether the kind is critical (`CRITICAL`) or incomplete (`INCOMPLETE`). Changing the
   checks changes the scores, so re-score the baseline (`--mode rescore`) before comparing.
-- **Conversation memory**: the `memory` section of the config (`enabled`, `max_turns`, `answer_chars`,
-  `max_question_chars`, `copy_words`, `skip_complete`, `max_new_tokens`, `template`). A new rewrite instruction is a template in `CONDENSE_TEMPLATES` in
+- **Conversation memory** (off by default; see [evaluation](evaluation.md#conversation-memory)): the `memory`
+  section of the config (`enabled`, `max_turns`, `answer_chars`, `max_question_chars`, `copy_words`, `skip_complete`,
+  `max_new_tokens`, `template`). A new rewrite instruction is a template in `CONDENSE_TEMPLATES` in
   [`prompts.py`](../src/policy_rag/prompts.py); a new safety check for rewrites goes in `check_rewrite` in
   [`memory.py`](../src/policy_rag/memory.py), and the words that mark a follow-up are in `needs_rewrite` there. Try
-  changes on the practice sets (`--set evaluation.dialogues=testsets/optima_secure_followups_practice2.json`) and
-  decide with
-  `policy-rag evaluate-dialogues` on [`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json).
-  For a new policy, write conversations whose later turns' complete forms are questions in that policy's test set; with
-  `"follow_ups_need_context": true` the file is checked so that every `follow_up` leaves its `subject` out, and
-  follow-ups that name their subject are `self_contained` turns (harm checks, like topic switches).
+  changes on the practice sets (`--set evaluation.dialogues=testsets/optima_secure_followups_practice2.json`); a new
+  attempt to adopt memory needs new conversations written before the run, judged by `policy-rag evaluate-dialogues`
+  (the three sets used so far have all been seen). For a new policy, write conversations whose later turns' complete
+  forms are questions in that policy's test set; with `"follow_ups_need_context": true` the file is checked so that
+  every `follow_up` leaves its `subject` out, and follow-ups that name their subject are `self_contained` turns
+  (harm checks, like topic switches).
 - **A pipeline step** (a second retrieval round, say): a new node in the LangGraph graph in
   [`pipeline.py`](../src/policy_rag/pipeline.py), as the rewrite step (`condense`) is. Measure it like any other change.
 
@@ -119,7 +120,7 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-The 70 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
+The 72 tests use an invented sample policy and stand-in components: no GPU, no model downloads and no policy text.
 They cover configuration, chunk loading for one or several documents, routing, title pinning, neighbours, the
 budget, the gate, the cache, the checks, the statistics, the evaluation commands and conversation memory (rewriting,
 its safety checks, the chat commands and the dialogue evaluation). GitHub Actions runs them on

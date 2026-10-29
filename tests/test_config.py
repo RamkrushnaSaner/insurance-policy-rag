@@ -12,6 +12,7 @@ def test_default_config_is_the_baseline():
     assert (cfg.context.token_budget, cfg.gate.min_score, cfg.context.seed_score_floor) == (1500, -5.0, -5.0)
     assert set(cfg.retrieval.routed_indexes) == {"premium"} and cfg.retrieval.routed_indexes["premium"].k == 12
     assert [d.id for d in cfg.documents] == ["optima-secure"]
+    assert cfg.memory.enabled is False                        # not adopted (docs/evaluation.md)
 
 
 def test_yaml_values_equal_the_code_defaults():

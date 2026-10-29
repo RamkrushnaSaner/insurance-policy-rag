@@ -93,8 +93,9 @@ class MemoryConfig:
     """Conversation memory: a follow-up question ("and for Super Secure?") is rewritten into a standalone question from
     the last turns, then searched and answered like any question. It acts only when a conversation is passed
     (``rag.ask(..., conversation=...)``, ``policy-rag chat``); single questions and the test-set evaluation are
-    unchanged. The rewrite uses the answer model with its configured settings (thinking included)."""
-    enabled: bool = True
+    unchanged. The rewrite uses the answer model with its configured settings (thinking included).
+    Off by default: three evaluations did not show a significant gain (docs/evaluation.md#conversation-memory)."""
+    enabled: bool = False
     max_turns: int = 3                   # previous turns shown to the rewriter
     answer_chars: int = 400              # characters of each previous answer shown to the rewriter
     max_question_chars: int = 400        # a longer rewrite is rejected (the original question is used)

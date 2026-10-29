@@ -301,3 +301,22 @@ def test_a_rewrite_cut_off_at_the_length_limit_is_not_used(system, monkeypatch):
     system.ask(WELLNESS, conversation=chat, show_sources=False)
     r = system.ask(FOLLOW, conversation=chat, show_sources=False)
     assert r.state["query"] == FOLLOW and r.state["rewrite"]["fallback"] == "rewrite cut off at the length limit"
+
+
+def test_memory_can_be_switched_on_and_off(tmp_path):
+    rag = build(tmp_path, memory={"enabled": False})
+    assert rag.rewriter is None and rag.pipeline.rewriter is None
+    rag.set_memory(True)
+    rag.generator.rewrites[FOLLOW] = STANDALONE
+    chat = rag.new_conversation()
+    rag.ask(WELLNESS, conversation=chat, show_sources=False)
+    assert rag.ask(FOLLOW, conversation=chat, show_sources=False).standalone == STANDALONE
+    rag.set_memory(False)
+    assert rag.ask(FOLLOW, conversation=chat, show_sources=False).state["query"] == FOLLOW
+
+
+def test_the_dialogue_evaluation_turns_memory_on_for_itself(tmp_path):
+    from policy_rag.evaluation.dialogues import DialogueEvaluation
+    rag = build(tmp_path, memory={"enabled": False})
+    run = DialogueEvaluation(None, "dlg", system=rag, log=lambda *_: None).run()
+    assert rag.rewriter is not None and any("turned on for this evaluation" in n for n in run["notes"])

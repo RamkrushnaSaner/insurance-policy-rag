@@ -27,6 +27,7 @@ def fake_config(tmp_path, documents=None, **sections):
                        "output_dir": str(tmp_path / "runs"),
                        "groundedness": False},
         "retrieval": {"k_dense": 8, "k_bm25": 8},
+        "memory": {"enabled": True},       # off by default; the tests exercise it
     }
     for k, v in sections.items():
         data.setdefault(k, {}).update(v)

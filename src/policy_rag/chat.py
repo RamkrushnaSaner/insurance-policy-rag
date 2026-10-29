@@ -11,8 +11,13 @@ def run_chat(rag, conversation, input_fn=input, print_fn=print, save_dir: str = 
     """Ask questions in a loop; each answer sees the conversation so far through the question rewriter."""
     conv = conversation
     docs = ", ".join(rag.corpus.documents)
-    print_fn(f"Chat about: {docs}. Memory {'on' if rag.rewriter is not None else 'off'}: follow-up questions are "
-             f"rewritten from the last {rag.cfg.memory.max_turns} turns.\n{HELP}")
+    if rag.rewriter is not None:
+        memory = (f"Memory on: follow-up questions are rewritten from the last {rag.cfg.memory.max_turns} turns "
+                  "(experimental, not adopted).")
+    else:
+        memory = ("Memory off: every question is answered as typed, so name what you ask about. To try follow-ups, "
+                  "start with --set memory.enabled=true (experimental).")
+    print_fn(f"Chat about: {docs}. {memory}\n{HELP}")
     while True:
         try:
             q = input_fn("\nYou: ").strip()

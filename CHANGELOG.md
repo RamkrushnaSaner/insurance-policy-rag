@@ -1,11 +1,13 @@
 # Changelog
 
-## 3.3.0 (unreleased)
+## 3.3.0 (29 October 2026)
 
-Conversation memory: follow-up questions such as "And for the second policy year?" or "Does that apply to
-day care treatment too?" can now be asked in a conversation.
+An interactive chat, and conversation memory for follow-up questions such as "Does that apply to day care treatment
+too?", built and evaluated three times. **Memory is off by default:** it helped some follow-ups but never
+significantly (final run: 21 of 32 right with memory, 19 without; 5 fixed, 3 broken), so it is not adopted. It can
+be switched on for experiments (`--set memory.enabled=true`, `rag.set_memory(True)`).
 
-### How it works
+### How memory works (when switched on)
 
 - A `Conversation` keeps the last turns of a chat: for each one, the complete question that was searched and the
   start of the answer (by default the last 3 turns and the first 400 characters of each answer).
@@ -24,8 +26,8 @@ day care treatment too?" can now be asked in a conversation.
 ### Added
 
 - `policy_rag.memory` (`Conversation`, `Turn`, `QuestionRewriter`, `check_rewrite`) and `policy_rag.chat`.
-- `RAGSystem.new_conversation()`, `RAGSystem.ask(..., conversation=...)`, `RAGSystem.chat()`;
-  `Answer.standalone` holds the rewritten question.
+- `RAGSystem.new_conversation()`, `RAGSystem.ask(..., conversation=...)`, `RAGSystem.chat()`,
+  `RAGSystem.set_memory()`; `Answer.standalone` holds the rewritten question.
 - Commands `policy-rag chat` (`/new`, `/doc`, `/save`, `/history`, `/help`, `/quit`; `--load` a saved chat) and
   `policy-rag evaluate-dialogues`.
 - `memory` config section and the rewrite templates `condense_v3` (default), `condense_v2` and `condense_v1`
@@ -38,7 +40,7 @@ day care treatment too?" can now be asked in a conversation.
   ([docs/evaluation.md](docs/evaluation.md#conversation-memory)).
 - `--resume-from` (for `evaluate` and `evaluate-dialogues`) also accepts a `run.json`, whose records hold every
   generated answer.
-- 39 tests (70 in total).
+- 41 tests (72 in total).
 
 ### Unchanged
 
@@ -54,7 +56,7 @@ day care treatment too?" can now be asked in a conversation.
   [evaluation](docs/evaluation.md) (memory evaluation, thinking-off experiment, real-model retrieval check) and
   [extending](docs/extending.md).
 
-### Evaluation so far
+### Evaluation
 
 - First run (Colab T4, `condense_v1`, the practice set): **not adopted**. 16 deciding follow-ups: 11 right without
   memory, 12 with it (2 fixed, 1 broken, p = 1.0). The set was too easy to show a gain (at most 5 could be fixed) and
@@ -64,18 +66,21 @@ day care treatment too?" can now be asked in a conversation.
   with it (6 fixed, 1 broken, p = 0.125), and one self-contained follow-up made wrong. Copying from answers was gone;
   vague rewrites ("the policy" instead of the cover's name) and rewording of complete questions were the problems.
   Fixed with `condense_v3`, skipping complete questions, two more checks and the 64-token cap.
-- The final run, on a new set written before any run with these changes, decides. If it fails, memory ships switched
-  off.
+- Final run (`condense_v3`, the final set): **not adopted**. 32 deciding follow-ups: 19 right without memory, 21 with
+  it (5 fixed, 3 broken, p = 0.73); no complete question made worse. The rewriter often chose the wrong referent for
+  "it" or "that" ("can they no longer do that?" became "... no longer Incorporate an additional Waiting Period?").
+  Memory ships switched off (`memory.enabled: false`).
 
 ### Limitations
 
-- Not adopted yet: the final dialogue evaluation decides.
+- Memory is not adopted and is off by default; with it off, every question in a chat is answered as typed.
 - Follow-ups that point back only through "the" ("the papers", "the emergency-only one") are not recognised and are
   answered as typed.
 - A follow-up whose missing piece is a figure from an earlier answer ("when he reaches that age") is searched as typed,
   because rewrites may take figures only from the user's questions.
-- Each follow-up that points back costs one more model call with thinking (a median of 38 s on a T4 in the second
-  run; the 64-token cap removes the worst cases of 6 and 14 minutes); complete questions cost nothing extra.
+- When switched on, each follow-up that points back costs one more model call with thinking (a median of 44 s on a
+  T4 in the final run; the 64-token cap removed the worst cases of 6 and 14 minutes); complete questions cost nothing
+  extra.
 - Only the last 3 turns are used, and answers are cut to 400 characters; something said earlier can be lost.
 - A wrong rewrite that passes the checks leads to a correct answer to the wrong question; the reply shows the
   question that was searched ("searched as: ...") so the user can see it.

@@ -298,7 +298,7 @@ and the answer ran to their limits). Median rewrite time 38 s.
 - Replayed on the second run's rewrites, the new rules avoid both turns memory made wrong: Q28.2 is not sent to the
   rewriter, Q13.2's vague rewrite is rejected.
 
-### Final run: the deciding set (not yet run)
+### Final run: not adopted
 
 [`testsets/optima_secure_followups.json`](../testsets/optima_secure_followups.json) (version `a9a5aa60b1`), written
 and frozen after the changes above and before any run with them: 44 conversations, 44 later turns, all on the test
@@ -315,9 +315,47 @@ practice sets were used to design the changes, never this set.
 
 **Decision rule (the same, fixed before the run):** on the 32 follow-ups that need the conversation, memory must be
 fully correct significantly more often than without it (McNemar exact, p < 0.05), and no `self_contained` or
-`topic_switch` turn may become wrong. Single questions must still come from the published cache. **This is the last
-attempt:** if it does not pass, memory ships switched off (`memory.enabled: false`) and stays documented here.
-Expect about 1.5–2 hours on a T4.
+`topic_switch` turn may become wrong; this was the last attempt.
+
+Colab T4, 29 October 2026, `condense_v3`. Single questions were unchanged in the same session (all 113 answers from
+the cache, 97/113).
+
+| Test split | Without memory | With memory | Complete question |
+|---|---|---|---|
+| Follow-ups that need the conversation (32) | 19 | 21: 5 fixed (R08.2, R16.2, R26.2, R28.2, R31.2), 3 broken (R01.2, R17.2, R21.2), p = 0.73 | 32 |
+| Self-contained follow-ups (6) | 5 | 5 | 6 |
+| Topic switches (6) | 6 | 6, all unchanged | 6 |
+
+**Decision: do not adopt; memory ships switched off** (`memory.enabled: false`). The fixes worked as intended:
+complete questions were never reworded (14 turns skipped the rewriter; the one harm-check turn it saw changed only
+"they" to "the insurer"), no rewrite copied
+figures from an answer, and the 64-token cap held (median rewrite 44 s). But the rewriter often chose the wrong
+thing or garbled it: "After how many years can they no longer do that?" (the insurer's action on non-disclosure)
+became "... no longer Incorporate an additional Waiting Period?", "Are there covers it doesn't apply to?" became
+"Are there Individual Policies or Family Policies the Aggregate Deductible doesn't apply to?", "What is it,
+exactly?" (Home Health Care) became "What is cashless approval for Home Health Care, exactly?". 8 of the 27 rewrites
+pointed at the wrong thing or were garbled, which broke 3 answers and kept 5 others wrong.
+
+### What the three runs show
+
+| Run | Prompt | Follow-ups that decide | Right without memory | Right with memory | Fixed / broken | p | Harm-check turns made wrong |
+|---|---|---|---|---|---|---|---|
+| 1 | `condense_v1` | 16 | 11 | 12 | 2 / 1 | 1.0 | 0 of 6 |
+| 2 | `condense_v2` | 28 | 16 | 21 | 6 / 1 | 0.125 | 1 of 14 |
+| 3 | `condense_v3` | 32 | 19 | 21 | 5 / 3 | 0.73 | 0 of 12 |
+
+- Memory helps some follow-ups, but never significantly: each fix to the rewriter removed one failure and exposed
+  another (copying from answers, then vague names, then wrong referents). Pooled over the three runs (not a test
+  fixed in advance) it fixed 13 follow-ups and broke 5, p = 0.096.
+- Many follow-ups are answered correctly as typed (11 of 16, 16 of 28, 19 of 32): the search still finds the right
+  passage from the words that remain, so there is less to gain than expected.
+- The limit is the rewriter: Qwen3-8B (4-bit) with thinking resolves "it" and "that" unreliably on this document.
+  Untried options: a stronger rewrite model, using the sections retrieved in the previous turn instead of a text
+  rewrite, or asking the user which benefit they mean.
+
+The code stays: `policy-rag chat`, `rag.ask(..., conversation=...)` and the dialogue evaluation work, and memory can
+be switched on for experiments (`--set memory.enabled=true`, `rag.set_memory(True)`); the evaluation turns it on by
+itself. With memory off, a conversation still keeps its document choice, and every question is answered as typed.
 
 ## Hard questions (not scored)
 
