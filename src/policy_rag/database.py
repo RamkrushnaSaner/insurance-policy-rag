@@ -66,13 +66,23 @@ class Database:
                     "set_config('statement_timeout', %s, false)", (str(int(self.cfg.statement_timeout_ms)),))
         return con
 
-    def query(self, sql: str, params: Sequence = ()) -> List[tuple]:
+    def query(self, sql: str, params=()) -> List[tuple]:
         """All rows of one read-only query. A dropped connection is reopened and the query run again, once."""
+        return self._run(sql, params, lambda cur: list(cur.fetchall()))
+
+    def query_dicts(self, sql: str, params=()) -> List[dict]:
+        """Like ``query``, each row as a dict keyed by column name."""
+        def rows(cur):
+            names = [d[0] for d in cur.description]
+            return [dict(zip(names, r)) for r in cur.fetchall()]
+        return self._run(sql, params, rows)
+
+    def _run(self, sql, params, read):
         for attempt in (0, 1):
             try:
                 if self._con is None or self._con.closed:
                     self._con = self._open()
-                return list(self._con.execute(sql, params).fetchall())
+                return read(self._con.execute(sql, params))
             except self._retry_on:
                 self.close()
                 if attempt:

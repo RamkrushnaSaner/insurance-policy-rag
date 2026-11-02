@@ -258,6 +258,15 @@ def test_connection_is_read_only_and_reopened_once_after_a_drop():
     assert db.query("SELECT 1") == [(1,)] and len(opened) == 2               # the connection is kept
 
 
+def test_rows_as_dicts():
+    class Con(FakeConnection):
+        def execute(self, sql, params=()):
+            self.log.append(sql)
+            return types.SimpleNamespace(description=[("plan",), ("value",)], fetchall=lambda: [("A", 1), ("B", 2)])
+    db = Database(DatabaseConfig(), connect=lambda: Con([]), retry_on=(Dropped,))
+    assert db.query_dicts("SELECT plan, value FROM t") == [{"plan": "A", "value": 1}, {"plan": "B", "value": 2}]
+
+
 def test_a_second_drop_is_raised():
     def connect():
         return FakeConnection([], fail_first_query=True)

@@ -18,6 +18,14 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
 - Tests: stored-vector search, start-up checks, reconnects and the embedder settings with stand-ins (24 tests), plus
   3 opt-in tests against a real Postgres (`POLICY_RAG_TEST_DATABASE_URL`). Config fingerprints change because the
   new settings are part of every config.
+- **Table route** ([`tables.py`](src/policy_rag/tables.py)): questions about premiums, claim limits, instalment grace
+  periods, check-up limits, deductible discounts and city tiers are answered from the typed tables with fixed,
+  parameterised SQL. Fields (plan, age, Sum Insured, city or tier, year, frequency) are read from the question and
+  checked against the tables: a plan without a premium table, an age or Sum Insured that is not printed, an unknown
+  plan are explained, never guessed. Differences are computed in Decimal; every value keeps its table, row, column,
+  page and printed cell; `verify()` lists figures in an answer that are not in the facts. Not yet used by the
+  answer pipeline (next step). Tests: 35 on an invented policy, plus 18 opt-in tests that compare the SQL with the
+  in-memory stand-in on a real Postgres.
 
 ## 3.3.1 (29 October 2026)
 
