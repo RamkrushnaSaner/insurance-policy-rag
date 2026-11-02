@@ -70,7 +70,8 @@ def table_summary(st: dict) -> Optional[dict]:
         return None
     return {"intent": t.intent, "status": t.status, "complete": t.complete, "mode": t.fields.get("mode"),
             "table_ids": t.table_ids, "rows": len(t.rows), "trace": t.trace(), "linked_chunks": len(t.linked_chunks),
-            "linked_added": [int(i) for i in st.get("table_linked") or []], "in_context": bool(st.get("facts"))}
+            "linked_added": [int(i) for i in st.get("table_linked") or []],
+            "pinned": [int(i) for i in st.get("table_pinned") or []], "in_context": bool(st.get("facts"))}
 
 
 def build_record(item: dict, st: dict, context, gate) -> dict:

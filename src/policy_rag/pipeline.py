@@ -52,6 +52,7 @@ class RAGState(TypedDict, total=False):
     table: object               # the table route's answer (tables.TableAnswer), when tables are enabled
     facts: str                  # the table passage put ahead of the text passages ("" = none)
     table_linked: List[int]     # chunk ids added as candidates because they are linked to the tables used
+    table_pinned: List[int]     # linked chunk ids placed in the context whatever their score
     table_check: dict           # the answer's figures checked against the context, and the fallback if one was used
     table_error: str
 
@@ -203,9 +204,19 @@ class RAGPipeline:
             cands = list(state.get("candidates") or [])
             have = set(cands)
             linked = [i for i in dict.fromkeys(self._uid_pos[u] for u in table.linked_chunks if u in self._uid_pos)
-                      if i not in have and (allowed is None or i in allowed)]
-            if linked:
-                out.update(candidates=cands + linked, table_linked=linked)
+                      if allowed is None or i in allowed]
+            added = [i for i in linked if i not in have]
+            if added:
+                out.update(candidates=cands + added, table_linked=added)
+            if self.cfg.tables.pin_linked_chunks:          # the clause a table belongs to goes with it
+                pinned, used = [], 0
+                for i in linked:
+                    cost = self.context.block_tokens(i)
+                    if used + cost <= self.cfg.tables.max_linked_tokens:
+                        pinned.append(i)
+                        used += cost
+                if pinned:
+                    out["table_pinned"] = pinned
         return out
 
     def _rerank_node(self, state: RAGState):
@@ -216,7 +227,7 @@ class RAGPipeline:
                 return empty
             scores = self.reranker.score(state["query"], [self.rerank_text(i) for i in cands])
             docs = set(state["doc_ids"]) if state.get("doc_ids") else None
-            groups = self.context.build(state["query"], cands, scores, docs)
+            groups = self.context.build(state["query"], cands, scores, docs, state.get("table_pinned") or ())
             return {"scores": [float(s) for s in scores], "groups": groups, "top_score": float(max(scores))}
         except Exception as e:
             traceback.print_exc()

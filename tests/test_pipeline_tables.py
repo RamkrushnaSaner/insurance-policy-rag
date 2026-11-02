@@ -178,3 +178,18 @@ def test_a_fact_in_the_table_passage_is_not_a_corpus_gap(tmp_path):
            "facts": "Rs. 1,450 a year", "gate_route": "answer"}
     stages = {i["stage"] for i in scorer.score_record(rec, live=False)["verdict"]["issues"]}
     assert "corpus" not in stages and "generation" in stages
+
+
+def test_linked_chunks_are_pinned_into_the_context(tmp_path):
+    rag, target, _ = _system(tmp_path, context={"seed_score_floor": 1000.0})   # no chunk is relevant by its score
+    pos = rag.corpus.chunks.index(target)
+    st = rag.pipeline.search(LIST_Q)
+    assert st["table_pinned"] == [pos] and st["groups"] == [[pos]]
+    assert rag.pipeline.context_text(st["groups"], st["facts"]).startswith(st["facts"] + "\n\n[")
+
+
+@pytest.mark.parametrize("tables", [{"pin_linked_chunks": False}, {"max_linked_tokens": 1}, {"link_chunks": False}])
+def test_pinning_can_be_switched_off_or_capped(tmp_path, tables):
+    rag, target, _ = _system(tmp_path, context={"seed_score_floor": 1000.0}, tables=tables)
+    st = rag.pipeline.search(LIST_Q)
+    assert "table_pinned" not in st and st["groups"] == []

@@ -124,8 +124,10 @@ them before reranking:
    the item's name. Words common to coverage questions ("charges", "covered") and words of a text section's title do
    not count, so "Does the policy pay for an ambulance?" is left to the ambulance cover's own section instead of a
    non-payable list item "Ambulance". "What are the conditions with a 24-month waiting period?" gets the whole list.
-4. **Context.** The facts become the first passage, labelled `[Policy tables → Section …]`, and the text chunks
-   linked to those tables (the clause that introduces or refers to them) join the search candidates. When the route
+4. **Context.** The facts become the first passage, labelled `[Policy tables → Section …]`. The text chunks linked
+   to those tables (the clause that introduces them, or one that refers to them, such as the cover that pays a
+   list's items) join the search candidates and are placed in the context after the title-matched sections, whatever
+   their score (up to `tables.max_linked_tokens`, 600 tokens; `tables.pin_linked_chunks`). When the route
    answered, the gate lets the question through even if no text passage scores high (not for single list items:
    they only add to the text, which must be relevant on its own).
 5. **Check.** After generation, figures in the answer that are in neither the context nor the question are listed.

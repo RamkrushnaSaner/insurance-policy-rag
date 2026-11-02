@@ -104,4 +104,6 @@ tables:                                  # the table route (src/policy_rag/table
   doc_id: ""                             # the document whose tables are used ("" = the only configured document)
   max_tokens: 1500                       # longest table passage in the context (shortened beyond, and says so)
   link_chunks: true                      # text chunks linked to the tables used become search candidates
+  pin_linked_chunks: true                # ... and go into the context after the table passage (with link_chunks)
+  max_linked_tokens: 600                 # at most this many tokens of linked chunks are pinned
   on_unsupported_figures: table_answer   # table_answer | keep: replace a complete table answer the model got wrong

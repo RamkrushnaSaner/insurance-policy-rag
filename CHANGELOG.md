@@ -31,7 +31,8 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
   Each answer carries the printed cells behind it (`evidence_text`) and the text chunks linked to its tables.
 - **Table route in the pipeline** (`tables.*`, off by default;
   [`qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml) turns it on): a new graph node puts the
-  table facts first in the context and adds the linked chunks to the search candidates; the gate passes when the
+  table facts first in the context, adds the linked chunks to the search candidates and places them in the context
+  whatever their score (`tables.pin_linked_chunks`, at most `tables.max_linked_tokens`); the gate passes when the
   tables answered (except for single list items); a complete table answer replaces a model answer that has a figure
   not in the context, or that refuses. A failing route is logged and the text alone is used. With tables off, the
   pipeline's results are unchanged (checked question by question on the 113 test questions).

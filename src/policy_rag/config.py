@@ -177,6 +177,8 @@ class TablesConfig:
     doc_id: str = ""                     # the document whose tables are used ("" = the only configured document)
     max_tokens: int = 1500               # longest table passage in the context (longer lists are shortened, and say so)
     link_chunks: bool = True             # text chunks linked to the tables used become search candidates
+    pin_linked_chunks: bool = True       # ... and go into the context after the table passage, whatever their score
+    max_linked_tokens: int = 600         # at most this many tokens of linked chunks are pinned
     # when the answer has a figure that is in neither the context nor the question, and the tables gave the whole
     # answer (a premium, a limit, ...): "table_answer" replaces it with the answer written from the tables; "keep" keeps it
     on_unsupported_figures: str = "table_answer"
