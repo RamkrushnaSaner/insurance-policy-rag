@@ -1,0 +1,8 @@
+# qwen3_text_pgvector.yaml plus the table route: questions about the printed tables (premiums, claim limits, grace
+# periods, check-up limits, deductible discounts, city tiers, the lists, claim deadlines, grievance contacts, Sum
+# Insured examples) get the exact values from the database as the first context passage, and the text chunks linked
+# to those tables become search candidates. Needs migrations 001 and 002 and the typed tables loaded.
+#   policy-rag evaluate --config configs/experiments/qwen3_text_tables.yaml --name qwen3_text_tables --mode retrieval
+extends: qwen3_text_pgvector.yaml
+tables:
+  enabled: true

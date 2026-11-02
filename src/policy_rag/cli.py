@@ -66,7 +66,7 @@ def cmd_ask(args):
         print("=" * 100)
         r = rag.ask(q, documents=args.document)
         if args.show_context:
-            print("\nCONTEXT:\n" + rag.context.format(r.state.get("groups", [])))
+            print("\nCONTEXT:\n" + rag.pipeline.context_text(r.state.get("groups", []), r.state.get("facts") or ""))
         gen = r.state.get("gen") or {}
         if item.get("expected"):
             print("\nEXPECTED:", item["expected"])

@@ -23,9 +23,23 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
   parameterised SQL. Fields (plan, age, Sum Insured, city or tier, year, frequency) are read from the question and
   checked against the tables: a plan without a premium table, an age or Sum Insured that is not printed, an unknown
   plan are explained, never guessed. Differences are computed in Decimal; every value keeps its table, row, column,
-  page and printed cell; `verify()` lists figures in an answer that are not in the facts. Not yet used by the
-  answer pipeline (next step). Tests: 35 on an invented policy, plus 18 opt-in tests that compare the SQL with the
-  in-memory stand-in on a real Postgres.
+  page and printed cell; `verify()` lists figures in an answer that are not in the facts. Tests: 35 on an invented
+  policy, plus 18 opt-in tests that compare the SQL with the in-memory stand-in on a real Postgres.
+- **Table route, lists and procedures** (needs migration 002): waiting-period conditions, non-payable items, Major
+  Medical Illnesses, Global Health Cover benefits and relationships (a whole list, or the items a question names,
+  found by keyword search with a precision rule), claim deadlines, grievance contacts and the Sum Insured examples.
+  Each answer carries the printed cells behind it (`evidence_text`) and the text chunks linked to its tables.
+- **Table route in the pipeline** (`tables.*`, off by default;
+  [`qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml) turns it on): a new graph node puts the
+  table facts first in the context and adds the linked chunks to the search candidates; the gate passes when the
+  tables answered (except for single list items); a complete table answer replaces a model answer that has a figure
+  not in the context, or that refuses. A failing route is logged and the text alone is used. With tables off, the
+  pipeline's results are unchanged (checked question by question on the 113 test questions).
+- **Evaluation with tables:** records keep the table passage, a summary of the route (no policy text) and the cells
+  behind it; those cells count as evidence for search recall, context recall and facts in context, and the printed
+  tables count as part of the document. Runs report how many questions the route answered and every fallback.
+- The table passage's first line now closes its parenthesis ("Policy tables (exact values read from the database).").
+- Tests: 31 on the invented lists, 15 on the pipeline and evaluation with tables, and 20 more opt-in database tests.
 
 ## 3.3.1 (29 October 2026)
 

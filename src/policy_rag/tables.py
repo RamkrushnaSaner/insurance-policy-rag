@@ -1,5 +1,7 @@
 """Answers from the policy's tables in the database: premiums, claim limits, instalment grace periods, check-up
-limits, deductible discounts and city tiers.
+limits, deductible discounts and city tiers; and (migration 002) the printed lists (waiting-period conditions,
+non-payable items, Major Medical Illnesses, Global Health Cover benefits, relationships), claim deadlines, grievance
+contacts and the Sum Insured utilisation examples.
 
 Deterministic, so every figure can be traced to a printed table cell:
 
@@ -13,7 +15,16 @@ Deterministic, so every figure can be traced to a printed table cell:
 6. ``TableAnswer.text``: a plain answer written from the rows; ``facts_block()``: the same facts for the answer
    model's context;
 7. ``TableAnswer.verify(answer)``: figures in an answer that are neither in the facts nor in the question, and
-   ``TableAnswer.trace()``: rows whose typed value differs from the printed cell.
+   ``TableAnswer.trace()``: rows whose typed value (or item text) differs from the printed cell;
+8. ``TableAnswer.evidence_text``: the printed cells behind the facts (with their headings), and
+   ``TableAnswer.linked_chunks``: the text chunks linked to the tables used (the clause that introduces or refers to
+   them), so the text around a table can reach the answer model too.
+
+List questions are answered by keyword search on the lists' full-text indexes, with a precision rule: an item is
+kept when every distinctive word of it is in the question, when two or more are, or when it starts with one of the
+question's distinctive words and holds at least half of them. Words common to coverage questions ("charges",
+"covered") and words of the list's own name ("Major Medical Illness") do not count, and a match only on words of a
+text section's title is left to that section ("Does the policy pay for an ambulance?").
 
 Plan names, places, Sums Insured, ages and frequencies come from the database, so nothing here is specific to one
 policy except the question patterns (English) and the item codes of the schema.
@@ -25,7 +36,9 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
-INTENTS = ("premium", "deductible_discount", "instalment", "claim_limit", "checkup_limit", "city_tier")
+INTENTS = ("premium", "deductible_discount", "instalment", "claim_limit", "checkup_limit", "city_tier",
+           "claim_deadline", "grievance_contact", "si_utilisation", "list_lookup")
+COMPLETE_INTENTS = INTENTS[:6]     # the facts are the whole answer (a looked-up or calculated value)
 
 # ---------------------------------------------------------------------------------------------------- patterns
 _PREMIUM = re.compile(
@@ -88,6 +101,65 @@ FREQUENCIES = {  # canonical key -> question wording
     "yearly": r"(?<!half )(?<!half-)\byearly\b|\bannual(ly)?\b|\bevery year\b|\bonce a year\b"}
 _FLOATER = re.compile(r"\bfloater\b|\bfamily\b", re.I)
 _INDIVIDUAL = re.compile(r"\bindividual\b", re.I)
+
+# migration 002 tables
+_DEADLINE = re.compile(
+    r"\bhow\b[^?]*\b(file|make|submit|lodge|raise|claim)\w*\b[^?]*\breimburs\w*|\breimburs\w*\s+claims?\b[^?]*\b(procedure|"
+    r"process|steps?|stepwise|deadline|time limit|within|how (many|long|soon))\b|\b(deadline|time limit|how many days|how long"
+    r"|how soon|within)\b[^?]*\b(submit|send|file|lodge)\w*\b[^?]*\b(claims?|documents?|bills?)\b|\b(submit|send|file|lodge)"
+    r"\w*\b[^?]*\b(claims?|documents?|bills?)\b[^?]*\b(deadline|time limit|how many days|how long|how soon|within)\b", re.I)
+_PAID_WHEN = re.compile(r"\b(get|be|being|am|is|are)\s+(paid|reimbursed|settled)\b|\bsettle\w*|\bpayment of (the )?claim", re.I)
+_GRIEVANCE = re.compile(r"\bgrievances?\b|\bcomplain(t|ts|ing)?\b|\bescalat\w*", re.I)
+_SI_USE = re.compile(r"\butili[sz]ation of (the )?sum insured\b|\b(illustration|example)s?\b[^?]*\bsum insured\b|\bsum insured\b"
+                     r"[^?]*\b(utili[sz]ed|used|consumed)\b[^?]*\b(claims?|example|illustration)\b|\bhow\b[^?]*\bsum insured\b"
+                     r"[^?]*\b(used|utili[sz]ed|consumed)\b", re.I)
+_ABOUT_ITEM = re.compile(r"\b(cover\w*|pa(y|id|yable)|reimburs\w*|claim\w*|exclu\w*|waiting|includ\w*|allowed|admissible|"
+                         r"eligible|available|entitled|count(s|ed)? as|considered|insur\w*|add(ed)?|list\w*|major medical|"
+                         r"non[\s-]?medical|annexure|relationships?)\b", re.I)
+_PERIOD = re.compile(r"\b(\d+)[\s-]*(day|month|year)s?\b", re.I)
+_LIST_ASK = r"\b(which|what|list|all|name)\b(?:\s+[\w'-]+){0,4}?\s+"
+LIST_TABLES = {   # table -> its item column, order and extra columns, and "the whole list is asked for" patterns
+    "waiting_period_conditions": {
+        "item": "condition", "no": "x.list_no", "order": "x.category, x.list_no",
+        "extra": "x.exclusion_code, x.category, x.waiting_months, x.waiting_block, b.page AS waiting_page, "
+                 "b.record->>'section' AS waiting_section, b.text AS waiting_text",
+        "join": "JOIN rag.text_blocks b ON b.version_id = x.version_id AND b.block_id = x.waiting_block",
+        "whole": re.compile(_LIST_ASK + r"(conditions|diseases|illnesses|ailments|procedures|surgeries|treatments)\b[^?]*"
+                            r"\bwaiting\b|\blist of\b[^?]*\bwaiting\b|\bwaiting\b[^?]*\b(list|which)\b", re.I)},
+    "non_payable_items": {
+        "item": "item", "no": "x.item_no", "order": "x.list, x.item_no", "extra": "x.list, x.list_title",
+        "context": "x.list_title",
+        "whole": re.compile(r"(?=[^?]*\b(which|what|list)\b)[^?]*\b(non[\s-]?(medical|payable)|annexure[\s-]*b)\b|"
+                            + _LIST_ASK + r"(items|consumables|things)\b[^?]*\b(not|non)[\s-]+(covered|payable|paid|"
+                            r"reimbursable|reimbursed)\b", re.I)},
+    "major_medical_illnesses": {
+        "item": "illness", "no": "x.item_no", "order": "x.item_no", "extra": "", "context": "coalesce(t.caption, t.title)",
+        "whole": re.compile(r"\b(which|what|list|all)\b[^?]*\bmajor medical illness(es)?\b|\bmajor medical illnesses\b[^?]*"
+                            r"\b(which|what|list|include)\b", re.I)},
+    "global_cover_benefits": {
+        "item": "benefit", "no": "NULL::int", "order": "x.cover_section, string_to_array(x.base_section, '.')::int[]",
+        "extra": "x.cover_section, x.cover, x.benefit_code, x.base_section", "context": "x.cover",
+        "whole": re.compile(_LIST_ASK + r"(benefits|covers|treatments|expenses)\b[^?]*\bglobal (health )?cover\b|\bglobal "
+                            r"(health )?cover\b[^?]*\b(which|what|list)\b[^?]*\b(benefits|covers|include\w*|available)\b|"
+                            r"\bwhat does (the )?global (health )?cover (include|cover)", re.I)},
+    "eligible_relationships": {
+        "item": "relationship", "no": "x.item_no", "order": "x.item_no", "extra": "x.item_printed",
+        "tsv": "to_tsvector('english'::regconfig, x.relationship)",
+        "whole": re.compile(r"\b(which|what)\b[^?]*\b(relationships?|relatives|family members)\b|\bwho (all )?can (i |we )?"
+                            r"(be )?(cover|covered|insure|insured|include|included|add|added)\b|\bwho is eligible\b", re.I)},
+}
+# Words common to questions about cover: they do not tell one list item from another ("attendant charges").
+GENERIC_WORDS = ("cover covered covers coverage covering policy policies plan plans insurance insured insurer company "
+                 "claim claims claimed pay paid payable payment reimburse reimbursed reimbursement reimbursable expense "
+                 "expenses cost costs charge charges amount amounts benefit benefits treatment treatments treated hospital "
+                 "hospitals hospitalisation hospitalization room admission admitted patient medical health list listed "
+                 "include included includes including item items condition conditions illness illnesses disease diseases "
+                 "procedure procedures surgery surgeries surgical waiting period periods month months year years day days "
+                 "exact specific specified complete details detail full give tell know need want get getting count counts "
+                 "considered consider part type types kind kinds category categories annexure section clause page "
+                 "exclusion exclusions excluded exclude available allowed eligible admissible apply applies applicable "
+                 "also still able possible required require use used many much take taken")
+SYNONYMS = [(re.compile(r"\b(tv|telly)\b", re.I), "television")]
 
 
 # ---------------------------------------------------------------------------------------------------- formatting
@@ -197,7 +269,8 @@ class TableData:
         illustration = self._rows(f"""
             SELECT array_agg(DISTINCT x.plan) AS plans, array_agg(DISTINCT x.year ORDER BY x.year) AS years
               FROM rag.claim_limit_illustration x {_ACTIVE}""", {})
-        return {"doc_id": self.doc, **head[0], "plans": sorted(r["plan"] for r in plans),
+        has_lists = self._rows("SELECT to_regclass('rag.non_payable_items') IS NOT NULL AS ok", {})[0]["ok"]
+        return {"doc_id": self.doc, **head[0], "plans": sorted(r["plan"] for r in plans), "has_lists": bool(has_lists),
                 "premium": {r["plan"]: r for r in premium}, "places": places,
                 "illustration": {"plans": illustration[0]["plans"] or [], "years": illustration[0]["years"] or []}}
 
@@ -245,6 +318,105 @@ class TableData:
                           {"plans": list(plans), "any_d": not deductibles, "deds": list(deductibles or []),
                            "si": sum_insured})
 
+    # ---- migration 002 tables
+    def stems(self, *texts: str):
+        """The words of a text as the full-text indexes store them (English stemming, stop words dropped); one list
+        per text when several are given (one query)."""
+        rows = self.db.query_dicts("""
+            SELECT coalesce(tsvector_to_array(to_tsvector('english'::regconfig, t)), '{}') AS s
+              FROM unnest(%(t)s::text[]) WITH ORDINALITY AS u(t, n) ORDER BY n""", {"t": list(texts)})
+        out = [list(r["s"] or []) for r in rows]
+        return out[0] if len(texts) == 1 else out
+
+    def list_lexicon(self, table: str) -> dict:
+        """The indexed words of a list ({"items": number of items, "df": {word: items with it}}) and the words of
+        its name ("context": "Major Medical Illness", the cover a benefit belongs to, ...)."""
+        spec = LIST_TABLES[table]
+        tsv = spec.get("tsv", "x.tsv")
+        rows = self._rows(f"""
+            SELECT w, count(*) AS n FROM rag.{table} x {_ACTIVE}, unnest(tsvector_to_array({tsv})) w GROUP BY w""", {})
+        items = self._rows(f"SELECT count(*) AS n FROM rag.{table} x {_ACTIVE}", {})[0]["n"]
+        context = self._rows(f"""
+            SELECT DISTINCT unnest(tsvector_to_array(to_tsvector('english'::regconfig, coalesce({spec['context']}, '')))) AS w
+              FROM rag.{table} x {_ACTIVE} JOIN rag.tables t ON t.version_id = x.version_id AND t.table_id = x.table_id""",
+                             {}) if spec.get("context") else []
+        return {"items": items, "df": {r["w"]: r["n"] for r in rows}, "context": {r["w"] for r in context}}
+
+    def section_titles(self) -> List[dict]:
+        """The titles of the text sections, with their indexed words."""
+        return self._rows("""
+            SELECT DISTINCT x.section_title AS title,
+                   tsvector_to_array(to_tsvector('english'::regconfig, x.section_title)) AS stems
+              FROM rag.chunks x JOIN rag.active_versions v ON v.version_id = x.version_id AND v.doc_id = %(doc)s
+             WHERE coalesce(x.section_title, '') <> ''""", {})
+
+    def list_rows(self, table: str, stems: Optional[Sequence[str]] = None) -> List[dict]:
+        """A whole list (``stems`` None), or its items whose index has any of ``stems`` (in list order)."""
+        spec = LIST_TABLES[table]
+        tsv = spec.get("tsv", "x.tsv")
+        extra = spec["extra"] + ", " if spec["extra"] else ""
+        return self._rows(f"""
+            SELECT {spec['no']} AS item_no, x.{spec['item']} AS item, {extra}{_CITE},
+                   (SELECT array_agg(u.lexeme ORDER BY u.positions[1]) FROM unnest({tsv}) u) AS stems
+              FROM rag.{table} x {_ACTIVE} {_CELL} {spec.get('join', '')}
+             WHERE %(all)s OR tsvector_to_array({tsv}) && %(stems)s::text[]
+             ORDER BY {spec['order']}""", {"all": stems is None, "stems": list(stems or [])})
+
+    def claim_deadlines(self) -> List[dict]:
+        return self._rows(f"""
+            SELECT x.claim_type, x.deadline_days AS value, x.counted_from, {_CITE}
+              FROM rag.claim_deadlines x {_ACTIVE} {_CELL} ORDER BY x.row""", {})
+
+    def grievance_contacts(self) -> List[dict]:
+        return self._rows(f"""
+            SELECT x.contact_point, x.level_no, x.level, x.details AS item, x.phones, x.emails, {_CITE}
+              FROM rag.grievance_contacts x {_ACTIVE} {_CELL} ORDER BY x.row, x.level_no""", {})
+
+    def si_examples(self) -> List[dict]:
+        return self._rows(f"""
+            SELECT x.example, x.claim_no AS value, x.claim_inr, x.base_available_inr, x.plus_available_inr,
+                   x.secure_available_inr, x.restore_available_inr, x.admissible_inr, x.utilisation,
+                   r.reference_text, {_CITE}
+              FROM rag.si_utilisation_examples x {_ACTIVE} {_CELL}
+              LEFT JOIN rag.table_refs r ON r.version_id = x.version_id AND x.table_id = ANY(r.parts)
+             ORDER BY x.example, x.claim_no""", {})
+
+    def evidence(self, cells: Sequence[tuple]) -> List[dict]:
+        """Printed cells, each with its table's caption and its headings: ``cells`` = (table_id, row, col), or
+        (table_id, row, None) for every cell of a row."""
+        if not cells:
+            return []
+        return self._rows("""
+            SELECT c.table_id, c.row, c.col, c.text, c.header_path, c.row_path, coalesce(t.caption, t.title) AS caption
+              FROM rag.table_cells c JOIN rag.active_versions v ON v.version_id = c.version_id AND v.doc_id = %(doc)s
+              JOIN rag.tables t ON t.version_id = c.version_id AND t.table_id = c.table_id
+              JOIN unnest(%(tids)s::text[], %(rows)s::int[], %(cols)s::int[]) AS k(table_id, row, col)
+                ON k.table_id = c.table_id AND k.row = c.row AND (k.col IS NULL OR k.col = c.col)
+             WHERE NOT coalesce(c.is_header, false)
+             ORDER BY c.table_id, c.row, c.col""", {"tids": [c[0] for c in cells], "rows": [c[1] for c in cells],
+                                                     "cols": [c[2] for c in cells]})
+
+    def linked_chunks(self, table_ids: Sequence[str]) -> List[dict]:
+        """Text chunks linked to the tables these parts belong to (introduced by, same clause, notes, refers to)."""
+        if not table_ids:
+            return []
+        return self._rows("""
+            SELECT ct.chunk_uid, ct.relation, ct.table_id
+              FROM rag.chunk_tables ct JOIN rag.active_versions v ON v.version_id = ct.version_id AND v.doc_id = %(doc)s
+              JOIN rag.table_refs r ON r.version_id = ct.version_id AND r.table_id = ct.table_id
+             WHERE r.parts && %(ids)s::text[]
+             ORDER BY array_position(ARRAY['introduced_by', 'same_clause', 'notes_in', 'refers_to'], ct.relation),
+                      ct.table_id, ct.chunk_uid""", {"ids": list(table_ids)})
+
+    def all_rows_text(self) -> str:
+        """Every printed cell of the active version, row by row (for the evaluation: what the tables hold)."""
+        rows = self._rows("""
+            SELECT coalesce(t.caption, t.title, '') || ' ' || string_agg(coalesce(c.text, ''), ' ' ORDER BY c.col) AS line
+              FROM rag.table_cells c JOIN rag.active_versions v ON v.version_id = c.version_id AND v.doc_id = %(doc)s
+              JOIN rag.tables t ON t.version_id = c.version_id AND t.table_id = c.table_id
+             GROUP BY c.table_id, c.row, t.caption, t.title ORDER BY c.table_id, c.row""", {})
+        return "\n".join(r["line"] for r in rows)
+
     def notes(self, table_ids: Sequence[str]) -> List[dict]:
         """Notes and footnotes of the tables these parts belong to."""
         return self._rows("""
@@ -258,7 +430,7 @@ class TableData:
 class TableAnswer:
     question: str
     intent: Optional[str] = None
-    status: str = "not_routed"          # answered | needs_input | not_in_policy | not_routed
+    status: str = "not_routed"          # answered | needs_input | not_in_policy | no_match | not_routed
     fields: Dict = field(default_factory=dict)
     lead: str = ""                       # first sentence of the plain answer
     body: List[str] = field(default_factory=list)
@@ -266,10 +438,22 @@ class TableAnswer:
     calculations: List[dict] = field(default_factory=list)
     rows: List[dict] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
+    cells: List[dict] = field(default_factory=list)          # the printed cells behind the facts
+    evidence_text: str = ""
+    linked_chunks: List[str] = field(default_factory=list)   # chunk_uid of text chunks linked to the tables used
 
     @property
     def answered(self) -> bool:
         return self.status == "answered"
+
+    @property
+    def complete(self) -> bool:
+        """The facts are the whole answer (a looked-up or calculated value), not part of it."""
+        return self.answered and self.intent in COMPLETE_INTENTS
+
+    @property
+    def table_ids(self) -> List[str]:
+        return sorted({r["table_id"] for r in self.rows if r.get("table_id")})
 
     @property
     def text(self) -> str:
@@ -283,8 +467,8 @@ class TableAnswer:
         """The facts for the answer model's context (exact values from the database, with their sources)."""
         if not self.answered:
             return ""
-        head = "Policy tables (exact values read from the database"
-        return "\n".join([f"{head}; {self.lead}" if self.lead else head + ")"] + self.body
+        head = "Policy tables (exact values read from the database)."
+        return "\n".join([f"{head} {self.lead}" if self.lead else head] + self.body
                          + [f"Note: {_note(n)}" for n in self.notes] + ["Source: " + "; ".join(self.sources)])
 
     def verify(self, answer: str) -> List[str]:
@@ -294,19 +478,29 @@ class TableAnswer:
         return unsupported_figures(answer, self.text, self.question, derived)
 
     def trace(self) -> List[str]:
-        """Rows whose value differs from the number printed in their cell (should be none)."""
+        """Rows whose value differs from the number printed in their cell, list items that differ from their cell,
+        and amounts of a row that are not printed in that row (should be none)."""
         out = []
         for r in self.rows:
-            shown = printed_number(r.get("printed"))
-            if shown is None or Decimal(str(r["value"])) != shown:
-                out.append(f"{r['table_id']} row {r['row']} col {r['col']}: value {r['value']} vs printed {r.get('printed')!r}")
+            where_ = f"{r['table_id']} row {r['row']} col {r['col']}"
+            if "value" in r:
+                shown = printed_number(r.get("printed"))
+                if shown is None or Decimal(str(r["value"])) != shown:
+                    out.append(f"{where_}: value {r['value']} vs printed {r.get('printed')!r}")
+            elif " ".join(str(r.get("item") or "").split()) != " ".join(str(r.get("printed") or "").split()):
+                out.append(f"{where_}: item {r.get('item')!r} vs printed {r.get('printed')!r}")
+            amounts = [r[k] for k in r if k.endswith("_inr") and r[k] is not None]
+            if amounts:
+                printed = {printed_number(c["text"]) for c in self.cells
+                           if c["table_id"] == r["table_id"] and c["row"] == r["row"]}
+                out += [f"{where_}: amount {a} not printed in the row" for a in amounts if Decimal(a) not in printed]
         return out
 
     def to_dict(self) -> dict:
         return {"question": self.question, "intent": self.intent, "status": self.status, "fields": self.fields,
                 "text": self.text, "calculations": [{**c, "result": str(c["result"])} for c in self.calculations],
                 "rows": [{k: (str(v) if isinstance(v, Decimal) else v) for k, v in r.items()} for r in self.rows],
-                "sources": self.sources}
+                "sources": self.sources, "table_ids": self.table_ids, "linked_chunks": self.linked_chunks}
 
 
 # ---------------------------------------------------------------------------------------------------- the route
@@ -330,6 +524,11 @@ class TableRoute:
         self._place_res = [(names[n], n != names[n], re.compile(r"(?<![a-z])" + r"\s+".join(map(re.escape, n.split()))
                                                                + r"(?![a-z])", re.I))
                            for n in sorted(names, key=len, reverse=True)]
+        self.has_lists = bool(self.cat.get("has_lists"))
+        self._generic = set(data.stems(GENERIC_WORDS)) if self.has_lists else set()
+        self._titles = [set(r["stems"] or []) - self._generic for r in data.section_titles()] if self.has_lists else []
+        self._titles = [t for t in self._titles if t]
+        self._lexicons: Dict[str, dict] = {}
 
     @staticmethod
     def _plan_patterns(plans):
@@ -363,6 +562,15 @@ class TableRoute:
             return "checkup_limit"
         if _TIER_Q.search(q):
             return "city_tier"
+        if self.has_lists:
+            if _DEADLINE.search(q) and not _PAID_WHEN.search(q):
+                return "claim_deadline"
+            if _GRIEVANCE.search(q):
+                return "grievance_contact"
+            if _SI_USE.search(q):
+                return "si_utilisation"
+            if _ABOUT_ITEM.search(q) or any(spec["whole"].search(q) for spec in LIST_TABLES.values()):
+                return "list_lookup"
         return None
 
     def find_plans(self, q: str):
@@ -452,8 +660,30 @@ class TableRoute:
             return res
         getattr(self, f"_{intent}")(question, res)
         if res.answered:
+            self._evidence(res)
             self._add_notes(res)
+            res.linked_chunks = list(dict.fromkeys(r["chunk_uid"] for r in self.data.linked_chunks(res.table_ids)))
         return res
+
+    _WHOLE_ROWS = ("claim_deadline", "si_utilisation")      # the facts show every cell of these rows
+
+    def _evidence(self, res: TableAnswer):
+        """The printed cells behind the facts: each with its table caption and headings, whole rows where the facts
+        show the whole row, and list items with their printed number (what reached the answer model)."""
+        whole = res.intent in self._WHOLE_ROWS
+        keys = sorted({(r["table_id"], r["row"], None if whole else r["col"]) for r in res.rows if r.get("table_id")},
+                      key=lambda k: (k[0], k[1], -1 if k[2] is None else k[2]))
+        res.cells = self.data.evidence(keys)
+        by_row, lines = {}, []
+        for c in res.cells:
+            by_row.setdefault((c["table_id"], c["row"]), []).append(c)
+        for cs in by_row.values():
+            cap = cs[0]["caption"] or ""
+            if whole:
+                lines.append(" ".join([cap] + [c["text"] or "" for c in cs]))
+            lines += [" ".join([cap] + list(c["header_path"] or []) + list(c["row_path"] or []) + [c["text"] or ""]) for c in cs]
+        lines += [f"{r['item_no']} {r['item']}" for r in res.rows if r.get("item_no") is not None and r.get("item")]
+        res.evidence_text = "\n".join(lines)
 
     def _tier_of(self, q: str, res: TableAnswer, asked_tier_is_the_question: bool = False) -> List[int]:
         """Tiers from the places named (each explained in a note), else from "Tier 1/2" in the question."""
@@ -710,12 +940,152 @@ class TableRoute:
         res.body += [f"- Tier {t}: {', '.join(ps)}" for t, ps in sorted(by_tier.items())]
         res.sources.append(f"{where(first['section'])}, page {first['page']}")
 
+    # ---- migration 002 tables
+    def _question_stems(self, q: str):
+        """(the question's distinctive words, the same with words written together: "kidney stones" also gives
+        "kidneystones", as some lists print it)."""
+        for pat, word in SYNONYMS:
+            q = pat.sub(word, q)
+        tokens = re.findall(r"[A-Za-z]+", q)
+        base, joined = self.data.stems(q, " ".join(a + b for a, b in zip(tokens, tokens[1:])))
+        base = set(base) - self._generic
+        return base, base | (set(joined) - self._generic)
+
+    def _item_kept(self, item_stems, words, base, context) -> bool:
+        """The precision rule for one list item (see the module docstring); words of the list's own name do not
+        count, and a match only on words of a text section's title is a question about that section ("Does the
+        policy pay for an ambulance?" is about the ambulance cover's own section, not a list item "Ambulance")."""
+        order = [w for w in item_stems if w not in self._generic and w not in context]
+        item, words, base = set(order), words - context, base - context
+        hit = item & words
+        if not hit or any(hit <= t for t in self._titles):
+            return False
+        return item <= words or len(hit) >= 2 or (order[0] in hit and 2 * len(hit) >= len(base))
+
+    def _lexicon(self, table: str) -> dict:
+        if table not in self._lexicons:
+            self._lexicons[table] = self.data.list_lexicon(table)
+        return self._lexicons[table]
+
+    def _list_lookup(self, q: str, res: TableAnswer):
+        """A whole list ("Which illnesses count as Major Medical Illnesses?") or the items a question names ("Are
+        attendant charges paid?"), kept by the precision rule of ``_item_kept``."""
+        whole = [t for t, spec in LIST_TABLES.items() if spec["whole"].search(q)]
+        found = {}
+        if whole:
+            res.fields["mode"] = "whole list"
+            for t in whole:
+                rows = self.data.list_rows(t)
+                if t == "waiting_period_conditions" and rows and not self._same_period(q, rows[0]["waiting_months"]):
+                    res.fields.setdefault("skipped", []).append(f"{t}: the question names another waiting period")
+                    continue
+                found[t] = rows
+            if "global_cover_benefits" in found:          # only the cover the question names, if it names one
+                rows = found["global_cover_benefits"]
+                named = [c for c in dict.fromkeys(r["cover"] for r in rows) if self._names_cover(q, c)]
+                if named:
+                    found["global_cover_benefits"] = [r for r in rows if r["cover"] in named]
+        else:
+            base, words = self._question_stems(q)
+            res.fields.update(mode="items", words=sorted(base))
+            for t in LIST_TABLES:
+                lex = self._lexicon(t)
+                cand = sorted(w for w in words - lex["context"] if w in lex["df"])
+                keep = [r for r in (self.data.list_rows(t, cand) if cand else [])
+                        if self._item_kept(r["stems"] or [], words, base, lex["context"])]
+                if keep:
+                    found[t] = keep
+        if not found:
+            res.status = "no_match"
+            return
+        res.status = "answered"
+        res.lead = "From the policy's lists:" if res.fields["mode"] == "items" else "The policy's list:"
+        for t, rows in found.items():
+            res.rows += rows
+            res.body += self._render_list(t, rows, whole=res.fields["mode"] == "whole list")
+
+    @staticmethod
+    def _names_cover(q: str, cover: str) -> bool:
+        """The question names this cover by the words in its brackets ("(Emergency & Planned Treatments)")."""
+        norm = lambda s: " ".join(re.findall(r"[a-z0-9]+", s.lower().replace("&", " and ")))
+        m = re.search(r"\(([^)]+)\)", cover)
+        return bool(m) and f" {norm(m.group(1))} " in f" {norm(q)} "
+
+    @staticmethod
+    def _same_period(q: str, months: int) -> bool:
+        """No period named in the question, or one equal to ``months``."""
+        named = [int(m.group(1)) * {"day": Decimal(1) / 30, "month": 1, "year": 12}[m.group(2).lower()]
+                 for m in _PERIOD.finditer(q)]
+        return not named or any(n == months for n in named)
+
+    @staticmethod
+    def _render_list(table: str, rows: List[dict], whole: bool) -> List[str]:
+        r0 = rows[0]
+        src = f"{where(r0['section_id'])}, page {r0['page']}"
+        if table == "waiting_period_conditions":
+            text = " ".join((r0.get("waiting_text") or "").split())
+            out = [f"{where(r0['waiting_section'])}, {r0['exclusion_code']} – {r0['waiting_months']}-month waiting period. "
+                   f"The policy text (page {r0['waiting_page']}) says: \"{text}\""]
+            for cat in dict.fromkeys(r["category"] for r in rows):
+                block = [r for r in rows if r["category"] == cat]
+                name = block[0].get("table_title") or cat.replace("_", " ")
+                out.append(f"- {name} ({where(block[0]['section_id'])}, page {block[0]['page']}"
+                           f"{f', {len(block)} listed' if whole else ''}): " + "; ".join(r["item"] for r in block))
+            return out
+        if table == "global_cover_benefits":
+            return [f"- {c} ({where(rows_c[0]['cover_section'])}, page {rows_c[0]['page']}) includes: "
+                    + "; ".join(f"{r['benefit_code']} {r['item']}" for r in rows_c)
+                    for c, rows_c in ((c, [r for r in rows if r["cover"] == c]) for c in dict.fromkeys(r["cover"] for r in rows))]
+        title = {"non_payable_items": r0.get("list_title"), "major_medical_illnesses": r0.get("table_title"),
+                 "eligible_relationships": "Relationships that can be covered"}.get(table) or table
+        num = (lambda r: r["item_printed"]) if table == "eligible_relationships" else (lambda r: f"{r['item_no']}.")
+        head = f"{title} ({src}{f', {len(rows)} listed' if whole else ''}):"
+        return [head, "; ".join(f"{num(r)} {r['item']}" for r in rows)] if whole else \
+            [head] + [f"- {num(r)} {r['item']}" for r in rows]
+
+    def _claim_deadline(self, q: str, res: TableAnswer):
+        rows = self.data.claim_deadlines()
+        if not rows:
+            res.status = "no_match"
+            return
+        res.rows, res.status = rows, "answered"
+        res.lead = f"Time limits for submitting reimbursement claim documents ({where(rows[0]['section_id'])}):"
+        res.body += [f"- {r['claim_type']}: {r['printed']}" for r in rows]
+
+    def _grievance_contact(self, q: str, res: TableAnswer):
+        rows = self.data.grievance_contacts()
+        if not rows:
+            res.status = "no_match"
+            return
+        res.rows, res.status = rows, "answered"
+        res.lead = f"Grievance contact points, by escalation level ({where(rows[0]['section_id'])}):"
+        res.body += [f"- {r['contact_point']} – {r['level']}: {r['item']}" for r in rows]
+
+    def _si_utilisation(self, q: str, res: TableAnswer):
+        rows = self.data.si_examples()
+        if not rows:
+            res.status = "no_match"
+            return
+        res.rows, res.status = rows, "answered"
+        res.lead = f"Worked examples of how the Sum Insured is used, claim by claim ({where(rows[0]['section_id'])}):"
+        amt = lambda v: "-" if v is None else inr(v, words=True)
+        for ex in dict.fromkeys(r["example"] for r in rows):
+            block = [r for r in rows if r["example"] == ex]
+            res.body.append(f"Example {ex}" + (f" ({block[0]['reference_text']})" if block[0].get("reference_text") else "") + ":")
+            res.body.append("| Claim | Claim amount | Base Sum Insured available | Plus Benefit available | Secure Benefit "
+                            "available | Restore available | Admissible amount | Sum Insured used |")
+            res.body.append("|---" * 8 + "|")
+            res.body += [f"| {r['value']} | {amt(r['claim_inr'])} | {amt(r['base_available_inr'])} | "
+                         f"{amt(r['plus_available_inr'])} | {amt(r['secure_available_inr'])} | {amt(r['restore_available_inr'])} | "
+                         f"{amt(r['admissible_inr'])} | {r['utilisation']} |" for r in block]
+
     def _add_notes(self, res: TableAnswer):
         """Table notes, and the footnotes whose mark appears in a cell used; one source line per table."""
         ids = sorted({r["table_id"] for r in res.rows if r.get("table_id")})
         if not ids:
             return
-        marks = " ".join(str(r.get(k) or "") for r in res.rows for k in ("printed", "row_label", "item_printed"))
+        marks = " ".join([str(r.get(k) or "") for r in res.rows for k in ("printed", "row_label", "item_printed")]
+                         + ([c["text"] or "" for c in res.cells] if res.intent in self._WHOLE_ROWS else []))
         seen = {}
         for r in res.rows:
             seen.setdefault(r["table_id"], r)

@@ -155,13 +155,31 @@ class DecisionConfig:
 
 @dataclass
 class DatabaseConfig:
-    """Postgres with pgvector, used when ``retrieval.dense_backend`` is ``pgvector``. The connection string is never
+    """Postgres with pgvector, used when ``retrieval.dense_backend`` is ``pgvector`` and by the table route
+    (``tables.enabled``). The connection string is never
     written in a config file: it is read from the environment variable named here. The database is only read
     (every session is set read-only)."""
     url_env: str = "DATABASE_URL"
     model_key: str = ""                  # which stored vectors to search (rag.embedding_models.model_key)
     connect_timeout: int = 30            # seconds; a suspended Neon compute needs a moment to start
     statement_timeout_ms: int = 30000
+
+
+TABLE_FALLBACKS = ("table_answer", "keep")
+
+
+@dataclass
+class TablesConfig:
+    """The table route (policy_rag/tables.py): questions about the policy's printed tables are answered from the
+    typed tables in the database (connection as in ``database``), and the exact values go into the answer model's
+    context ahead of the text passages."""
+    enabled: bool = False
+    doc_id: str = ""                     # the document whose tables are used ("" = the only configured document)
+    max_tokens: int = 1500               # longest table passage in the context (longer lists are shortened, and say so)
+    link_chunks: bool = True             # text chunks linked to the tables used become search candidates
+    # when the answer has a figure that is in neither the context nor the question, and the tables gave the whole
+    # answer (a premium, a limit, ...): "table_answer" replaces it with the answer written from the tables; "keep" keeps it
+    on_unsupported_figures: str = "table_answer"
 
 
 @dataclass
@@ -179,6 +197,7 @@ class Config:
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     decision: DecisionConfig = field(default_factory=DecisionConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    tables: TablesConfig = field(default_factory=TablesConfig)
     plugins: List[str] = field(default_factory=list)   # modules imported first (they can register new component types)
     source: Optional[str] = None         # the file this config was read from (set by load_config)
 
@@ -306,6 +325,13 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
     if cfg.retrieval.dense_backend == "pgvector" and not cfg.database.model_key:
         raise ConfigError("database.model_key: required with retrieval.dense_backend: pgvector "
                           "(the key the vectors were stored under)")
+    if cfg.tables.on_unsupported_figures not in TABLE_FALLBACKS:
+        raise ConfigError(f"tables.on_unsupported_figures: expected one of {list(TABLE_FALLBACKS)}, "
+                          f"got {cfg.tables.on_unsupported_figures!r}")
+    if cfg.tables.enabled and not cfg.tables.doc_id and len(ids) != 1:
+        raise ConfigError(f"tables.doc_id: required with tables.enabled when several documents are configured ({ids})")
+    if cfg.tables.enabled and cfg.tables.doc_id and cfg.tables.doc_id not in ids:
+        raise ConfigError(f"tables.doc_id: {cfg.tables.doc_id!r} is not a configured document ({ids})")
     if cfg.embedder.padding_side not in (None, "left", "right"):
         raise ConfigError(f"embedder.padding_side: expected left, right or null, got {cfg.embedder.padding_side!r}")
     return cfg

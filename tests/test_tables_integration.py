@@ -3,7 +3,9 @@ the ``rag`` schema, then every question must get the same answer from SQL (``Tab
 stand-in the unit tests use.
 
 Runs only when POLICY_RAG_TEST_DATABASE_URL is set to a development database with migration 001 applied and a login
-that may write and delete (never production). Everything added is removed before and after.
+that may write and delete (never production). With migration 002 applied too, the lists, claim deadlines, grievance
+contacts and Sum Insured example are loaded and their questions compared as well. Everything added is removed before
+and after.
 """
 import json
 import os
@@ -15,6 +17,7 @@ from policy_rag.database import Database
 from policy_rag.tables import TableData, TableRoute
 
 from table_fixtures import DOC, MemoryTableData, dataset
+from test_tables_lists import LIST_QUESTIONS
 
 ENV = "POLICY_RAG_TEST_DATABASE_URL"
 pytestmark = pytest.mark.skipif(not os.environ.get(ENV), reason=f"{ENV} is not set (opt-in database test)")
@@ -70,10 +73,20 @@ def _load(con, ds):
     for f in ds["refs"]:
         t = ds["tables"][f["table_id"]]
         rec = {"table_id": f["table_id"], "parts": f["parts"], "section_id": t["section_id"], "caption": t["caption"],
-               "title": t["title"], "reference": {"text": t["caption"] or t["title"] or "", "method": "heading"},
+               "title": t["title"], "reference": {"text": f.get("reference") or t["caption"] or t["title"] or "",
+                                                  "method": "heading"},
                "review": {"status": "heading-only"}, "notes": f["notes"], "footnotes": f["footnotes"]}
         con.execute("INSERT INTO rag.table_refs (version_id, table_id, record) VALUES (%s, %s, %s)",
                     (vid, f["table_id"], json.dumps(rec)))
+    for c in ds["chunks"]:
+        rec = {**{k: c[k] for k in ("idx", "section_id", "section_title", "label", "text", "embed_text")},
+               "kind": "text", "index": "policy", "pages": [1], "block_ids": [], "token_count": 10, "clause": None,
+               "group": None}
+        con.execute("INSERT INTO rag.chunks (version_id, chunk_uid, record) VALUES (%s, %s, %s)",
+                    (vid, c["chunk_uid"], json.dumps(rec)))
+    for tid, uid, relation in ds["chunk_tables"]:
+        con.execute("INSERT INTO rag.chunk_tables (version_id, table_id, chunk_uid, relation) VALUES (%s, %s, %s, %s)",
+                    (vid, tid, uid, relation))
     for name, rows in list(ds["typed"].items()) + [("city_tiers", ds["places"])]:
         cols = list(rows[0])
         with con.cursor() as cur:
@@ -84,10 +97,10 @@ def _load(con, ds):
 @pytest.fixture(scope="module")
 def routes():
     psycopg = pytest.importorskip("psycopg")
-    ds = dataset()
     with psycopg.connect(os.environ[ENV], autocommit=True) as con:
         if not con.execute("SELECT to_regclass('rag.premium_rates') IS NOT NULL").fetchone()[0]:
             pytest.skip("the rag schema (migration 001) is not applied in this database")
+        ds = dataset(lists=con.execute("SELECT to_regclass('rag.non_payable_items') IS NOT NULL").fetchone()[0])
         _cleanup(con)
         with con.transaction():
             _load(con, ds)
@@ -120,3 +133,19 @@ def test_sql_and_memory_give_the_same_answer(routes, question):
     assert (a.intent, a.status) == (b.intent, b.status)
     assert a.text == b.text
     assert len(a.rows) == len(b.rows) and a.trace() == [] and a.verify(a.text) == []
+
+
+@pytest.mark.parametrize("question", LIST_QUESTIONS)
+def test_lists_from_sql_and_memory_are_the_same(routes, question):
+    sql, mem = routes
+    if not sql.has_lists:
+        pytest.skip("migration 002 (the typed lists) is not applied in this database")
+    a, b = sql.answer(question), mem.answer(question)
+    assert (a.intent, a.status, a.fields.get("mode")) == (b.intent, b.status, b.fields.get("mode"))
+    assert a.text == b.text and a.evidence_text == b.evidence_text and a.linked_chunks == b.linked_chunks
+    assert a.trace() == [] and a.verify(a.text) == []
+
+
+def test_all_rows_text_from_sql_matches(routes):
+    sql, mem = routes
+    assert sql.data.all_rows_text() == mem.data.all_rows_text()

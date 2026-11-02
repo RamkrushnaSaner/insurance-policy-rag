@@ -93,8 +93,15 @@ decision:                                # fixed before results: when does a can
   max_peak_gpu_gb: 14.0
   kappa_target: 0.7
 
-database:                                # used only with retrieval.dense_backend: pgvector
+database:                                # used with retrieval.dense_backend: pgvector and by the table route
   url_env: DATABASE_URL                  # the environment variable holding the connection string (never the string)
   model_key: ""                          # which stored vectors to search (rag.embedding_models)
   connect_timeout: 30
   statement_timeout_ms: 30000
+
+tables:                                  # the table route (src/policy_rag/tables.py); off unless a config turns it on
+  enabled: false                         # needs the database (above) with the typed tables loaded
+  doc_id: ""                             # the document whose tables are used ("" = the only configured document)
+  max_tokens: 1500                       # longest table passage in the context (shortened beyond, and says so)
+  link_chunks: true                      # text chunks linked to the tables used become search candidates
+  on_unsupported_figures: table_answer   # table_answer | keep: replace a complete table answer the model got wrong

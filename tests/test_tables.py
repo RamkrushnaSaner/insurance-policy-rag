@@ -54,7 +54,7 @@ def test_one_premium_with_its_cell(route):
     assert a.verify(f"It costs Rs. {group_inr(v + 100)} a year.") == [f"Rs {group_inr(v + 100)}"]   # a wrong figure
     assert v and a.verify(f"It costs Rs. {group_inr(v)} a year for Rs. 10 lakh cover.") == []
     assert json.loads(json.dumps(a.to_dict()))["status"] == "answered"
-    assert a.facts_block().startswith("Policy tables (exact values read from the database; ")
+    assert a.facts_block().startswith("Policy tables (exact values read from the database). Rs. ")
 
 
 def test_two_plans_give_the_difference_in_decimal(route):
