@@ -34,9 +34,15 @@ class Scorer:
         if rec.get("answer") is not None:
             cand = norm_text(" ".join([chunks[i].text for i in rec["candidates"]] + [table_text])) \
                 if same_ids and (rec.get("candidates") or table_text) else None
-            rec["verdict"] = score_answer(item, rec["answer"], rec.get("context", ""), self.text.norm, rec.get("gen"),
-                                          rec.get("gate_route") or "answer", rec.get("error"), cand, self.table_checker)
+            rec["verdict"] = score_answer(item, rec["answer"], rec.get("context", ""), self._document(table_text),
+                                          rec.get("gen"), rec.get("gate_route") or "answer", rec.get("error"), cand,
+                                          self.table_checker)
         return rec
+
+    def _document(self, table_text: str) -> str:
+        """The document's normalised text, plus a table passage written from it (amounts as "Rs. 30 lakh" where the
+        table prints "30,00,000"), so a fact in the passage is not counted as missing from the document."""
+        return self.text.norm + " " + norm_text(table_text) if table_text else self.text.norm
 
     def rescore_run(self, run: dict) -> dict:
         """Re-score a saved run with these checks (so runs are compared under the same rules)."""
@@ -50,8 +56,9 @@ class Scorer:
             if same_corpus and rec.get("candidates") is not None and rec.get("context_source") is None:
                 self.score_record(rec, live=True)
             elif rec.get("answer") is not None:
-                rec["verdict"] = score_answer(item, rec["answer"], rec.get("context", ""), self.text.norm, rec.get("gen"),
-                                              rec.get("gate_route") or "answer", rec.get("error"),
+                table_text = "\n".join(t for t in (rec.get("facts"), rec.get("table_evidence")) if t)
+                rec["verdict"] = score_answer(item, rec["answer"], rec.get("context", ""), self._document(table_text),
+                                              rec.get("gen"), rec.get("gate_route") or "answer", rec.get("error"),
                                               table_checker=self.table_checker)
         run["records"] = [r for r in run["records"] if r["id"] in self.by_id]
         return run

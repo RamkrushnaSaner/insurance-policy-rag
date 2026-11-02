@@ -165,3 +165,16 @@ def test_tables_are_off_by_default(system):
     assert system.cfg.tables.enabled is False and system.tables is None
     st = system.pipeline.search("Is cataract covered from day one?")
     assert "table" not in st and "facts" not in st
+
+
+def test_a_fact_in_the_table_passage_is_not_a_corpus_gap(tmp_path):
+    from policy_rag.evaluation.scoring import Scorer
+    from policy_rag.evaluation.testset import load_testset
+    rag, _, _ = _system(tmp_path)
+    scorer = Scorer(load_testset(rag.cfg.evaluation.testset), rag.corpus, rag.context)
+    item = {"id": "T", "answerable": True, "facts": [["rs 1,450 a year"]], "evidence": [], "question": "Premium?"}
+    scorer.by_id = {"T": item}
+    rec = {"id": "T", "answer": "I cannot say.", "context": "Policy tables (exact values ...). Rs. 1,450 a year",
+           "facts": "Rs. 1,450 a year", "gate_route": "answer"}
+    stages = {i["stage"] for i in scorer.score_record(rec, live=False)["verdict"]["issues"]}
+    assert "corpus" not in stages and "generation" in stages

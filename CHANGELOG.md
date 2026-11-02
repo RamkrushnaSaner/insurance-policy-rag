@@ -37,9 +37,10 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
   pipeline's results are unchanged (checked question by question on the 113 test questions).
 - **Evaluation with tables:** records keep the table passage, a summary of the route (no policy text) and the cells
   behind it; those cells count as evidence for search recall, context recall and facts in context, and the printed
-  tables count as part of the document. Runs report how many questions the route answered and every fallback.
+  tables (and the table passage) count as part of the document, so a missing fact that the tables hold is not
+  blamed on the chunk file. Runs report how many questions the route answered and every fallback.
 - The table passage's first line now closes its parenthesis ("Policy tables (exact values read from the database).").
-- Tests: 31 on the invented lists, 15 on the pipeline and evaluation with tables, and 20 more opt-in database tests.
+- Tests: 31 on the invented lists, 16 on the pipeline and evaluation with tables, and 20 more opt-in database tests.
 
 ## 3.3.1 (29 October 2026)
 
