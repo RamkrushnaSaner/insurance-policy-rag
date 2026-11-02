@@ -1,0 +1,17 @@
+# Qwen3-Embedding-0.6B over the text-only chunk file (tables are kept as tables in the database, not embedded).
+# Vectors are computed at start-up and searched in memory (FAISS): the reference for qwen3_text_pgvector.yaml.
+# Half precision needs a GPU (T4); on a CPU, add --set embedder.dtype=null
+#   policy-rag evaluate --config configs/experiments/qwen3_text_faiss.yaml --name qwen3_text_faiss --mode retrieval
+extends: ../default.yaml
+documents:
+  - id: optima-secure
+    name: "HDFC ERGO my:Optima Secure"
+    chunks: data/policy_text_chunks.json   # policy_ingest_v1 bundle: 109 text chunks
+embedder:
+  model: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  query_prefix: "Instruct: Given a question about a health insurance policy, retrieve the passages that answer it\nQuery:"
+  batch_size: 16
+  dtype: float16
+  normalize: true
+  padding_side: left

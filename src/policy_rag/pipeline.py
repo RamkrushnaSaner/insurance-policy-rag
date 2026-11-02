@@ -196,7 +196,7 @@ class RAGSystem:
         self.cfg, self.corpus, self.embedder, self.reranker, self.generator, self.cache = \
             cfg, corpus, embedder, reranker, generator, cache
         self.log = log
-        self.retriever = HybridRetriever(corpus, embedder, cfg.retrieval)
+        self.retriever = HybridRetriever(corpus, embedder, cfg.retrieval, cfg.database)
         self.context = ContextBuilder(corpus, cfg.context, generator.count_tokens)
         self.answerer = Answerer(generator, cache)
         self.rewriter = QuestionRewriter(self.answerer, cfg.memory) if cfg.memory.enabled else None
@@ -218,7 +218,8 @@ class RAGSystem:
         cache = AnswerCache(cfg.cache.path, cfg.cache.enabled)
         system = cls(cfg, corpus, embedder, reranker, generator, cache, log)
         routed = ", ".join(system.retriever.routed) or "none"
-        log(f"Ready: {len(corpus.chunks)} chunks indexed (dense + {'BM25' if cfg.retrieval.use_bm25 else 'no BM25'}); "
+        dense = "dense" if cfg.retrieval.dense_backend == "faiss" else f"dense from {cfg.retrieval.dense_backend}"
+        log(f"Ready: {len(corpus.chunks)} chunks indexed ({dense} + {'BM25' if cfg.retrieval.use_bm25 else 'no BM25'}); "
             f"routed indexes: {routed}; answer cache: {len(cache)} answers")
         return system
 

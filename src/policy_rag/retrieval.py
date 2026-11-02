@@ -1,4 +1,5 @@
-"""First-stage search: dense (embeddings + FAISS) and lexical (BM25) over the chunks, fused by reciprocal rank.
+"""First-stage search: dense (embeddings + FAISS, or vectors stored in Postgres with pgvector) and lexical (BM25)
+over the chunks, fused by reciprocal rank.
 
 Nothing is cut here beyond the top-k of each leg: every candidate is scored by the reranker afterwards.
 Chunks in a *routed index* (``index`` field, e.g. the premium tables) are searched as a separate index, and only
@@ -49,10 +50,19 @@ class BM25Index:
 
 
 class HybridRetriever:
-    def __init__(self, corpus: Corpus, embedder, cfg):
+    def __init__(self, corpus: Corpus, embedder, cfg, database=None):
+        """``database``: the ``DatabaseConfig``, used when ``cfg.dense_backend`` is ``pgvector``."""
         self.corpus, self.cfg = corpus, cfg
         texts = [c.embed_text for c in corpus.chunks]
-        self.dense = DenseIndex(embedder, texts)
+        backend = getattr(cfg, "dense_backend", "faiss")
+        if backend == "faiss":
+            self.dense = DenseIndex(embedder, texts)
+        elif backend == "pgvector":
+            from .config import DatabaseConfig
+            from .database import PgVectorDenseIndex
+            self.dense = PgVectorDenseIndex(embedder, corpus, database if database is not None else DatabaseConfig())
+        else:
+            raise ValueError(f"retrieval.dense_backend: unknown backend {backend!r}")
         self.bm25 = BM25Index(texts) if cfg.use_bm25 else None
         present = {c.index for c in corpus.chunks}
         # routed indexes that exist in this corpus; with routing off they are searched like the main index

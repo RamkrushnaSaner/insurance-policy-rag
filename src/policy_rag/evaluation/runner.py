@@ -381,6 +381,9 @@ class Evaluation:
         if self.system is not None:
             out.update(embed_revision=self.system.embedder.revision(), reranker_revision=self.system.reranker.revision(),
                        llm_revision=gen.revision())
+            store = getattr(self.system.retriever.dense, "info", None)
+            if store is not None:                     # vectors read from the database: which ones (no login details)
+                out["dense_store"] = store
         return out
 
     def _environment(self, started) -> dict:

@@ -13,6 +13,10 @@ embedder:
   model: BAAI/bge-small-en-v1.5
   query_prefix: "Represent this sentence for searching relevant passages: "
   batch_size: 32
+  revision: null                         # a Hub commit pins the model files
+  dtype: null                            # e.g. float16; null = float32
+  normalize: false                       # unit-length vectors (required for vectors stored in the database)
+  padding_side: null                     # left for last-token pooling models (Qwen3-Embedding)
 
 reranker:
   type: cross_encoder
@@ -26,6 +30,7 @@ retrieval:
   k_bm25: 32
   use_bm25: true
   rrf_k: 60
+  dense_backend: faiss                   # faiss (in memory) or pgvector (stored vectors, see database below)
   routing: true
   routed_indexes:
     premium:                             # premium-table chunks: searched only for cost questions
@@ -87,3 +92,9 @@ decision:                                # fixed before results: when does a can
   max_median_seconds: 150
   max_peak_gpu_gb: 14.0
   kappa_target: 0.7
+
+database:                                # used only with retrieval.dense_backend: pgvector
+  url_env: DATABASE_URL                  # the environment variable holding the connection string (never the string)
+  model_key: ""                          # which stored vectors to search (rag.embedding_models)
+  connect_timeout: 30
+  statement_timeout_ms: 30000

@@ -31,6 +31,8 @@ models = [
 ]
 # Turning the policy PDF into a chunk file
 ingest = ["pdfplumber==0.11.10", "tiktoken>=0.7"]
+# Reading stored vectors from Postgres + pgvector (retrieval.dense_backend: pgvector)
+db = ["psycopg[binary]>=3.2"]
 dev = ["pytest>=8"]
 
 [project.scripts]

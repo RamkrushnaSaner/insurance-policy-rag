@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased (branch feature/neon-pgvector)
+
+Postgres + pgvector as an option for the dense search; nothing changes unless a config asks for it.
+
+- **Stored vectors** (`retrieval.dense_backend: pgvector`, `database.*`): the dense leg reads the chunk vectors of
+  the active policy version from Postgres instead of computing them at start-up. Exact inner-product search, same
+  ranking as FAISS. Start-up refuses a database whose active chunks are not exactly the chunk file's (matched by
+  `chunk_uid`), lack a vector, or were embedded by another model or revision. The connection string comes from an
+  environment variable (`DATABASE_URL`), sessions are read-only, and a dropped connection (Neon suspends idle
+  computes) is reopened once. Needs `pip install -e ".[db]"`.
+- **Embedder settings** `revision`, `dtype`, `normalize`, `padding_side` (all off by default), for
+  Qwen3-Embedding-0.6B in half precision on a T4.
+- **Experiment configs** [`qwen3_text_faiss.yaml`](configs/experiments/qwen3_text_faiss.yaml) and
+  [`qwen3_text_pgvector.yaml`](configs/experiments/qwen3_text_pgvector.yaml): Qwen3 over the text-only chunk file,
+  vectors in memory or from the database.
+- Tests: stored-vector search, start-up checks, reconnects and the embedder settings with stand-ins (24 tests), plus
+  3 opt-in tests against a real Postgres (`POLICY_RAG_TEST_DATABASE_URL`). Config fingerprints change because the
+  new settings are part of every config.
+
 ## 3.3.1 (29 October 2026)
 
 Every experiment re-verified against its run files; no change to how the system answers.
