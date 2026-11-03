@@ -120,14 +120,14 @@ _PERIOD = re.compile(r"\b(\d+)[\s-]*(day|month|year)s?\b", re.I)
 _LIST_ASK = r"\b(which|what|list|all|name)\b(?:\s+[\w'-]+){0,4}?\s+"
 LIST_TABLES = {   # table -> its item column, order and extra columns, and "the whole list is asked for" patterns
     "waiting_period_conditions": {
-        "item": "condition", "no": "x.list_no", "order": "x.category, x.list_no",
+        "item": "condition", "no": "x.list_no", "order": "x.category COLLATE \"C\", x.list_no",
         "extra": "x.exclusion_code, x.category, x.waiting_months, x.waiting_block, b.page AS waiting_page, "
                  "b.record->>'section' AS waiting_section, b.text AS waiting_text",
         "join": "JOIN rag.text_blocks b ON b.version_id = x.version_id AND b.block_id = x.waiting_block",
         "whole": re.compile(_LIST_ASK + r"(conditions|diseases|illnesses|ailments|procedures|surgeries|treatments)\b[^?]*"
                             r"\bwaiting\b|\blist of\b[^?]*\bwaiting\b|\bwaiting\b[^?]*\b(list|which)\b", re.I)},
     "non_payable_items": {
-        "item": "item", "no": "x.item_no", "order": "x.list, x.item_no", "extra": "x.list, x.list_title",
+        "item": "item", "no": "x.item_no", "order": "x.list COLLATE \"C\", x.item_no", "extra": "x.list, x.list_title",
         "context": "x.list_title",
         "whole": re.compile(r"(?=[^?]*\b(which|what|list)\b)[^?]*\b(non[\s-]?(medical|payable)|annexure[\s-]*b)\b|"
                             + _LIST_ASK + r"(items|consumables|things)\b[^?]*\b(not|non)[\s-]+(covered|payable|paid|"
@@ -137,7 +137,7 @@ LIST_TABLES = {   # table -> its item column, order and extra columns, and "the 
         "whole": re.compile(r"\b(which|what|list|all)\b[^?]*\bmajor medical illness(es)?\b|\bmajor medical illnesses\b[^?]*"
                             r"\b(which|what|list|include)\b", re.I)},
     "global_cover_benefits": {
-        "item": "benefit", "no": "NULL::int", "order": "x.cover_section, string_to_array(x.base_section, '.')::int[]",
+        "item": "benefit", "no": "NULL::int", "order": "string_to_array(x.cover_section, '.')::int[], string_to_array(x.base_section, '.')::int[]",
         "extra": "x.cover_section, x.cover, x.benefit_code, x.base_section", "context": "x.cover",
         "whole": re.compile(_LIST_ASK + r"(benefits|covers|treatments|expenses)\b[^?]*\bglobal (health )?cover\b|\bglobal "
                             r"(health )?cover\b[^?]*\b(which|what|list)\b[^?]*\b(benefits|covers|include\w*|available)\b|"
@@ -256,7 +256,7 @@ class TableData:
             SELECT x.plan, array_agg(DISTINCT x.sum_insured ORDER BY x.sum_insured) AS sums_insured,
                    min(x.age_min) AS age_min, max(coalesce(x.age_max, x.age_min)) AS age_max,
                    bool_or(x.age_max IS NULL) AS open_ended, array_agg(DISTINCT x.tier ORDER BY x.tier) AS tiers,
-                   array_agg(DISTINCT x.table_id ORDER BY x.table_id) AS tables, min(t.section_id) AS section
+                   array_agg(DISTINCT x.table_id COLLATE "C" ORDER BY x.table_id COLLATE "C") AS tables, min(t.section_id) AS section
               FROM rag.premium_rates x {_ACTIVE}
               JOIN rag.tables t ON t.version_id = x.version_id AND t.table_id = x.table_id
              GROUP BY x.plan""", {})
@@ -265,7 +265,7 @@ class TableData:
                    b.text AS printed
               FROM rag.city_tiers x {_ACTIVE}
               JOIN rag.text_blocks b ON b.version_id = x.version_id AND b.block_id = x.source_block_id
-             ORDER BY x.tier, x.place""", {})
+             ORDER BY x.tier, x.place COLLATE "C" """, {})
         illustration = self._rows(f"""
             SELECT array_agg(DISTINCT x.plan) AS plans, array_agg(DISTINCT x.year ORDER BY x.year) AS years
               FROM rag.claim_limit_illustration x {_ACTIVE}""", {})
@@ -284,7 +284,7 @@ class TableData:
              WHERE x.plan = ANY(%(plans)s) AND x.tier = ANY(%(tiers)s::int[])
                AND x.sum_insured = ANY(%(sis)s::bigint[])
                AND %(age)s BETWEEN x.age_min AND coalesce(x.age_max, 1000)
-             ORDER BY x.plan, x.tier, x.sum_insured""",
+             ORDER BY x.plan COLLATE "C", x.tier, x.sum_insured""",
                           {"plans": list(plans), "tiers": list(tiers), "sis": list(sums_insured), "age": int(age)})
 
     def claim_limits(self, plans: Sequence[str], years: Sequence[int], items: Sequence[str]) -> List[dict]:
@@ -292,19 +292,19 @@ class TableData:
             SELECT x.plan, x.year, x.item, x.item_printed, x.amount_inr AS value, {_CITE}
               FROM rag.claim_limit_illustration x {_ACTIVE} {_CELL}
              WHERE x.plan = ANY(%(plans)s) AND x.year = ANY(%(years)s::int[]) AND x.item = ANY(%(items)s)
-             ORDER BY x.plan, x.item, x.year""", {"plans": list(plans), "years": list(years), "items": list(items)})
+             ORDER BY x.plan COLLATE "C", x.item COLLATE "C", x.year""", {"plans": list(plans), "years": list(years), "items": list(items)})
 
     def instalments(self) -> List[dict]:
         return self._rows(f"""
             SELECT x.option, x.frequency, x.grace_period_days AS value, {_CITE}
-              FROM rag.instalment_options x {_ACTIVE} {_CELL} ORDER BY x.option""", {})
+              FROM rag.instalment_options x {_ACTIVE} {_CELL} ORDER BY x.option COLLATE "C" """, {})
 
     def checkups(self, policy_types: Sequence[str], sums_insured: Optional[Sequence[int]]) -> List[dict]:
         return self._rows(f"""
             SELECT x.policy_type, x.applies, x.sum_insured, x.si_printed, x.limit_inr AS value, {_CITE}
               FROM rag.checkup_limits x {_ACTIVE} {_CELL}
              WHERE x.policy_type = ANY(%(types)s) AND (%(any_si)s OR x.sum_insured = ANY(%(sis)s::bigint[]))
-             ORDER BY x.policy_type DESC, x.sum_insured""",
+             ORDER BY x.policy_type COLLATE "C" DESC, x.sum_insured""",
                           {"types": list(policy_types), "any_si": not sums_insured, "sis": list(sums_insured or [])})
 
     def deductibles(self, plans: Sequence[str], deductibles: Optional[Sequence[int]], sum_insured: Optional[int]) -> List[dict]:
@@ -314,7 +314,7 @@ class TableData:
              WHERE x.plan = ANY(%(plans)s) AND (%(any_d)s OR x.deductible = ANY(%(deds)s::int[]))
                AND (%(si)s::bigint IS NULL OR ((x.si_gt IS NULL OR %(si)s::bigint > x.si_gt)
                                            AND (x.si_le IS NULL OR %(si)s::bigint <= x.si_le)))
-             ORDER BY x.plan, x.deductible, x.si_gt NULLS FIRST""",
+             ORDER BY x.plan COLLATE "C", x.deductible, x.si_gt NULLS FIRST""",
                           {"plans": list(plans), "any_d": not deductibles, "deds": list(deductibles or []),
                            "si": sum_insured})
 
@@ -393,7 +393,7 @@ class TableData:
               JOIN unnest(%(tids)s::text[], %(rows)s::int[], %(cols)s::int[]) AS k(table_id, row, col)
                 ON k.table_id = c.table_id AND k.row = c.row AND (k.col IS NULL OR k.col = c.col)
              WHERE NOT coalesce(c.is_header, false)
-             ORDER BY c.table_id, c.row, c.col""", {"tids": [c[0] for c in cells], "rows": [c[1] for c in cells],
+             ORDER BY c.table_id COLLATE "C", c.row, c.col""", {"tids": [c[0] for c in cells], "rows": [c[1] for c in cells],
                                                      "cols": [c[2] for c in cells]})
 
     def linked_chunks(self, table_ids: Sequence[str]) -> List[dict]:
@@ -406,7 +406,7 @@ class TableData:
               JOIN rag.table_refs r ON r.version_id = ct.version_id AND r.table_id = ct.table_id
              WHERE r.parts && %(ids)s::text[]
              ORDER BY array_position(ARRAY['introduced_by', 'same_clause', 'notes_in', 'refers_to'], ct.relation),
-                      ct.table_id, ct.chunk_uid""", {"ids": list(table_ids)})
+                      ct.table_id COLLATE "C", ct.chunk_uid COLLATE "C" """, {"ids": list(table_ids)})
 
     def all_rows_text(self) -> str:
         """Every printed cell of the active version, row by row (for the evaluation: what the tables hold)."""
@@ -414,7 +414,7 @@ class TableData:
             SELECT coalesce(t.caption, t.title, '') || ' ' || string_agg(coalesce(c.text, ''), ' ' ORDER BY c.col) AS line
               FROM rag.table_cells c JOIN rag.active_versions v ON v.version_id = c.version_id AND v.doc_id = %(doc)s
               JOIN rag.tables t ON t.version_id = c.version_id AND t.table_id = c.table_id
-             GROUP BY c.table_id, c.row, t.caption, t.title ORDER BY c.table_id, c.row""", {})
+             GROUP BY c.table_id, c.row, t.caption, t.title ORDER BY c.table_id COLLATE "C", c.row""", {})
         return "\n".join(r["line"] for r in rows)
 
     def notes(self, table_ids: Sequence[str]) -> List[dict]:
@@ -422,7 +422,7 @@ class TableData:
         return self._rows("""
             SELECT r.table_id, r.parts, r.record->'notes' AS notes, r.record->'footnotes' AS footnotes
               FROM rag.table_refs r JOIN rag.active_versions v ON v.version_id = r.version_id AND v.doc_id = %(doc)s
-             WHERE r.parts && %(ids)s::text[] ORDER BY r.table_id""", {"ids": list(table_ids)})
+             WHERE r.parts && %(ids)s::text[] ORDER BY r.table_id COLLATE "C" """, {"ids": list(table_ids)})
 
 
 # ---------------------------------------------------------------------------------------------------- the answer

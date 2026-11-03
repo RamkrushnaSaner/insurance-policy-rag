@@ -388,7 +388,8 @@ class MemoryTableData:
             rows.append(row)
         key = {"waiting_period_conditions": lambda r: (r["category"], r["item_no"]),
                "non_payable_items": lambda r: (r["list"], r["item_no"]),
-               "global_cover_benefits": lambda r: (r["cover_section"], [int(x) for x in r["base_section"].split(".")])
+               "global_cover_benefits": lambda r: ([int(x) for x in r["cover_section"].split(".")],
+                                                   [int(x) for x in r["base_section"].split(".")])
                }.get(table, lambda r: r["item_no"])
         return sorted(rows, key=key)
 

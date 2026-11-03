@@ -46,6 +46,9 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
   development database (checksums in [`db/README.md`](db/README.md)); no policy text.
 - **CI against Postgres:** a second job applies the migrations to a Postgres 18 + pgvector service and runs the 41
   database tests (pgvector search and table route SQL) that are skipped without a database.
+- Table route SQL sorts text in byte order (`COLLATE "C"`), so its results do not depend on the database's
+  collation (CI's `en_US` sorts `p10-t1` before `p1-t5`); Global Health Cover benefits are listed in section order
+  (4.9 before 4.10). No change on the development database, whose collation is `C.UTF-8`.
 - `evaluation.grounding_revision` pins the HHEM model's commit (HHEM runs code from its repository); unset, the
   latest is loaded as before.
 
