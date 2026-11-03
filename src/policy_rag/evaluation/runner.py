@@ -423,7 +423,7 @@ class Evaluation:
         if self.system is not None:
             from ..device import free_gpu
             free_gpu()
-        grounder = HHEMGrounder(cfg.grounding_model, cfg.hhem_threshold)
+        grounder = HHEMGrounder(cfg.grounding_model, cfg.hhem_threshold, revision=cfg.grounding_revision)
         try:
             grounder.load()
         except Exception as e:

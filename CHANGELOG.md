@@ -42,6 +42,12 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
   blamed on the chunk file. Runs report how many questions the route answered and every fallback.
 - The table passage's first line now closes its parenthesis ("Policy tables (exact values read from the database).").
 - Tests: 31 on the invented lists, 16 on the pipeline and evaluation with tables, and 20 more opt-in database tests.
+- **Database schema in the repo** ([`db/`](db/)): migrations 001 and 002, byte for byte the files applied to the
+  development database (checksums in [`db/README.md`](db/README.md)); no policy text.
+- **CI against Postgres:** a second job applies the migrations to a Postgres 18 + pgvector service and runs the 41
+  database tests (pgvector search and table route SQL) that are skipped without a database.
+- `evaluation.grounding_revision` pins the HHEM model's commit (HHEM runs code from its repository); unset, the
+  latest is loaded as before.
 
 ## 3.3.1 (29 October 2026)
 
