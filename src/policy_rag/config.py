@@ -30,6 +30,10 @@ class EmbedderConfig:
     query_prefix: str = "Represent this sentence for searching relevant passages: "
     batch_size: int = 32
     device: Optional[str] = None         # None = CUDA if available, else CPU
+    revision: Optional[str] = None       # pin the model files to a Hub commit; None = the latest
+    dtype: Optional[str] = None          # weights precision, e.g. "float16"; None = the library default (float32)
+    normalize: bool = False              # return unit-length float32 vectors (as stored in the database)
+    padding_side: Optional[str] = None   # "left" for last-token pooling (Qwen3-Embedding); None = the tokenizer's own
 
 
 @dataclass
@@ -64,6 +68,8 @@ class RetrievalConfig:
     k_bm25: int = 32
     use_bm25: bool = True
     rrf_k: int = 60                      # reciprocal rank fusion only orders the union; nothing is cut
+    dense_backend: str = "faiss"         # "faiss": vectors computed at start-up and kept in memory;
+                                         # "pgvector": vectors stored in Postgres (see ``database``)
     routing: bool = True                 # False = routed-index chunks are searched like all others
     routed_indexes: Dict[str, RoutedIndexConfig] = field(default_factory=lambda: {
         "premium": RoutedIndexConfig(k=12, query_pattern=_PREMIUM_QUERY, exclude_pattern=_PREMIUM_EXCLUDE)})
@@ -132,6 +138,8 @@ class EvaluationConfig:
     output_dir: str = "runs"
     groundedness: bool = True
     grounding_model: str = "vectara/hallucination_evaluation_model"
+    grounding_revision: Optional[str] = "de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8"  # HHEM runs code from its repo:
+    # pinned to the commit that graded the Step 8b run; None = latest
     hhem_threshold: float = 0.5          # a sentence is supported when HHEM scores it at or above this
     evidence_removed_test: bool = True   # up to 4 extra answers with the evidence taken out of the context
     repeat_check: bool = True            # 1 answer regenerated without the cache (determinism)
@@ -148,6 +156,37 @@ class DecisionConfig:
 
 
 @dataclass
+class DatabaseConfig:
+    """Postgres with pgvector, used when ``retrieval.dense_backend`` is ``pgvector`` and by the table route
+    (``tables.enabled``). The connection string is never
+    written in a config file: it is read from the environment variable named here. The database is only read
+    (every session is set read-only)."""
+    url_env: str = "DATABASE_URL"
+    model_key: str = ""                  # which stored vectors to search (rag.embedding_models.model_key)
+    connect_timeout: int = 30            # seconds; a suspended Neon compute needs a moment to start
+    statement_timeout_ms: int = 30000
+
+
+TABLE_FALLBACKS = ("table_answer", "keep")
+
+
+@dataclass
+class TablesConfig:
+    """The table route (policy_rag/tables.py): questions about the policy's printed tables are answered from the
+    typed tables in the database (connection as in ``database``), and the exact values go into the answer model's
+    context ahead of the text passages."""
+    enabled: bool = False
+    doc_id: str = ""                     # the document whose tables are used ("" = the only configured document)
+    max_tokens: int = 1500               # longest table passage in the context (longer lists are shortened, and say so)
+    link_chunks: bool = True             # text chunks linked to the tables used become search candidates
+    pin_linked_chunks: bool = True       # ... and go into the context after the table passage, whatever their score
+    max_linked_tokens: int = 600         # at most this many tokens of linked chunks are pinned
+    # when the answer has a figure that is in neither the context nor the question, and the tables gave the whole
+    # answer (a premium, a limit, ...): "table_answer" replaces it with the answer written from the tables; "keep" keeps it
+    on_unsupported_figures: str = "table_answer"
+
+
+@dataclass
 class Config:
     documents: List[DocumentConfig] = field(default_factory=list)
     embedder: EmbedderConfig = field(default_factory=EmbedderConfig)
@@ -161,6 +200,8 @@ class Config:
     cache: CacheConfig = field(default_factory=CacheConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     decision: DecisionConfig = field(default_factory=DecisionConfig)
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    tables: TablesConfig = field(default_factory=TablesConfig)
     plugins: List[str] = field(default_factory=list)   # modules imported first (they can register new component types)
     source: Optional[str] = None         # the file this config was read from (set by load_config)
 
@@ -175,6 +216,9 @@ class Config:
 
 
 # ---------------------------------------------------------------------------------------------------- loading
+DENSE_BACKENDS = ("faiss", "pgvector")
+
+
 class ConfigError(ValueError):
     pass
 
@@ -279,6 +323,21 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
     ids = [d.id for d in cfg.documents]
     if len(ids) != len(set(ids)):
         raise ConfigError(f"documents: ids must be unique, got {ids}")
+    if cfg.retrieval.dense_backend not in DENSE_BACKENDS:
+        raise ConfigError(f"retrieval.dense_backend: expected one of {list(DENSE_BACKENDS)}, "
+                          f"got {cfg.retrieval.dense_backend!r}")
+    if cfg.retrieval.dense_backend == "pgvector" and not cfg.database.model_key:
+        raise ConfigError("database.model_key: required with retrieval.dense_backend: pgvector "
+                          "(the key the vectors were stored under)")
+    if cfg.tables.on_unsupported_figures not in TABLE_FALLBACKS:
+        raise ConfigError(f"tables.on_unsupported_figures: expected one of {list(TABLE_FALLBACKS)}, "
+                          f"got {cfg.tables.on_unsupported_figures!r}")
+    if cfg.tables.enabled and not cfg.tables.doc_id and len(ids) != 1:
+        raise ConfigError(f"tables.doc_id: required with tables.enabled when several documents are configured ({ids})")
+    if cfg.tables.enabled and cfg.tables.doc_id and cfg.tables.doc_id not in ids:
+        raise ConfigError(f"tables.doc_id: {cfg.tables.doc_id!r} is not a configured document ({ids})")
+    if cfg.embedder.padding_side not in (None, "left", "right"):
+        raise ConfigError(f"embedder.padding_side: expected left, right or null, got {cfg.embedder.padding_side!r}")
     return cfg
 
 

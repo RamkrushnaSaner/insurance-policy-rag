@@ -117,12 +117,14 @@ def anchor_in(alternatives, words_text: str) -> bool:
 class CorpusText:
     """Normalised texts of a corpus, computed once (used by the checks and retrieval metrics)."""
 
-    def __init__(self, corpus: Corpus, doc_id: Optional[str] = None):
+    def __init__(self, corpus: Corpus, doc_id: Optional[str] = None, extra_text: str = ""):
+        """``extra_text``: more of the document that is not in the chunk file (the printed tables, when the table
+        route reads them from the database), so a fact there is not counted as missing from the document."""
         self.corpus = corpus
         self.chunk_words = [words(c.text) for c in corpus.chunks]
         own = [c for c in corpus.chunks if doc_id is None or c.doc_id == doc_id]
-        self.norm = norm_text(" ".join(c.label + " " + c.text for c in own))
-        self.all_words = " ".join(self.chunk_words[c.idx] for c in own)
+        self.norm = norm_text(" ".join([c.label + " " + c.text for c in own] + [extra_text]))
+        self.all_words = " ".join([self.chunk_words[c.idx] for c in own] + ([words(extra_text)] if extra_text else []))
 
     def words_of(self, ids) -> str:
         return " ".join(self.chunk_words[i] for i in sorted(set(ids)))

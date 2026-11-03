@@ -1,0 +1,68 @@
+{
+ "inputs": [
+  {
+   "file": "tables_full/run.json",
+   "sha256": "0d60aa435edf79a7be0004f48d4fdd51777bdaf6479f1ffb894b177f14fa139b"
+  }
+ ],
+ "exported_with": "scripts/export_results.py",
+ "run_name": "tables_full",
+ "started": "2026-11-03T04:39:16",
+ "testset_version": "7313dd7571",
+ "chunk_sha256": "f92b0ea20d480edb24e254584975d6009c7126a370b3e49d4a17be5de1675a8b",
+ "models": {
+  "embed": "Qwen/Qwen3-Embedding-0.6B",
+  "reranker": "BAAI/bge-reranker-v2-m3",
+  "llm": "Qwen/Qwen3-8B",
+  "llm_precision": "4-bit NF4",
+  "enable_thinking": true,
+  "decoding": {
+   "do_sample": true,
+   "temperature": 0.6,
+   "top_p": 0.95,
+   "top_k": 20
+  },
+  "embed_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "reranker_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "llm_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "dense_store": {
+   "model_key": "qwen3-embedding-0.6b@97b0c614be4d:fp16:1024",
+   "model": "Qwen/Qwen3-Embedding-0.6B",
+   "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+   "loaded_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+   "revision_checked": true,
+   "dim": 1024,
+   "dtype": "float16",
+   "query_instruction": "Instruct: Given a question about a health insurance policy, retrieve the passages that answer it\nQuery:",
+   "chunks": 109,
+   "versions": {
+    "optima-secure": {
+     "version_id": 2,
+     "version_label": "chunks v4 (2026-11-01)"
+    }
+   }
+  },
+  "tables": {
+   "doc_id": "optima-secure",
+   "version_id": 2,
+   "version_label": "chunks v4 (2026-11-01)"
+  }
+ },
+ "packages": {
+  "torch": "2.11.0+cu130",
+  "transformers": "5.20.1",
+  "sentence-transformers": "5.7.0",
+  "bitsandbytes": "0.50.2",
+  "accelerate": "1.15.0",
+  "faiss-cpu": "1.15.1",
+  "rank-bm25": "0.2.2",
+  "langgraph": "1.2.18",
+  "numpy": "2.4.6",
+  "pandas": "2.2.3"
+ },
+ "gpu": "Tesla T4",
+ "llm_calls": {
+  "generated": 109,
+  "from_cache": 0
+ }
+}

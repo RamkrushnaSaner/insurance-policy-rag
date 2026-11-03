@@ -1,5 +1,62 @@
 # Changelog
 
+## 3.4.0 (3 November 2026)
+
+Postgres on Neon for the search (pgvector) and for the policy's tables (typed tables answered with fixed SQL).
+Nothing changes unless a config asks for it: [`configs/default.yaml`](configs/default.yaml) is still the published
+baseline; [`configs/experiments/qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml) is the database
+version. **Evaluated** ([`results/neon_tables/`](results/neon_tables/)): 78/88 fully correct on test against the
+baseline's 79/88 (p = 1.0): adopted as not worse, not shown better; more evidence reaches the model (66 against 63 of
+67 test questions), and table-only questions 8 → 9 of 12.
+
+- **Stored vectors** (`retrieval.dense_backend: pgvector`, `database.*`): the dense leg reads the chunk vectors of
+  the active policy version from Postgres instead of computing them at start-up. Exact inner-product search, same
+  ranking as FAISS. Start-up refuses a database whose active chunks are not exactly the chunk file's (matched by
+  `chunk_uid`), lack a vector, or were embedded by another model or revision. The connection string comes from an
+  environment variable (`DATABASE_URL`), sessions are read-only, and a dropped connection (Neon suspends idle
+  computes) is reopened once. Needs `pip install -e ".[db]"`.
+- **Embedder settings** `revision`, `dtype`, `normalize`, `padding_side` (all off by default), for
+  Qwen3-Embedding-0.6B in half precision on a T4.
+- **Experiment configs** [`qwen3_text_faiss.yaml`](configs/experiments/qwen3_text_faiss.yaml) and
+  [`qwen3_text_pgvector.yaml`](configs/experiments/qwen3_text_pgvector.yaml): Qwen3 over the text-only chunk file,
+  vectors in memory or from the database.
+- Tests: stored-vector search, start-up checks, reconnects and the embedder settings with stand-ins (24 tests), plus
+  3 opt-in tests against a real Postgres (`POLICY_RAG_TEST_DATABASE_URL`). Config fingerprints change because the
+  new settings are part of every config.
+- **Table route** ([`tables.py`](src/policy_rag/tables.py)): questions about premiums, claim limits, instalment grace
+  periods, check-up limits, deductible discounts and city tiers are answered from the typed tables with fixed,
+  parameterised SQL. Fields (plan, age, Sum Insured, city or tier, year, frequency) are read from the question and
+  checked against the tables: a plan without a premium table, an age or Sum Insured that is not printed, an unknown
+  plan are explained, never guessed. Differences are computed in Decimal; every value keeps its table, row, column,
+  page and printed cell; `verify()` lists figures in an answer that are not in the facts. Tests: 35 on an invented
+  policy, plus 18 opt-in tests that compare the SQL with the in-memory stand-in on a real Postgres.
+- **Table route, lists and procedures** (needs migration 002): waiting-period conditions, non-payable items, Major
+  Medical Illnesses, Global Health Cover benefits and relationships (a whole list, or the items a question names,
+  found by keyword search with a precision rule), claim deadlines, grievance contacts and the Sum Insured examples.
+  Each answer carries the printed cells behind it (`evidence_text`) and the text chunks linked to its tables.
+- **Table route in the pipeline** (`tables.*`, off by default;
+  [`qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml) turns it on): a new graph node puts the
+  table facts first in the context, adds the linked chunks to the search candidates and places them in the context
+  whatever their score (`tables.pin_linked_chunks`, at most `tables.max_linked_tokens`); the gate passes when the
+  tables answered (except for single list items); a complete table answer replaces a model answer that has a figure
+  not in the context, or that refuses. A failing route is logged and the text alone is used. With tables off, the
+  pipeline's results are unchanged (checked question by question on the 113 test questions).
+- **Evaluation with tables:** records keep the table passage, a summary of the route (no policy text) and the cells
+  behind it; those cells count as evidence for search recall, context recall and facts in context, and the printed
+  tables (and the table passage) count as part of the document, so a missing fact that the tables hold is not
+  blamed on the chunk file. Runs report how many questions the route answered and every fallback.
+- The table passage's first line now closes its parenthesis ("Policy tables (exact values read from the database).").
+- Tests: 31 on the invented lists, 16 on the pipeline and evaluation with tables, and 20 more opt-in database tests.
+- **Database schema in the repo** ([`db/`](db/)): migrations 001 and 002, byte for byte the files applied to the
+  development database (checksums in [`db/README.md`](db/README.md)); no policy text.
+- **CI against Postgres:** a second job applies the migrations to a Postgres 18 + pgvector service and runs the 41
+  database tests (pgvector search and table route SQL) that are skipped without a database.
+- Table route SQL sorts text in byte order (`COLLATE "C"`), so its results do not depend on the database's
+  collation (CI's `en_US` sorts `p10-t1` before `p1-t5`); Global Health Cover benefits are listed in section order
+  (4.9 before 4.10). No change on the development database, whose collation is `C.UTF-8`.
+- `evaluation.grounding_revision` pins the HHEM model's commit (HHEM runs code from its repository). The default
+  config pins `de9a5e6b…`, the commit that graded the Step 8b run; `null` loads the latest.
+
 ## 3.3.1 (29 October 2026)
 
 Every experiment re-verified against its run files; no change to how the system answers.

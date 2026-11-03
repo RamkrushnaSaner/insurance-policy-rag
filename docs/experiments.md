@@ -20,6 +20,9 @@ this large between two systems if they were really equally good, counting only t
 | 4 | [Reproduction](#4-reproduction) | 23–29 Oct 2026 | same contexts, prompts, verdicts and groundedness in every session | – | [`results/reproduction/`](../results/reproduction/) |
 | 5 | [Thinking off](#5-thinking-off) | 25 Oct 2026 | 72/88 on test: 7 lost, 0 gained, p = 0.016; 5× faster | keep thinking on | [`results/thinking_off/`](../results/thinking_off/) |
 | 6 | [Conversation memory](#6-conversation-memory) | 27–29 Oct 2026 | three runs, never significantly better (final: 21 vs 19 of 32, p = 0.73) | not adopted, off by default | [`results/memory/`](../results/memory/) |
+| 7 | [Qwen3 embeddings from Neon](#7-qwen3-embeddings-from-neon) | 2 Nov 2026 | text-only chunks: all evidence in context 64/67 for both embedders (p = 1.0); dense recall@10 0.955 → 0.993 | keep Qwen3 | [`results/embedder_qwen3/`](../results/embedder_qwen3/) |
+| 8 | [Table route, retrieval](#8-table-route-retrieval) | 2–3 Nov 2026 | table-only questions with every key fact in context 0/12 → 11/12 (12/12 with linked chunks pinned); no evidence lost elsewhere | tables on | [`results/table_route_retrieval/`](../results/table_route_retrieval/) |
+| 9 | [Neon + table route, full answers](#9-neon--table-route-full-answers) | 3 Nov 2026 | 78/88 on test against 79/88 (5 fixed, 6 broken, p = 1.0); 100/113 overall | adopted: not worse (v3.4) | [`results/neon_tables/`](../results/neon_tables/) |
 
 ## 1. Baseline
 
@@ -138,6 +141,57 @@ this large between two systems if they were really equally good, counting only t
   [evaluation.md](evaluation.md#conversation-memory).
 - **Reproduce.** `policy-rag evaluate-dialogues --name memory --resume-from <baseline run.json>`.
 
+## 7. Qwen3 embeddings from Neon
+
+- **Objective.** The tables were taken out of the chunk file (they are stored as tables in Postgres). On the 109
+  text-only chunks, does Qwen3-Embedding-0.6B, with its vectors read from Neon, find the evidence at least as well as
+  bge-small-en-v1.5?
+- **Method.** Two retrieval-only runs on a T4, everything but the embedder the same; rule fixed before the runs (keep
+  Qwen3 unless significantly worse, more than 5 points lower, or over 14 GB). Primary: all evidence reaching the
+  context, on the 67 answerable test questions whose evidence is in the text chunks. Before this, the stored-vector
+  search was checked against in-memory FAISS search: identical rankings for 113/113 questions.
+- **Result.** 64/67 for both (p = 1.0). The embedder alone: dense recall@10 0.955 → 0.993, @5 0.940 → 0.963. Gate:
+  1 answerable question refused with bge-small, 0 with Qwen3. Peak GPU 1.54 → 2.44 GB (retrieval only).
+- **Decision.** Keep Qwen3.
+- **Limitations.** Retrieval only; the 12 questions answered only by tables are outside this comparison.
+- **Evidence.** [`results/embedder_qwen3/`](../results/embedder_qwen3/).
+
+## 8. Table route, retrieval
+
+- **Objective.** Get the 12 questions that only the printed tables answer (premiums, claim limits, grace periods,
+  lists) to the answer model with exact values, without losing evidence elsewhere.
+- **Method.** The table route ([`tables.py`](../src/policy_rag/tables.py)) answers from the typed tables with fixed
+  SQL; its facts become the first context passage and the text chunks linked to the tables join the candidates. Two
+  retrieval-only runs in one session, tables off and on; the tables-off run had to reproduce experiment 7 exactly
+  (it did, 113/113). A second check, before experiment 9, placed the linked chunks in the context whatever their score.
+- **Result.** Table-only questions with every key fact in the context: 0/12 → 11/12, and 12/12 with the linked chunks
+  pinned (AB02 gained the Protect Benefit section). The 67 questions of experiment 7: 64 → 65 with all evidence in
+  context. No question lost evidence or a key fact; the gate did not change; no not-answerable question got a table
+  passage. The route alone answered 20 questions, every value matching its printed cell; median 708 ms per answered
+  question on Neon.
+- **Decision.** Tables on, linked chunks pinned.
+- **Limitations.** The route's question patterns were written with these 113 questions in view.
+- **Evidence.** [`results/table_route_retrieval/`](../results/table_route_retrieval/).
+
+## 9. Neon + table route, full answers
+
+- **Objective.** Decide whether the new system (experiments 7 and 8 together) can replace the baseline.
+- **Method.** [`configs/experiments/qwen3_text_tables.yaml`](../configs/experiments/qwen3_text_tables.yaml), all 113
+  questions answered on a T4 (3 Nov 2026, 109 answers generated); same reranker, answer model with thinking, prompt,
+  gate and checks as the baseline. Rule fixed before the run: adopt unless fully correct on test is significantly
+  worse or more than 5 points lower, or groundedness, unsupported-sentence rate or correct abstention is significantly
+  worse, or the median answer takes over 150 s, or peak GPU memory exceeds 14 GB.
+- **Result.** Test: 79 → 78 of 88 (−1.1 points, 95% CI −8.0 to +6.8; 5 fixed, 6 broken, p = 1.0). Key-fact recall
+  0.929 → 0.945. Groundedness on the 75 answers scored in both: 0.895 → 0.900; answers with an unsupported sentence
+  25.3% → 24.0%. Critical errors 1 → 2 (F01, L04). All 113: 97 → 100. Table-only questions 8 → 9 of 12. The 67
+  questions of experiment 7: all evidence in context 63 → 66. Everyday wording 20 → 25 of 28; policy wording 59 → 56 of
+  66. Median 47.4 → 49.2 s per answer; peak GPU 10.26 → 12.53 GB.
+- **Decision.** Adopted (v3.4): not worse than the baseline. Not shown to be better.
+- **Limitations.** 88 questions cannot rule out a loss of a few points or show a small gain. The remaining failures are
+  mostly in the answer (G09, L07 and AB02 had their facts in the context). Unpaired groundedness over all answers is
+  lower (0.886 → 0.873), from the dev answers. Table results are optimistic (see 8).
+- **Evidence.** [`results/neon_tables/`](../results/neon_tables/).
+
 ## Not run, or not verifiable
 
 | Item | Status |
@@ -149,3 +203,5 @@ this large between two systems if they were really equally good, counting only t
 | A larger thinking budget, a recalibrated reranker floor, other prompts | Suggested in [evaluation.md](evaluation.md); not run. |
 | Groundedness against human judgement | Not measured; HHEM is known to flag correct paraphrases, so its "unsupported" rate is an upper estimate. |
 | Model download size (about 20 GB) | An estimate from the models' published sizes, not measured in a run. |
+| The table route on new questions | Not run. Its patterns were written with the 113 test questions in view, so a fresh question set is needed for an unbiased figure. |
+| Query latency and concurrency in a deployed service | Not measured; only per-question timings inside evaluation runs on Colab. |

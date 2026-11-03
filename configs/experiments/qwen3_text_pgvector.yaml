@@ -1,0 +1,8 @@
+# The same search as qwen3_text_faiss.yaml, with the chunk vectors read from Postgres + pgvector (Neon) instead of
+# being computed at start-up. Needs: pip install -e ".[models,db]" and the connection string in DATABASE_URL.
+# Start-up fails unless the database's active chunks are exactly the chunk file's, each with a vector of this model.
+extends: qwen3_text_faiss.yaml
+retrieval:
+  dense_backend: pgvector
+database:
+  model_key: "qwen3-embedding-0.6b@97b0c614be4d:fp16:1024"

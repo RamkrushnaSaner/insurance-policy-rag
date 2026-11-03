@@ -16,3 +16,29 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: pytest -q
+
+  # The SQL of the pgvector search and of the table route against a real Postgres with the repo's migrations.
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.2-pg18
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      POLICY_RAG_TEST_DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,db]"
+      - name: Apply the migrations
+        run: |
+          for f in db/migrations/*.sql; do
+            psql "$POLICY_RAG_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
+          done
+      - run: pytest -q tests/test_database_integration.py tests/test_tables_integration.py -rs

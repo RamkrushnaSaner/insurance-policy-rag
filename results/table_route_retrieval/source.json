@@ -1,0 +1,78 @@
+{
+ "inputs": [
+  {
+   "file": "drive/step8a_record.json",
+   "sha256": "a77c43d62db7911f7b074774470a40f8f7712ee1ea922cfe1b5aece4ff074288"
+  }
+ ],
+ "exported_with": "per_question table of the Step 8a record (scores, statuses and question ids only)",
+ "commit": "1ea633b0c5b7887f8013109f132b262185d93311",
+ "runs": [
+  "tables_off",
+  "tables_on"
+ ],
+ "route_alone": {
+  "answered": 20,
+  "same_as_rehearsal": true,
+  "table_only_answered_as_expected": "12/12",
+  "not_answerable_answered": [],
+  "all_values_match_cells": true,
+  "no_unsupported_figures": true,
+  "median_ms": 708
+ },
+ "route_kinds": {
+  "G05": "claim_deadline",
+  "G07": "list_lookup",
+  "G09": "claim_limit",
+  "L04": "list_lookup",
+  "L07": "list_lookup",
+  "L09": "city_tier",
+  "C01": "claim_limit",
+  "C04": "instalment",
+  "D06": "checkup_limit",
+  "M01": "si_utilisation",
+  "X01": "list_lookup",
+  "X02": "list_lookup",
+  "X10": "list_lookup",
+  "X15": "instalment",
+  "N05": "premium",
+  "T01": "claim_limit",
+  "PR01": "premium",
+  "PR02": "premium",
+  "AB01": "list_lookup",
+  "AB02": "list_lookup"
+ },
+ "tables_off_same_as_step6": {
+  "context_recall": "113/113",
+  "search_recall": "113/113",
+  "mrr10": "113/113",
+  "refused_by_gate": "113/113"
+ },
+ "comparison": {
+  "table_only_with_table_passage": "12/12",
+  "table_only_all_key_facts_in_context": {
+   "off": "0/12",
+   "on": "11/12"
+  },
+  "step6_population_all_evidence_in_context": {
+   "population": 67,
+   "off": 64,
+   "on": 65
+  },
+  "other_questions_evidence_lost": [],
+  "other_questions_key_facts_lost": [],
+  "other_questions_evidence_gained": [
+   "X02"
+  ],
+  "answerable_refused_by_gate": {
+   "off": 0,
+   "on": 0
+  },
+  "not_answerable_refused_by_gate": {
+   "off": "4/19",
+   "on": "4/19"
+  },
+  "not_answerable_with_table_passage": [],
+  "ACTION_8_5_OK": true
+ }
+}

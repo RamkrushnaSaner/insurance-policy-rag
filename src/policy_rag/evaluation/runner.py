@@ -63,20 +63,38 @@ def gate_report(recs, threshold: float) -> dict:
     return out
 
 
+def table_summary(st: dict) -> Optional[dict]:
+    """What the table route did for one question (no policy text: ids, statuses and checks)."""
+    t = st.get("table")
+    if t is None:
+        return None
+    return {"intent": t.intent, "status": t.status, "complete": t.complete, "mode": t.fields.get("mode"),
+            "table_ids": t.table_ids, "rows": len(t.rows), "trace": t.trace(), "linked_chunks": len(t.linked_chunks),
+            "linked_added": [int(i) for i in st.get("table_linked") or []],
+            "pinned": [int(i) for i in st.get("table_pinned") or []], "in_context": bool(st.get("facts"))}
+
+
 def build_record(item: dict, st: dict, context, gate) -> dict:
-    """One question's record (as saved in run.json) from a pipeline state: retrieval, context, gate; no verdict yet."""
+    """One question's record (as saved in run.json) from a pipeline state: retrieval, context, gate; no verdict yet.
+    With the table route, ``context`` starts with the table passage (``facts``), as in the prompt."""
     cands, scores = st.get("candidates") or [], st.get("scores") or []
     ranked = sorted(([int(i), round(float(s), 4)] for i, s in zip(cands, scores)), key=lambda x: (-x[1], x[0]))
     groups = [[int(i) for i in g] for g in st.get("groups", [])]
     top = st.get("top_score", -np.inf)
+    facts = st.get("facts") or ""
+    table = st.get("table")
     return {"id": item["id"], "split": item["split"], "type": item["type"], "answerable": item["answerable"],
             "paraphrase": item["paraphrase"], "question": item["question"],
             "premium_routed": "premium" in (st.get("routes") or []), "routes": st.get("routes") or [],
             "candidates": [int(i) for i in cands], "ranked": ranked, "groups": groups,
-            "context": context.format(groups), "context_tokens": context.tokens(groups),
+            "context": "\n\n".join(p for p in (facts, context.format(groups)) if p),
+            "context_tokens": context.tokens(groups) + (context.count_tokens(facts) if facts else 0),
             "top_score": float(top) if top is not None and np.isfinite(top) else None,
             "gate_route": gate(st), "answer": None, "gen": None, "error": st.get("error"),
-            "oom_retry": bool(st.get("oom_retry")), "retrieval": {}, "verdict": None, "grounding": None}
+            "oom_retry": bool(st.get("oom_retry")), "retrieval": {}, "verdict": None, "grounding": None,
+            "facts": facts, "table": table_summary(st),
+            "table_evidence": table.evidence_text if table is not None and table.answered and facts else "",
+            "table_check": None, "table_error": st.get("table_error")}
 
 
 class Evaluation:
@@ -139,7 +157,8 @@ class Evaluation:
             for src in self.resume_from:
                 n = self.system.cache.add_from(str(src))
                 self._print(f"Resuming from {Path(src).name}: {n} cached answers added (used where the prompt and settings match)")
-        self.scorer = Scorer(self.testset, self.corpus, self.context, doc if self.corpus.multi_document else None)
+        self.scorer = Scorer(self.testset, self.corpus, self.context, doc if self.corpus.multi_document else None,
+                             self._table_text())
         self.problems = check_testset(self.items, self.corpus, self.scorer.text)
         self.evidence_missing = {p["id"] for p in self.problems if p["problem"] == "evidence not in this chunk file"}
         n_ans = sum(t["answerable"] for t in self.items)
@@ -150,6 +169,23 @@ class Evaluation:
                     "in everyday wording")
         for p in self.problems:
             self._print(f"  test set vs chunk file: {p['id']}: {p['problem']} ({p['detail']})")
+
+    def _table_text(self) -> str:
+        """Every printed table row, when the table route is on (the tables are then part of what can be answered)."""
+        if not self.cfg.tables.enabled:
+            return ""
+        tables = getattr(self.system, "tables", None) if self.system is not None else None
+        try:
+            if tables is None:
+                from ..database import Database
+                from ..tables import TableData
+                tables_data = TableData(Database(self.cfg.database), self.cfg.tables.doc_id or self.cfg.documents[0].id)
+            else:
+                tables_data = tables.data
+            return tables_data.all_rows_text()
+        except Exception as e:
+            self.log(f"the tables could not be read ({type(e).__name__}): facts in them count as missing from the document")
+            return ""
 
     def _record(self, item: dict, st: dict) -> dict:
         return build_record(item, st, self.context, self.system.pipeline.gate)
@@ -215,8 +251,7 @@ class Evaluation:
         evidence_removed, repeat = [], None
         if self.mode == "full":
             pipe, answerer = self.system.pipeline, self.system.answerer
-            prompts = [pipe.prompt_for(r["question"], r["groups"]) if src is None else
-                       self._prompt_from_context(r["question"], r["context"]) for r in records if r["gate_route"] == "answer"]
+            prompts = [self._prompt_from_context(r["question"], r["context"]) for r in records if r["gate_route"] == "answer"]
             need = sum(not answerer.is_cached(p) for p in prompts)
             if need:
                 for problem in self.generator.self_check():
@@ -243,6 +278,7 @@ class Evaluation:
                     else:
                         repeat_retrieval["different"].append(item["id"])
                     rec["answer"], rec["error"], gen = st.get("answer"), st.get("error"), st.get("gen")
+                    rec["table_check"] = st.get("table_check")
                 if gen:
                     rec["gen"] = {k: gen.get(k) for k in ("key", "prompt_tokens", "new_tokens", "think_tokens",
                                                           "answer_tokens", "thinking_forced", "hit_limit", "seconds", "from_cache")}
@@ -262,6 +298,7 @@ class Evaluation:
         if self.mode == "full" and cfg.evaluation.repeat_check:
             repeat = self._repeat_check(records, src)
 
+        table_route = self._table_report(records)
         peak, tokens_per_second = peak_gpu_gb(), tps
         run = {"name": self.name, "version": __version__, "mode": self.mode, "testset": self.testset.name,
                "testset_version": self.testset.version, "chunk_files": [Path(d.path).name for d in self.corpus.documents.values()],
@@ -269,7 +306,8 @@ class Evaluation:
                "models": self._models(), "config": cfg.to_dict(), "overrides": getattr(self, "overrides", []),
                "context_source": src["name"] if src else None, "scope": self.scope, "started": started, "gate": gate,
                "llm_calls": llm_calls, "retrieval_repeat": repeat_retrieval, "tokens_per_second": tokens_per_second,
-               "peak_gpu_gb": peak, "evidence_removed": evidence_removed, "repeat": repeat, "records": records}
+               "peak_gpu_gb": peak, "evidence_removed": evidence_removed, "repeat": repeat, "table_route": table_route,
+               "records": records}
         if res is not None:                            # what the saved run measured, not this session
             run.update({k: res.get(k) for k in ("models", "config", "started", "wall_seconds", "peak_gpu_gb",
                                                  "tokens_per_second", "evidence_removed", "repeat")},
@@ -305,6 +343,32 @@ class Evaluation:
         return run
 
     # ------------------------------------------------------------------ parts
+    def _table_report(self, records) -> Optional[dict]:
+        """How many questions the table route answered (by kind), fallbacks used and failures."""
+        if not self.cfg.tables.enabled:
+            return None
+        out = {"answered": {}, "in_context": 0, "fallbacks": [], "trace_problems": [], "errors": []}
+        for r in records:
+            t = r.get("table") or {}
+            if t.get("status") == "answered":
+                out["answered"][t["intent"]] = out["answered"].get(t["intent"], 0) + 1
+                if t.get("trace"):
+                    out["trace_problems"].append(r["id"])
+            out["in_context"] += bool(t.get("in_context"))
+            if (r.get("table_check") or {}).get("fallback"):
+                out["fallbacks"].append(r["id"])
+            if r.get("table_error"):
+                out["errors"].append(r["id"])
+        self._print(f"Table route: answered {sum(out['answered'].values())} questions "
+                    f"({', '.join(f'{k} {v}' for k, v in sorted(out['answered'].items())) or 'none'}); table passage in "
+                    f"{out['in_context']} contexts; answers replaced by the table answer: {out['fallbacks'] or 'none'}"
+                    + (f"; FAILED for {out['errors']}" if out["errors"] else ""))
+        for qid in out["trace_problems"]:
+            self.log(f"{qid}: a table value differs from its printed cell")
+        if out["errors"]:
+            self.log(f"the table route failed for {out['errors']} (answered from the text alone)")
+        return out
+
     def _prompt_from_context(self, question: str, context: str) -> str:
         from ..prompts import build_prompt
         return build_prompt(question, context, self.cfg.prompt.template, self.corpus.multi_document)
@@ -359,7 +423,7 @@ class Evaluation:
         if self.system is not None:
             from ..device import free_gpu
             free_gpu()
-        grounder = HHEMGrounder(cfg.grounding_model, cfg.hhem_threshold)
+        grounder = HHEMGrounder(cfg.grounding_model, cfg.hhem_threshold, revision=cfg.grounding_revision)
         try:
             grounder.load()
         except Exception as e:
@@ -381,6 +445,13 @@ class Evaluation:
         if self.system is not None:
             out.update(embed_revision=self.system.embedder.revision(), reranker_revision=self.system.reranker.revision(),
                        llm_revision=gen.revision())
+            store = getattr(self.system.retriever.dense, "info", None)
+            if store is not None:                     # vectors read from the database: which ones (no login details)
+                out["dense_store"] = store
+            tables = getattr(self.system, "tables", None)
+            if tables is not None:                    # which tables were read (no login details)
+                out["tables"] = {"doc_id": tables.data.doc, "version_id": tables.cat["version_id"],
+                                 "version_label": tables.cat["version_label"]}
         return out
 
     def _environment(self, started) -> dict:

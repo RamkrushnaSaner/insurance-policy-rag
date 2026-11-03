@@ -42,8 +42,10 @@ def claim_units(answer: str):
 
 class HHEMGrounder:
     def __init__(self, model: str = "vectara/hallucination_evaluation_model", threshold: float = 0.5, device=None,
-                 batch_size: int = 4):
-        self.name, self.threshold, self.batch_size = model, threshold, batch_size
+                 batch_size: int = 4, revision: str = None):
+        """``revision``: the model's commit to load (it runs code from its repository, so pinning it fixes that code
+        too); None loads the latest."""
+        self.name, self.threshold, self.batch_size, self.pinned = model, threshold, batch_size, revision
         self.device = resolve_device(device)
         self.model = None
 
@@ -52,7 +54,8 @@ class HHEMGrounder:
             import torch
             from transformers import AutoModelForSequenceClassification
             self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.name, trust_remote_code=True, **dtype_kw(torch.float32)).to(self.device).eval()
+                self.name, revision=self.pinned, trust_remote_code=True,
+                **dtype_kw(torch.float32)).to(self.device).eval()
         return self
 
     def revision(self):

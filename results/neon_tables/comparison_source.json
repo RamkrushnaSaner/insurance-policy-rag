@@ -1,0 +1,54 @@
+{
+ "inputs": [
+  {
+   "file": "baseline/per_question.csv",
+   "sha256": "de11d1621f98290339b4ff272420d912144f6191a65ee0414995f298ff0f12cb"
+  },
+  {
+   "file": "neon_tables/per_question.csv",
+   "sha256": "ab552d7963f96ea0a76999a6fdf408fac518a86d664a0ca86cb7580dd0126e88"
+  },
+  {
+   "file": "drive/step8b_record.json",
+   "sha256": "54405b725d6cc1bd01340805865918e57b04187d4b7c97bf7fe884a2c8f46b6b"
+  }
+ ],
+ "exported_with": "paired from the two published per_question.csv files (scripts/export_results.py made each)",
+ "baseline": "published baseline (v3.3.1)",
+ "candidate": "Neon + pgvector (Qwen3) with the table route",
+ "splits": [
+  "dev",
+  "test"
+ ],
+ "testset_version": "7313dd7571",
+ "decision_rule": "MERGE in Step 9 unless: fully correct is significantly worse (p < 0.05), or more than 5 points lower; or groundedness, the share of answers with an unsupported sentence, or correct abstention is significantly worse (paired bootstrap 95% interval); or the median generation time per answer is over 150 s; or peak GPU memory is over 14 GB",
+ "decision_rule_fixed_at_utc": "2026-11-02T20:51:08+00:00",
+ "decision": "MERGE IN STEP 9: not worse than the baseline",
+ "pinning_check": {
+  "pin_off_same_as_step8a": {
+   "gate": "113/113",
+   "context_recall": "113/113",
+   "facts_in_context": "113/113"
+  },
+  "questions_with_pinned_chunks": 19,
+  "evidence_lost": [],
+  "key_facts_lost": [],
+  "key_facts_gained": [
+   "AB02"
+  ],
+  "gate_changed": [],
+  "all_key_facts_in_context": {
+   "pin_off": 90,
+   "pin_on": 91,
+   "answerable": 94
+  },
+  "use_pinning_in_the_full_run": true
+ },
+ "model_revisions": {
+  "embed_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "reranker_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "llm_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "grounding_revision": "de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8"
+ },
+ "decision_rule_fixed_before_the_run": true
+}

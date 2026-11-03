@@ -17,7 +17,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from ..prompts import is_no_answer
-from .testset import CorpusText, anchor_in, fact_found, fact_label, fact_pos, norm_text
+from .testset import CorpusText, anchor_in, fact_found, fact_label, fact_pos, norm_text, words
 
 # ---------------------------------------------------------------------------------------------------- figures
 _WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
@@ -236,20 +236,24 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
 
 
 # ---------------------------------------------------------------------------------------------------- retrieval metrics
-def retrieval_metrics(item: dict, cand_ids, ranked_ids, ctx_ids, text: CorpusText, block_tokens) -> dict:
+def retrieval_metrics(item: dict, cand_ids, ranked_ids, ctx_ids, text: CorpusText, block_tokens,
+                      table_text: str = "") -> dict:
     """From the evidence passages: search recall (evidence among the candidates), context recall (evidence in the
     context), MRR@10 (first relevant chunk among the top 10 reranked), context precision (share of context tokens
-    in relevant chunks)."""
+    in relevant chunks). ``table_text``: the table passage and the printed cells behind it, when the table route put
+    one in the context (it counts for search recall, context recall and facts in context; MRR and precision are
+    about the text chunks)."""
     ev = item["evidence"]
     if not item["answerable"] or not ev:
         return {}
     chunks = text.corpus.chunks
     relevant = lambda i: any(anchor_in(e, text.chunk_words[i]) for e in ev)
-    cand_w, ctx_w = text.words_of(cand_ids), text.words_of(ctx_ids)
+    tw = words(table_text) if table_text else ""
+    cand_w, ctx_w = text.words_of(cand_ids) + tw, text.words_of(ctx_ids) + tw
     rr = next((1.0 / r for r, i in enumerate(ranked_ids[:10], start=1) if relevant(i)), 0.0)
     tok = sum(block_tokens(i) for i in ctx_ids)
     rel_tok = sum(block_tokens(i) for i in ctx_ids if relevant(i))
-    ctx_norm = norm_text(" ".join(chunks[i].label + " " + chunks[i].text for i in ctx_ids))
+    ctx_norm = norm_text(" ".join([chunks[i].label + " " + chunks[i].text for i in ctx_ids] + [table_text]))
     return {"evidence_in_chunk_file": float(np.mean([anchor_in(e, text.all_words) for e in ev])),
             "search_recall": float(np.mean([anchor_in(e, cand_w) for e in ev])),
             "context_recall": float(np.mean([anchor_in(e, ctx_w) for e in ev])),

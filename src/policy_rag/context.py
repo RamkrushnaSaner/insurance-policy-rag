@@ -107,12 +107,16 @@ class ContextBuilder:
         return out
 
     # ------------------------------------------------------------------ the context
-    def build(self, query: str, candidate_ids: Sequence[int], scores, docs: Optional[Set[str]] = None) -> List[List[int]]:
-        """Groups of chunk ids (document order inside a group, most relevant group first), within the budget."""
+    def build(self, query: str, candidate_ids: Sequence[int], scores, docs: Optional[Set[str]] = None,
+              pinned: Sequence[int] = ()) -> List[List[int]]:
+        """Groups of chunk ids (document order inside a group, most relevant group first), within the budget.
+        ``pinned``: chunks that go in right after the title-matched sections, whatever their score (the text chunks
+        linked to the tables the table route answered from)."""
         budget, floor = self.cfg.token_budget, self.cfg.seed_score_floor
         score_of = {int(i): float(s) for i, s in zip(candidate_ids, scores)}
         ranked = sorted(score_of, key=lambda i: (-score_of[i], i))
         plan = [self.pinned_group(k) for k in self.title_matches(query, docs)] if self.cfg.title_pinning else []
+        plan += [[int(i)] for i in pinned]
         plan += [self.group_for(i) if self.cfg.neighbour_expansion else [i] for i in ranked if score_of[i] >= floor]
         used, taken, groups = 0, set(), []
         for g in plan:

@@ -49,6 +49,17 @@ wrong conclusion. [docs/evaluation.md](docs/evaluation.md) lists every failure, 
 | Thinking off | 72/88 on test: 7 lost, 0 gained (p = 0.016); median 9.5 s instead of 47.4 s | keep thinking on | [results/thinking_off/](results/thinking_off/) |
 | Conversation memory, three runs | never significantly better (final run: 21 vs 19 of 32 follow-ups, p = 0.73) | off by default | [results/memory/](results/memory/) |
 | Reproduction on a T4, three sessions | identical contexts, prompts, verdicts and groundedness each time | – | [results/reproduction/](results/reproduction/) |
+| Qwen3 embeddings from Neon (pgvector), text-only chunks | all evidence in context 64/67 for both embedders; dense recall@10 0.955 → 0.993 | keep Qwen3 | [results/embedder_qwen3/](results/embedder_qwen3/) |
+| Table route (typed tables in Postgres), retrieval | table-only questions with every key fact in context 0/12 → 12/12; nothing lost elsewhere | tables on | [results/table_route_retrieval/](results/table_route_retrieval/) |
+| **Neon + table route, full answers (v3.4)** | 78/88 on test against 79/88 (5 fixed, 6 broken, p = 1.0); 100/113 overall | adopted: not worse, not shown better | [results/neon_tables/](results/neon_tables/) |
+
+**v3.4: the database version.** The same answer model, reranker and prompt, with the search moved to Postgres on Neon
+(Qwen3 vectors over text-only chunks) and the printed tables stored as typed tables answered with fixed SQL
+([`configs/experiments/qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml), schema in [`db/`](db/)).
+On the 88 test questions it is not significantly different from the baseline above (78 against 79); it puts more of
+the evidence in front of the model (all evidence for 66 of 67 test questions against 63) and traces every table value
+to its printed cell. The table above and [results/neon_tables/](results/neon_tables/) give the details and the
+limits. `configs/default.yaml` stays the published baseline, which needs no database.
 
 [docs/experiments.md](docs/experiments.md) explains each experiment (objective, method, result, limitations) and lists
 what has not been run or cannot be verified. Every result folder names the private run file it was built from
@@ -208,16 +219,21 @@ insurance-policy-rag/
 │   ├── memory.py          conversation memory: follow-up rewriting, conversations
 │   ├── chat.py            the interactive chat loop
 │   ├── pipeline.py        LangGraph pipeline and the RAGSystem entry point
+│   ├── database.py        read-only Postgres session, stored-vector (pgvector) search
+│   ├── tables.py          the table route: typed tables, fixed SQL, checks, traced values
 │   ├── registry.py        component types selected by name in the config
 │   ├── cli.py             the policy-rag command
 │   ├── ingest/            PDF -> chunk file for the my:Optima Secure layout
 │   └── evaluation/        test set, checks, groundedness, runner, report, statistics, comparison
 ├── configs/               default.yaml (the baseline), experiments/, a two-policy template
 ├── testsets/              the 113-question test set, follow-up dialogues (44, plus 2 practice sets), 15 hard questions
-├── results/              published evidence, scores only: baseline/, thinking_off/, v2_6_vs_v3_1/, memory/, reproduction/
+├── results/              published evidence, scores only: baseline/, thinking_off/, v2_6_vs_v3_1/, memory/,
+│                          reproduction/, embedder_qwen3/, table_route_retrieval/, neon_tables/
+├── db/                    the Postgres + pgvector schema (migrations; no policy text)
 ├── scripts/               export_results.py: rebuilds results/ from private run files
 ├── notebooks/             Colab quick start; archive/ = the single-notebook version (v3.2)
-├── tests/                 80 tests with stand-in components and the published results (no GPU, no downloads)
+├── tests/                 234 tests with stand-in components and the published results (no GPU, no downloads;
+│                          41 of them need a Postgres, run in CI)
 ├── docs/                  how it works, evaluation, experiments, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)
 ```

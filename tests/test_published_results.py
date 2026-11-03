@@ -100,3 +100,57 @@ def test_every_result_folder_names_its_sources():
     for f in R.rglob("*source.json"):
         info = json.loads(f.read_text())
         assert info["inputs"] and all(len(i["sha256"]) == 64 for i in info["inputs"]), f
+
+
+TABLE_ONLY = ["G05", "G07", "G09", "L07", "C01", "C04", "X15", "N05", "T01", "PR01", "PR02", "AB02"]
+
+
+def test_neon_tables_against_the_baseline():
+    new = pd.read_csv(R / "neon_tables" / "per_question.csv").set_index("id")
+    assert counts(new.reset_index()) == (100, 113) and counts(new.reset_index(), "test") == (78, 88)
+    assert counts(new.reset_index(), "dev") == (22, 25)
+    p = pd.read_csv(R / "neon_tables" / "paired.csv")
+    t = p[p.split == "test"]
+    fixed = sorted(t[~flag(t.fully_correct_baseline) & flag(t.fully_correct_candidate)].id)
+    broken = sorted(t[flag(t.fully_correct_baseline) & ~flag(t.fully_correct_candidate)].id)
+    assert fixed == ["AB01", "PR02", "X01", "X02", "X12"] and broken == ["C02", "D06", "F01", "L04", "L07", "M04"]
+    assert mcnemar_exact(len(broken), len(fixed)) == 1.0
+    tab = p[flag(p.table_only)]
+    assert sorted(tab.id) == sorted(TABLE_ONLY)
+    assert (int(flag(tab.fully_correct_baseline).sum()), int(flag(tab.fully_correct_candidate).sum())) == (8, 9)
+    base = pd.read_csv(R / "baseline" / "per_question.csv").set_index("id")
+    ids = base.index[base.split == "test"]
+    g = pd.DataFrame({"a": base.loc[ids, "groundedness_hhem"], "b": new.loc[ids, "groundedness_hhem"]}).dropna()
+    assert (len(g), round(g.a.mean(), 3), round(g.b.mean(), 3)) == (75, 0.895, 0.9)
+    assert (round(100 * (g.a < 1).mean(), 1), round(100 * (g.b < 1).mean(), 1)) == (25.3, 24.0)
+    six = pd.read_csv(R / "embedder_qwen3" / "per_question.csv").set_index("id")
+    pop = six.index[(six.split == "test") & flag(six.answerable) & (six.evidence_in_text_file == 1)]
+    assert len(pop) == 67 and int((base.loc[pop, "context_recall"] == 1).sum()) == 63
+    assert int((new.loc[pop, "context_recall"] == 1).sum()) == 66
+    ans = new[flag(new.answerable)]
+    assert counts(ans[flag(ans.everyday_wording)].reset_index()) == (25, 28)
+    assert counts(ans[~flag(ans.everyday_wording)].reset_index()) == (56, 66)
+    sc = pd.read_csv(R / "neon_tables" / "scorecard.csv").set_index("measure")
+    assert sc.loc["seconds per answer, median", "all"] == "49.2"
+    assert sc.loc["tokens per second / peak GPU memory (GB)", "all"] == "6.39 / 12.53"
+    assert sc.loc["groundedness (supported sentences, HHEM)", "all"] == "0.873"
+    info = json.loads((R / "neon_tables" / "comparison_source.json").read_text())
+    assert info["decision"] == "MERGE IN STEP 9: not worse than the baseline"
+    assert info["decision_rule_fixed_before_the_run"] is True
+
+
+def test_embedder_and_table_route_retrieval():
+    six = pd.read_csv(R / "embedder_qwen3" / "per_question.csv")
+    pop = six[(six.split == "test") & flag(six.answerable) & (six.evidence_in_text_file == 1)]
+    assert (len(pop), int((pop.bge_context_recall == 1).sum()), int((pop.qwen3_context_recall == 1).sum())) == (67, 64, 64)
+    assert (round(pop["bge_dense_recall@10"].mean(), 3), round(pop["qwen3_dense_recall@10"].mean(), 3)) == (0.955, 0.993)
+    eight = pd.read_csv(R / "table_route_retrieval" / "per_question.csv").set_index("id")
+    t = eight.loc[TABLE_ONLY]
+    assert flag(t.table_in_context_on).all()
+    assert (int((t.facts_in_context_off == 1).sum()), int((t.facts_in_context_on == 1).sum())) == (0, 11)
+    p67 = eight.loc[pop.id]
+    assert (int((p67.context_recall_off == 1).sum()), int((p67.context_recall_on == 1).sum())) == (64, 65)
+    others = eight[flag(eight.answerable) & ~eight.index.isin(TABLE_ONLY)]
+    assert not (others.context_recall_on < others.context_recall_off).any()
+    assert not (others.facts_in_context_on < others.facts_in_context_off).any()
+    assert not flag(eight[~flag(eight.answerable)].table_in_context_on).any()

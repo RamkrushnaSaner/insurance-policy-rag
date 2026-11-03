@@ -103,6 +103,39 @@ is filled in this order:
 Premium-table chunks are self-contained and get no neighbours. Neighbours never cross from one document into
 another.
 
+## 3b. Tables from the database (optional)
+
+[`tables.py`](../src/policy_rag/tables.py) · **Off by default** (`tables.enabled`; the experiment config
+[`qwen3_text_tables.yaml`](../configs/experiments/qwen3_text_tables.yaml) turns it on).
+
+With the text-only chunk file, the printed tables are not embedded: they are stored as typed tables in Postgres
+(premium rates, claim-limit illustration, grace periods, check-up limits, deductible discounts, city tiers, the lists
+of waiting-period conditions, non-payable items, Major Medical Illnesses, Global Health Cover benefits and
+relationships, claim deadlines, grievance contacts, Sum Insured examples). The table route answers questions about
+them before reranking:
+
+1. **Route.** Patterns pick the kind of question; the fields (plan, age, Sum Insured, city or tier, year) are read
+   from the question and checked against the tables. A plan without a premium table or an age that is not printed is
+   explained, never guessed.
+2. **Fixed SQL.** Parameterised queries over the active policy version; no SQL is generated. Every value keeps its
+   table, row, column, page and printed cell (`trace()` checks they agree).
+3. **Lists.** Keyword search on the lists' full-text indexes, with a precision rule: an item counts when all its
+   distinctive words are in the question, when two or more are, or when the question's few distinctive words start
+   the item's name. Words common to coverage questions ("charges", "covered") and words of a text section's title do
+   not count, so "Does the policy pay for an ambulance?" is left to the ambulance cover's own section instead of a
+   non-payable list item "Ambulance". "What are the conditions with a 24-month waiting period?" gets the whole list.
+4. **Context.** The facts become the first passage, labelled `[Policy tables → Section …]`. The text chunks linked
+   to those tables (the clause that introduces them, or one that refers to them, such as the cover that pays a
+   list's items) join the search candidates and are placed in the context after the title-matched sections, whatever
+   their score (up to `tables.max_linked_tokens`, 600 tokens; `tables.pin_linked_chunks`). When the route
+   answered, the gate lets the question through even if no text passage scores high (not for single list items:
+   they only add to the text, which must be relevant on its own).
+5. **Check.** After generation, figures in the answer that are in neither the context nor the question are listed.
+   When the tables gave the whole answer (a premium, a limit, a grace period), an answer with such a figure, or a
+   refusal, is replaced by the answer written from the tables (`tables.on_unsupported_figures`).
+
+A failure of the route (the database unreachable) is logged and the question is answered from the text alone.
+
 ## 4. The gate: refuse without guessing
 
 If the best reranker score is below −5 (`gate.min_score`), the pipeline answers *"Not specified in the provided policy
@@ -147,7 +180,8 @@ calculations and "is X covered if Y" questions.
 ## 7. The pipeline graph
 
 [`pipeline.py`](../src/policy_rag/pipeline.py) wires the steps as a [LangGraph](https://github.com/langchain-ai/langgraph)
-state graph: `condense → retrieve → rerank → gate → answer | no_answer`. Each node reads and writes one shared state
+state graph: `condense → retrieve → tables → rerank → gate → answer | no_answer` (`tables` does nothing unless the
+table route is on, section 3b). Each node reads and writes one shared state
 (question, candidates, scores, context groups, answer, generation record, errors). `condense` does nothing unless
 earlier turns of a conversation are passed (next section). On CUDA out-of-memory, the answer node retries once with a
 1,000-token context. Errors are recorded in the state instead of stopping a long evaluation run.

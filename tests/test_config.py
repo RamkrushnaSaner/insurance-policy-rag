@@ -2,7 +2,7 @@ import pytest
 
 from policy_rag.config import ConfigError, load_config
 
-from conftest import ROOT
+from conftest import ROOT, fake_config
 
 
 def test_default_config_is_the_baseline():
@@ -46,3 +46,12 @@ def test_unknown_or_mistyped_settings_are_errors():
 def test_duplicate_document_ids_are_rejected():
     with pytest.raises(ConfigError, match="unique"):
         load_config(data={"documents": [{"id": "a", "chunks": "x.json"}, {"id": "a", "chunks": "y.json"}]})
+
+
+def test_grounding_model_revision_can_be_pinned(tmp_path):
+    from policy_rag.evaluation.grounding import HHEMGrounder
+    cfg = fake_config(tmp_path, evaluation={"grounding_revision": "0123abc"})
+    assert cfg.evaluation.grounding_revision == "0123abc"
+    assert HHEMGrounder(revision=cfg.evaluation.grounding_revision).pinned == "0123abc"
+    assert load_config(ROOT / "configs" / "default.yaml").evaluation.grounding_revision == \
+        "de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8"                              # the commit Step 8b was graded with
