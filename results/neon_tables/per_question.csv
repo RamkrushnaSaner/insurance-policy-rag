@@ -1,0 +1,114 @@
+id,split,type,answerable,everyday_wording,fully_correct,first_failing_stage,critical,issues,gate,top_rerank_score,context_tokens,search_recall,context_recall,mrr10,groundedness_hhem,think_tokens,thinking_forced,answer_tokens,seconds
+G01,test,list,True,False,False,generation,,"in the context, not in the answer: 5 consecutive days | in the context, not in the answer: economy | says something is not shown, but the context has: 5 consecutive days, economy",answer,3.021484375,1436,1.0,1.0,1.0,1.0,475.0,False,593.0,113.69
+G02,dev,definition,True,False,True,,,,answer,1.314453125,1443,1.0,1.0,1.0,0.9473684210526315,544.0,False,692.0,154.72
+G03,dev,fact,True,False,True,,,,answer,0.86767578125,1500,1.0,1.0,1.0,1.0,603.0,False,129.0,77.75
+G04,dev,fact,True,False,True,,,,answer,1.3583984375,1500,1.0,1.0,1.0,1.0,514.0,False,129.0,67.73
+G05,dev,procedure,True,False,True,,,,answer,0.8359375,1562,1.0,1.0,0.5,1.0,808.0,False,581.0,151.4
+G06,dev,procedure,True,False,True,,,,answer,2.791015625,1490,1.0,1.0,1.0,0.8888888888888888,561.0,False,380.0,98.94
+G07,dev,list,True,False,True,,,,answer,0.63525390625,2035,1.0,1.0,1.0,0.9583333333333334,619.0,False,725.0,161.73
+G08,dev,list,True,False,False,context,,not in the context: excl18,answer,1.3583984375,1482,1.0,0.8333333333333334,0.25,0.96,815.0,False,830.0,179.15
+G09,dev,comparison,True,False,False,generation,,table values missing: 1 of 14,answer,1.734375,2020,1.0,1.0,0.0,0.8333333333333334,1024.0,True,489.0,184.19
+G10,test,out_of_scope,False,False,True,,,,answer,-2.83984375,1272,,,,,308.0,False,10.0,33.99
+F01,test,fact,True,False,False,generation,unsupported_figures,figures not in the context: 3 months,answer,2.662109375,1487,1.0,1.0,1.0,0.6,497.0,False,122.0,65.05
+F02,test,fact,True,False,True,,,,answer,5.75390625,302,1.0,1.0,1.0,1.0,194.0,False,64.0,24.96
+F03,test,fact,True,False,True,,,,answer,4.99609375,1457,1.0,1.0,1.0,1.0,293.0,False,80.0,39.93
+F04,test,fact,True,False,True,,,,answer,1.751953125,1477,1.0,1.0,1.0,1.0,356.0,False,52.0,44.37
+F05,test,fact,True,False,True,,,,answer,3.8046875,1470,1.0,1.0,1.0,1.0,433.0,False,106.0,57.14
+F06,test,fact,True,False,True,,,,answer,1.3974609375,1455,1.0,1.0,1.0,1.0,358.0,False,89.0,47.22
+F07,test,fact,True,False,True,,,,answer,3.658203125,1464,1.0,1.0,1.0,1.0,257.0,False,73.0,36.29
+F08,test,fact,True,False,True,,,,answer,4.51171875,333,1.0,1.0,1.0,1.0,148.0,False,31.0,17.62
+F09,test,fact,True,False,True,,,,answer,6.51171875,1497,1.0,1.0,1.0,1.0,304.0,False,85.0,41.92
+F10,test,fact,True,False,True,,,,answer,4.96484375,1495,1.0,1.0,1.0,1.0,347.0,False,114.0,49.1
+F11,test,fact,True,False,True,,,,answer,-0.978515625,1265,1.0,1.0,1.0,0.75,1024.0,True,172.0,122.46
+F12,test,fact,True,False,True,,,,answer,4.12890625,645,1.0,1.0,1.0,1.0,243.0,False,111.0,35.27
+F13,test,fact,True,False,True,,,,answer,5.0390625,135,1.0,1.0,1.0,1.0,171.0,False,91.0,24.91
+F14,test,fact,True,False,True,,,cites section numbers not in the context: 80,answer,6.3046875,1429,1.0,1.0,1.0,1.0,209.0,False,41.0,28.13
+F15,test,fact,True,False,True,,,,answer,4.00390625,713,1.0,1.0,1.0,1.0,278.0,False,56.0,32.75
+F16,test,fact,True,False,True,,,,answer,3.974609375,1451,1.0,1.0,1.0,1.0,207.0,False,44.0,28.68
+F17,test,fact,True,False,True,,,,answer,3.595703125,385,1.0,1.0,1.0,1.0,150.0,False,45.0,20.2
+F18,test,fact,True,False,True,,,,answer,2.740234375,1424,1.0,1.0,1.0,1.0,416.0,False,285.0,72.42
+F19,test,fact,True,False,True,,,,answer,1.1123046875,757,1.0,1.0,1.0,1.0,1024.0,True,89.0,108.31
+F20,test,fact,True,False,True,,,,answer,4.49609375,1449,1.0,1.0,1.0,1.0,489.0,False,178.0,69.48
+L01,test,list,True,False,True,,,,answer,4.16015625,1493,1.0,1.0,0.5,1.0,643.0,False,312.0,100.72
+L02,test,list,True,False,True,,,,answer,5.40625,1494,1.0,1.0,1.0,1.0,338.0,False,123.0,49.19
+L03,test,list,True,False,True,,,,answer,7.70703125,1454,1.0,1.0,1.0,1.0,324.0,False,266.0,61.47
+L04,test,list,True,False,False,generation,off_scope,uses another cover's or procedure's section: cites Section 4.9,answer,5.9140625,1647,1.0,1.0,1.0,1.0,692.0,False,322.0,109.68
+L05,test,list,True,False,True,,,,answer,7.28515625,1475,1.0,1.0,1.0,1.0,310.0,False,312.0,65.12
+L06,test,list,True,False,True,,,,answer,6.921875,1455,1.0,1.0,1.0,1.0,377.0,False,555.0,96.78
+L07,test,list,True,False,False,generation,,"in the context, not in the answer: stroke",answer,1.4033203125,2090,1.0,1.0,0.0,0.6666666666666666,1024.0,True,138.0,141.29
+L08,test,list,True,False,True,,,,answer,3.48046875,1432,1.0,1.0,1.0,1.0,303.0,False,121.0,44.93
+L09,test,list,True,False,True,,,,answer,5.52734375,552,1.0,1.0,1.0,1.0,683.0,False,114.0,76.26
+L10,test,list,True,False,True,,,,answer,4.88671875,1440,1.0,1.0,1.0,1.0,322.0,False,159.0,50.56
+P01,test,procedure,True,False,True,,,,answer,2.814453125,1478,1.0,1.0,1.0,0.9,516.0,False,285.0,82.54
+P02,test,procedure,True,False,True,,,,answer,3.19140625,1299,1.0,1.0,1.0,1.0,364.0,False,185.0,55.67
+P03,test,procedure,True,False,True,,,,answer,1.224609375,1500,1.0,1.0,1.0,1.0,334.0,False,137.0,49.76
+C01,dev,comparison,True,False,True,,,,answer,0.0254669189453125,1625,0.0,0.0,0.0,1.0,348.0,False,99.0,49.71
+C02,test,comparison,True,False,False,generation,,"in the context, not in the answer: 45 days | says something is not shown, but the context has: 45 days",answer,3.130859375,1454,1.0,1.0,0.3333333333333333,0.8888888888888888,1024.0,True,397.0,151.94
+C03,dev,comparison,True,False,True,,,,answer,0.69775390625,1466,1.0,1.0,0.2,0.8181818181818182,464.0,False,415.0,91.03
+C04,test,comparison,True,False,True,,,,answer,1.9931640625,1430,0.0,0.0,0.0,1.0,394.0,False,103.0,52.52
+K01,test,conditional,True,True,True,,,,answer,-0.755859375,1117,1.0,1.0,1.0,0.4,396.0,False,136.0,53.19
+K02,dev,conditional,True,True,True,,,,answer,-0.25244140625,483,1.0,1.0,1.0,0.5,165.0,False,55.0,21.66
+K03,dev,conditional,True,False,True,,,,answer,5.11328125,1348,1.0,1.0,1.0,1.0,290.0,False,200.0,50.53
+K04,test,conditional,True,False,True,,,,answer,5.73046875,589,1.0,1.0,1.0,1.0,258.0,False,82.0,33.11
+K05,dev,conditional,True,True,True,,,,answer,0.4091796875,1368,1.0,1.0,1.0,0.6666666666666666,387.0,False,115.0,51.84
+K06,test,conditional,True,False,True,,,,answer,4.6640625,1421,1.0,1.0,1.0,1.0,251.0,False,83.0,36.55
+K07,dev,conditional,True,True,True,,,,answer,-2.255859375,1483,1.0,1.0,0.5,0.875,1024.0,True,307.0,143.54
+K08,test,conditional,True,True,True,,,,answer,2.837890625,1433,1.0,1.0,1.0,1.0,351.0,False,91.0,46.97
+K09,test,conditional,True,True,True,,,,answer,2.03515625,1475,1.0,1.0,1.0,0.6666666666666666,209.0,False,79.0,31.92
+K10,test,conditional,True,False,True,,,,answer,5.61328125,1455,1.0,1.0,1.0,1.0,281.0,False,49.0,35.4
+K11,test,conditional,True,False,True,,,,answer,3.3984375,1420,1.0,1.0,1.0,1.0,386.0,False,136.0,54.82
+K12,test,conditional,True,False,True,,,,answer,4.0859375,1497,1.0,1.0,1.0,1.0,319.0,False,88.0,43.96
+D01,test,definition,True,False,True,,,,answer,1.7158203125,1329,1.0,1.0,0.5,1.0,360.0,False,145.0,52.13
+D02,test,definition,True,False,True,,,,answer,3.6796875,1164,1.0,1.0,0.5,1.0,496.0,False,175.0,67.06
+D03,test,definition,True,False,True,,,,answer,0.833984375,334,1.0,1.0,1.0,0.75,215.0,False,110.0,30.98
+D04,test,definition,True,False,True,,,,answer,2.998046875,734,1.0,1.0,1.0,1.0,283.0,False,108.0,37.99
+D05,test,definition,True,False,False,generation,,"in the context, not in the answer: sum insured",answer,3.478515625,1477,1.0,1.0,1.0,0.8571428571428571,397.0,False,205.0,63.39
+D06,test,definition,True,False,False,generation,,"in the context, not in the answer: renewal | in the context, not in the answer: not carry forward",answer,2.046875,1705,1.0,1.0,1.0,1.0,430.0,False,298.0,79.44
+D07,test,definition,True,False,True,,,,answer,1.078125,725,1.0,1.0,1.0,1.0,495.0,False,175.0,63.9
+M01,dev,multi_section,True,True,True,,,,answer,2.498046875,2381,1.0,1.0,1.0,1.0,201.0,False,142.0,47.09
+M02,test,multi_section,True,False,True,,,,answer,4.55078125,1488,1.0,1.0,1.0,1.0,440.0,False,153.0,62.45
+M03,test,multi_section,True,True,True,,,,answer,3.689453125,1489,1.0,1.0,0.2,1.0,695.0,False,173.0,89.89
+M04,test,multi_section,True,False,False,generation,,"in the context, not in the answer: base sum insured and plus benefit | says something is not shown, but the context has: base sum insured and plus benefit",answer,4.4375,1485,1.0,1.0,1.0,1.0,1024.0,True,648.0,182.21
+X01,test,paraphrase,True,True,True,,,,answer,-3.103515625,965,1.0,1.0,0.5,1.0,198.0,False,137.0,34.07
+X02,test,paraphrase,True,True,True,,,,answer,-4.05078125,1115,1.0,1.0,0.25,1.0,328.0,False,145.0,47.1
+X03,dev,paraphrase,True,True,True,,,,answer,-2.7890625,86,1.0,1.0,1.0,0.3333333333333333,269.0,False,84.0,33.34
+X04,test,paraphrase,True,True,False,context,,not in the context: excl17 | model refused,answer,-4.38671875,1040,1.0,0.0,0.25,0.0,338.0,False,92.0,42.51
+X05,test,paraphrase,True,True,True,,,,answer,-3.625,231,1.0,1.0,1.0,0.6666666666666666,136.0,False,63.0,19.65
+X06,test,paraphrase,True,True,True,,,,answer,-2.873046875,654,1.0,1.0,1.0,0.5,244.0,False,80.0,31.98
+X07,test,paraphrase,True,True,True,,,,answer,4.51953125,1444,1.0,1.0,1.0,1.0,308.0,False,46.0,38.56
+X08,test,paraphrase,True,True,True,,,,answer,5.5859375,1431,1.0,1.0,1.0,1.0,207.0,False,63.0,30.07
+X09,test,paraphrase,True,True,True,,,,answer,0.75244140625,200,1.0,1.0,1.0,1.0,222.0,False,95.0,30.4
+X10,test,paraphrase,True,True,True,,,,answer,-3.365234375,1349,1.0,1.0,1.0,0.5,259.0,False,98.0,37.79
+X11,test,paraphrase,True,True,True,,,,answer,1.28515625,1498,1.0,1.0,0.5,1.0,481.0,False,224.0,74.44
+X12,test,paraphrase,True,True,True,,,,answer,-0.9599609375,1487,1.0,1.0,1.0,1.0,300.0,False,145.0,47.54
+X13,test,paraphrase,True,True,True,,,,answer,-2.474609375,992,1.0,1.0,1.0,1.0,421.0,False,120.0,54.41
+X14,test,paraphrase,True,True,True,,,,answer,0.1944580078125,1441,1.0,1.0,1.0,1.0,404.0,False,312.0,74.85
+X15,test,paraphrase,True,True,True,,,,answer,-0.65380859375,344,0.5,0.5,1.0,1.0,175.0,False,54.0,21.96
+N01,dev,out_of_scope,False,False,True,,,,answer,-1.40625,1458,,,,0.5,317.0,False,96.0,44.36
+N02,test,out_of_scope,False,False,True,,,,answer,-4.39453125,796,,,,,300.0,False,10.0,31.46
+N03,test,out_of_scope,False,False,True,,,,answer,-4.26953125,93,,,,,222.0,False,31.0,24.46
+N04,dev,out_of_scope,False,False,True,,,,answer,1.3818359375,1436,,,,1.0,482.0,False,145.0,65.14
+N05,dev,fact,True,False,True,,,,answer,-1.91796875,846,1.0,1.0,0.0,1.0,1024.0,True,236.0,123.44
+N06,test,out_of_scope,False,False,True,,,,no_answer,-5.2890625,0,,,,,,,,
+FP01,dev,false_premise,False,False,True,,,,no_answer,-5.59765625,0,,,,,,,,
+FP02,test,false_premise,False,False,True,,,,answer,-3.0625,1373,,,,,367.0,False,10.0,40.19
+FP03,dev,false_premise,True,True,False,context,,not in the context: excl18 | model refused,answer,-4.63671875,639,1.0,0.0,0.0,0.0,247.0,False,88.0,32.47
+T01,dev,comparison,True,False,True,,,,answer,0.896484375,1587,1.0,1.0,0.0,1.0,340.0,False,73.0,46.18
+TY01,dev,paraphrase,True,True,True,,,,answer,0.87060546875,198,1.0,1.0,1.0,1.0,180.0,False,56.0,22.28
+PA01,dev,partial,True,True,True,,,,answer,-0.6806640625,191,1.0,1.0,1.0,0.75,242.0,False,105.0,33.96
+PR01,test,fact,True,False,True,,,,answer,-0.12408447265625,1532,0.0,0.0,0.0,0.6666666666666666,359.0,False,135.0,53.04
+PR02,test,comparison,True,True,True,,,,answer,-1.7353515625,1597,0.3333333333333333,0.3333333333333333,0.0,0.6666666666666666,371.0,False,174.0,59.33
+PR03,test,fact,True,False,True,,,,answer,-0.031158447265625,1313,1.0,1.0,1.0,0.6666666666666666,257.0,False,89.0,37.25
+AB01,test,conditional,True,False,True,,,,answer,2.845703125,1615,1.0,1.0,1.0,1.0,712.0,False,259.0,104.65
+AB02,test,paraphrase,True,True,False,generation,,"in the context, not in the answer: protect benefit | says something is not shown, but the context has: protect benefit",answer,-1.6513671875,1512,0.5,0.5,0.0,1.0,413.0,False,166.0,61.11
+FP04,test,false_premise,False,False,True,,,,answer,0.705078125,1426,,,,,310.0,False,10.0,34.78
+FP05,test,false_premise,False,False,True,,,,answer,-3.978515625,713,,,,,232.0,False,10.0,24.36
+N07,test,out_of_scope,False,False,True,,,,answer,-3.96484375,1214,,,,,170.0,False,10.0,20.83
+N08,test,out_of_scope,False,True,True,,,,answer,-4.85546875,443,,,,0.0,300.0,False,87.0,37.59
+N09,test,out_of_scope,False,False,True,,,,answer,-3.296875,1432,,,,0.6666666666666666,392.0,False,132.0,54.85
+N10,test,out_of_scope,False,False,True,,,,answer,-3.390625,542,,,,,128.0,False,40.0,17.36
+N11,test,out_of_scope,False,True,True,,,,no_answer,-7.08984375,0,,,,,,,,
+N12,dev,out_of_scope,False,False,True,,,,answer,-1.83984375,1412,,,,1.0,298.0,False,79.0,39.64
+N13,test,out_of_scope,False,False,True,,,,answer,-3.716796875,1135,,,,0.0,266.0,False,65.0,35.01
+N14,test,out_of_scope,False,True,True,,,,answer,-1.576171875,1410,,,,0.3333333333333333,532.0,False,141.0,69.71
+N15,test,out_of_scope,False,True,True,,,,no_answer,-6.625,0,,,,,,,,

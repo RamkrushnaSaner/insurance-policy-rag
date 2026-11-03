@@ -1,8 +1,13 @@
 # Changelog
 
-## Unreleased (branch feature/neon-pgvector)
+## 3.4.0 (3 November 2026)
 
-Postgres + pgvector as an option for the dense search; nothing changes unless a config asks for it.
+Postgres on Neon for the search (pgvector) and for the policy's tables (typed tables answered with fixed SQL).
+Nothing changes unless a config asks for it: [`configs/default.yaml`](configs/default.yaml) is still the published
+baseline; [`configs/experiments/qwen3_text_tables.yaml`](configs/experiments/qwen3_text_tables.yaml) is the database
+version. **Evaluated** ([`results/neon_tables/`](results/neon_tables/)): 78/88 fully correct on test against the
+baseline's 79/88 (p = 1.0): adopted as not worse, not shown better; more evidence reaches the model (66 against 63 of
+67 test questions), and table-only questions 8 → 9 of 12.
 
 - **Stored vectors** (`retrieval.dense_backend: pgvector`, `database.*`): the dense leg reads the chunk vectors of
   the active policy version from Postgres instead of computing them at start-up. Exact inner-product search, same

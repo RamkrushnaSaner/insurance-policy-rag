@@ -1,0 +1,39 @@
+{
+ "inputs": [
+  {
+   "file": "drive/step6_record.json",
+   "sha256": "bffae64c79eca4190b5d439980a8055b8b2be85f7966ea5f8f2fd2a51e306bb6"
+  }
+ ],
+ "exported_with": "per_question table of the Step 6 record (scores and question ids only)",
+ "runs": {
+  "bge_text": "bge_text",
+  "qwen3_text_pgvector": "qwen3_text_pgvector"
+ },
+ "commit": "9489baf653bac50c8215737a8e78011ab92c436c",
+ "testset_version": "7313dd7571",
+ "chunk_sha256": "f92b0ea20d48",
+ "plan": {
+  "fixed_at_utc": "2026-11-02T17:58:07+00:00",
+  "question": "Does Qwen3-Embedding-0.6B (vectors read from Neon) find the evidence at least as well as bge-small-en-v1.5, both searching the same 109 text chunks?",
+  "population": "test split, answerable, every evidence passage present in the text chunk file",
+  "primary": "all evidence passages reach the context the answer model reads (context recall = 1); paired, McNemar exact test, two-sided",
+  "rule": "keep Qwen3 unless it is significantly worse on the primary (p < 0.05), or more than 5 points lower on it, or its run needs more than 14 GB of GPU memory"
+ },
+ "plan_fixed_before_runs": true,
+ "decision": "KEEP QWEN3: not worse than bge-small",
+ "runs_measured": {
+  "run_a": {
+   "embedder": "BAAI/bge-small-en-v1.5",
+   "dense_backend": "faiss",
+   "minutes": 1.5,
+   "peak_gpu_gb": 1.54
+  },
+  "run_b": {
+   "embedder": "Qwen/Qwen3-Embedding-0.6B",
+   "dense_backend": "pgvector",
+   "minutes": 2.4,
+   "peak_gpu_gb": 2.44
+  }
+ }
+}
