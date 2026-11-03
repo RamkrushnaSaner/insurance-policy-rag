@@ -138,7 +138,8 @@ class EvaluationConfig:
     output_dir: str = "runs"
     groundedness: bool = True
     grounding_model: str = "vectara/hallucination_evaluation_model"
-    grounding_revision: Optional[str] = None   # pin the model's commit (it runs code from its repository); None = latest
+    grounding_revision: Optional[str] = "de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8"  # HHEM runs code from its repo:
+    # pinned to the commit that graded the Step 8b run; None = latest
     hhem_threshold: float = 0.5          # a sentence is supported when HHEM scores it at or above this
     evidence_removed_test: bool = True   # up to 4 extra answers with the evidence taken out of the context
     repeat_check: bool = True            # 1 answer regenerated without the cache (determinism)

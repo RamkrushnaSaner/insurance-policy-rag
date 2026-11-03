@@ -82,7 +82,7 @@ evaluation:
   output_dir: runs
   groundedness: true
   grounding_model: vectara/hallucination_evaluation_model
-  grounding_revision: null              # the HHEM commit to load (it runs code from its repo); null = latest
+  grounding_revision: de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8   # HHEM commit (it runs code from its repo); null = latest
   hhem_threshold: 0.5
   evidence_removed_test: true
   repeat_check: true

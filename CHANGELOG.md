@@ -49,8 +49,8 @@ Postgres + pgvector as an option for the dense search; nothing changes unless a 
 - Table route SQL sorts text in byte order (`COLLATE "C"`), so its results do not depend on the database's
   collation (CI's `en_US` sorts `p10-t1` before `p1-t5`); Global Health Cover benefits are listed in section order
   (4.9 before 4.10). No change on the development database, whose collation is `C.UTF-8`.
-- `evaluation.grounding_revision` pins the HHEM model's commit (HHEM runs code from its repository); unset, the
-  latest is loaded as before.
+- `evaluation.grounding_revision` pins the HHEM model's commit (HHEM runs code from its repository). The default
+  config pins `de9a5e6b…`, the commit that graded the Step 8b run; `null` loads the latest.
 
 ## 3.3.1 (29 October 2026)
 

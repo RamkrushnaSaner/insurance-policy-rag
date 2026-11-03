@@ -53,4 +53,5 @@ def test_grounding_model_revision_can_be_pinned(tmp_path):
     cfg = fake_config(tmp_path, evaluation={"grounding_revision": "0123abc"})
     assert cfg.evaluation.grounding_revision == "0123abc"
     assert HHEMGrounder(revision=cfg.evaluation.grounding_revision).pinned == "0123abc"
-    assert fake_config(tmp_path).evaluation.grounding_revision is None          # default: unchanged behaviour
+    assert load_config(ROOT / "configs" / "default.yaml").evaluation.grounding_revision == \
+        "de9a5e6ba9ba49531a022dba17e35ffeb2a6fad8"                              # the commit Step 8b was graded with
