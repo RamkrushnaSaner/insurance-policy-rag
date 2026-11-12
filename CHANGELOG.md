@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+**Grader repairs** (evaluation only; no change to retrieval, prompts or models). Reading the answers behind the
+experiment's verdicts showed the deterministic checks failing correct answers and passing hedges; each repair is a
+general rule, applied alike to every run, and is to be validated against new human labels.
+
+- **Amount abbreviations:** "5 L" (lakh) and "25k" are read as amounts, as the tables print them. The same figure
+  check decides when the table route replaces an answer (`tables.on_unsupported_figures`), so an answer that says
+  "Rs. 5 lakh" where the table prints "5 L" is no longer replaced.
+- **Ages without their unit:** "N years" is supported when N is an age said in the question ("I'm 35") or printed in
+  a table line about age ("Age ... (in Years): 75").
+- **Plan-table checker:** bold marks and "Rs." no longer break a statement, so "**Rs. 20 lakh** (Year 1)" is read as
+  Year 1; "20 L" is read as 20 lakh.
+- **Word forms in key facts:** phrases without digits also match other word forms with the small words (a, the, of,
+  on, for, ...) left out. "not" and "no" are always kept; figures and regular expressions still match exactly.
+- **Hedges:** an answerable question's answer that opens by saying the policy text does not give the answer ("Not
+  specified in the provided policy text.", "The policy text does not explicitly list ...") is not fully correct,
+  whatever follows (new issue kind `hedge`), except where the reference answer itself says so.
+
 ## 3.4.0 (3 November 2026)
 
 Postgres on Neon for the search (pgvector) and for the policy's tables (typed tables answered with fixed SQL).

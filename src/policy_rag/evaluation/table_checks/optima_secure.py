@@ -34,7 +34,7 @@ _YEAR_RES = [("all", r"\b(?:in\s+)?(?:all|each\s+of\s+the)\s+(?:three\s+|3\s+)?(
              ("num", r"\byear\s*[-‐]?\s*(1|2|3|one|two|three)\b|\b(first|second|third|1st|2nd|3rd)\s+(?:policy\s+)?year\b")]
 _YEAR_WORD = {"1": 1, "one": 1, "first": 1, "1st": 1, "2": 2, "two": 2, "second": 2, "2nd": 2,
               "3": 3, "three": 3, "third": 3, "3rd": 3}
-_AMOUNT_RES = [r"(?:(?:₹|\brs\.?|\binr)\s*)?(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?)\b",
+_AMOUNT_RES = [r"(?:(?:₹|\brs\.?|\binr)\s*)?(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|l|crores?|cr)\b",
                r"(?:₹|\brs\.?|\binr)\s*(\d{1,3}(?:,\d{2,3}){2,}|\d{6,})(?![\d,])"]
 _PLAN_NAME = {"suraksha": "Optima Suraksha", "secure": "Optima Secure", "super": "Optima Super Secure",
               "global": "Optima Secure Global", "global_plus": "Optima Secure Global Plus"}
@@ -73,7 +73,7 @@ def _first(text: str, kind: str):
 def _prose_claims(text: str, state: dict):
     """Claims (plan, row, year, lakh) from running text; state carries plan/row/year headings."""
     ev = _events(text)
-    breaks = [m.end() for m in re.finditer(r"\n|;|(?<=[.!?])\s+", text)]
+    breaks = [m.end() for m in re.finditer(r"\n|;|(?<=[.!?])(?<!\brs\.)(?<!\bno\.)\s+", text, re.I)]   # not "Rs. 20 lakh"
     seg_of = lambda pos: sum(b <= pos for b in breaks)
     amounts = [e for e in ev if e[2] == "amount"]
     claims = []
@@ -168,7 +168,8 @@ def question_state(question: str) -> dict:
 def parse_table_claims(answer: str, question: str = ""):
     """All (plan, row, year, value in lakh) statements in an answer: running text and markdown tables."""
     state, claims, block, table = question_state(question), [], [], []
-    for line in (answer or "").splitlines() + [""]:
+    answer = re.sub(r"\*\*|__", "", answer or "")          # bold marks: "**Rs. 20 lakh** (Year 1)"
+    for line in answer.splitlines() + [""]:
         if line.strip().startswith("|"):
             if block:
                 claims += _prose_claims("\n".join(block), state)

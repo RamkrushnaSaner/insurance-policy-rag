@@ -38,7 +38,10 @@ only split on which a change is adopted or rejected.
 
 Each question has:
 
-- **key facts**, each with alternative phrasings or a regular expression ("24 months", "two years");
+- **key facts**, each with alternative phrasings or a regular expression ("24 months", "two years"). A phrase
+  without digits also matches other word forms with the small words left out ("pre-authorized" matches
+  "pre-authorization", "not available on reimbursement" matches "not available for reimbursement"); figures and
+  regular expressions match exactly;
 - **evidence anchors**: short phrases that identify the passage holding the answer, matched on words. Retrieval is
   scored for any chunk file of the same PDF, without depending on chunk ids;
 - **extra checks** where they apply: plan-table values (3 questions), the expected yes/no (18), the order of steps
@@ -51,11 +54,11 @@ Changing any question changes the version hash; runs on different versions are n
 
 | Group | Metric | Definition |
 |---|---|---|
-| **Primary** | fully correct | All key facts present, no critical error, nothing missing or cut off. For a not-answerable question: says so within the first two sentences, with no critical error |
+| **Primary** | fully correct | All key facts present, no critical error, nothing missing or cut off, and the answer does not open by saying the policy text does not give the answer (a *hedge*; allowed where the right answer itself says a part is not shown). For a not-answerable question: says so within the first two sentences, with no critical error |
 | Correctness | key-fact recall | Share of key facts found in the answer |
 | | critical error rate | Answers with a wrong table value, a known false statement, another cover's section used, a wrong yes/no, a wrong order, a figure that is not in the context, or an answer to a not-answerable question |
 | | list completeness | Key-fact recall on list questions |
-| Faithfulness | figures not in the context | Amounts, percentages and durations in the answer that appear in neither the context nor the question |
+| Faithfulness | figures not in the context | Amounts, percentages and durations in the answer that appear in neither the context nor the question ("5 L" and "25k" read as amounts; "N years" accepted when N is an age given without its unit, in the question or in an age column) |
 | | citations not in the context | Section numbers cited that the context does not contain |
 | | groundedness (HHEM) | Share of answer sentences that [HHEM-2.1-Open](https://huggingface.co/vectara/hallucination_evaluation_model) scores as supported by the context (at 0.5 or above) |
 | Retrieval | search recall | Share of evidence passages among the search candidates |
