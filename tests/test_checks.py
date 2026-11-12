@@ -112,6 +112,8 @@ def test_optima_secure_table_checker():
     assert res["correct"] == 3 and not res["wrong"]
     res = check(bold.replace("25 lakh", "35 lakh"), cells, "")
     assert res["wrong"] == ["Optima Secure, single claim, Year 2: answer 35 lakh, policy 25 lakh"]
+    options = bold + "\n4. Base Sum Insured:\n- Optima Super Secure offers Rs. 10/15/20/50/100/200 lakhs."
+    assert not check(options, cells, "")["wrong"]                  # the plans' options, not the illustration's 10 lakh
 
 
 def test_statistics():

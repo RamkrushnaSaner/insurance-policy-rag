@@ -12,7 +12,8 @@ general rule, applied alike to every run, and is to be validated against new hum
 - **Ages without their unit:** "N years" is supported when N is an age said in the question ("I'm 35") or printed in
   a table line about age ("Age ... (in Years): 75").
 - **Plan-table checker:** bold marks and "Rs." no longer break a statement, so "**Rs. 20 lakh** (Year 1)" is read as
-  Year 1; "20 L" is read as 20 lakh.
+  Year 1; "20 L" is read as 20 lakh. Base Sum Insured and Restore amounts are no longer checked against the
+  illustration's assumed 10 lakh (the plans offer 5 lakh to 2 crore).
 - **Word forms in key facts:** phrases without digits also match other word forms with the small words (a, the, of,
   on, for, ...) left out. "not" and "no" are always kept; figures and regular expressions still match exactly.
 - **Hedges:** an answerable question's answer that opens by saying the policy text does not give the answer ("Not

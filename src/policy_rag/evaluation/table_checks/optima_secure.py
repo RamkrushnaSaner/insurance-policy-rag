@@ -184,13 +184,18 @@ def parse_table_claims(answer: str, question: str = ""):
         claims += _prose_claims("\n".join(block), state)
     return claims
 
+# The illustration assumes a Base Sum Insured of Rs. 10 lakh (and so a Restore of 10 lakh); the plans themselves
+# offer 5 lakh to 2 crore (Annexure A). A Base Sum Insured or Restore amount in an answer is therefore not checked.
+_ASSUMED_ROWS = {"base", "restore"}
+
+
 def table_check(answer: str, cells, question: str = "") -> dict:
     """Compare stated plan-table values with Sections 2.1-2.3. A value stated without a year counts
     as correct if it matches that plan and row in any year (reported as 'year not named')."""
     expected = {tuple(c) for c in cells}
     correct, wrong_cells, wrong, unnamed = set(), set(), [], 0
     for plan, row, year, val in parse_table_claims(answer, question):
-        if plan not in ("suraksha", "secure", "super") or row is None:
+        if plan not in ("suraksha", "secure", "super") or row is None or row in _ASSUMED_ROWS:
             continue
         truth = {y: PLAN_TABLE.get((plan, row, y)) for y in (1, 2, 3)}
         if year is None:
