@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**Release candidate R1** (not the default; adopted only if it passes rules fixed beforehand on a held-out question set):
+
+- **Table cards** ([`cards.py`](src/policy_rag/cards.py), `policy-rag build-cards`): one searchable card per data
+  row of every printed table, read from the database and appended to the text chunk file. What a table means is
+  fixed when the cards are built: its role (rule or worked example, from its own caption, title, section title or
+  introducing sentence; the owner reviews the list and can override it), which rows each footnote belongs to (its
+  marker), and header labels cut to 12 words. Large numeric grids get their own index.
+- [`configs/experiments/r1_cards.yaml`](configs/experiments/r1_cards.yaml): the v3.4 system plus the cards, searched
+  for every question with their own quota, and the table route's answer used as evidence only
+  (`tables.on_unsupported_figures: keep`).
+
 **Grader repairs** (evaluation only; no change to retrieval, prompts or models). Reading the answers behind the
 experiment's verdicts showed the deterministic checks failing correct answers and passing hedges; each repair is a
 general rule, applied alike to every run, and is to be validated against new human labels.

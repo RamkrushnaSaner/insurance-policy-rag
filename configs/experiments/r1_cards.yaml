@@ -1,0 +1,19 @@
+# Release candidate R1 (decision rules fixed beforehand in release_rules_r1.json; not the default until adopted).
+# The v3.4 system (qwen3_text_tables.yaml) plus a searchable card for every data row of every printed table
+# (src/policy_rag/cards.py): table roles (rule / worked example) and footnote scope fixed when the cards are built,
+# cards searched for every question with their own quota, and the table route's answer used as evidence only.
+#   policy-rag build-cards --config configs/experiments/r1_cards.yaml --text-chunks data/policy_text_chunks.json \
+#       --out data/policy_cards_chunks.json --report table_roles.csv
+#   policy-rag evaluate --config configs/experiments/r1_cards.yaml --name r1 --mode retrieval
+extends: qwen3_text_tables.yaml
+documents:
+  - id: optima-secure
+    name: "HDFC ERGO my:Optima Secure"
+    chunks: data/policy_cards_chunks.json  # text chunks + cards: made by policy-rag build-cards (policy text inside)
+retrieval:
+  dense_backend: faiss                     # cards are not stored in rag.chunks: their vectors are computed at start-up
+  routed_indexes:
+    table: {k: 12, query_pattern: ".", exclude_pattern: ""}
+    grid: {k: 12, query_pattern: ".", exclude_pattern: ""}
+tables:
+  on_unsupported_figures: keep             # the table route's answer is evidence for the model, never a replacement

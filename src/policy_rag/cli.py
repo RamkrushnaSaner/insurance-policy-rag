@@ -10,6 +10,8 @@
     policy-rag compare runs/baseline/run.json runs/candidate/run.json
     policy-rag agreement runs/baseline/run.json labels_filled.csv
     policy-rag evaluate-dialogues --name memory                  # follow-up questions with and without memory
+    policy-rag build-cards --config configs/experiments/r1_cards.yaml --text-chunks data/policy_text_chunks.json \
+        --out data/policy_cards_chunks.json --report table_roles.csv  # table cards from the database (R1)
 
 Every command takes ``--config`` (default ``configs/default.yaml``) and ``--set key=value`` overrides.
 """
@@ -148,6 +150,28 @@ def cmd_agreement(args):
         print(f"  {d['id']}: human {d['human']}, automatic {d['automatic']} | {d['issues']}")
 
 
+def cmd_build_cards(args):
+    """Cards for every data row of the document's printed tables (read-only database), appended to the text chunks."""
+    import csv
+    from .cards import build_cards, read_tables, role_report, write_chunk_file
+    from .database import Database
+    cfg = _config(args)
+    doc_id = args.document or cfg.documents[0].id
+    overrides = json.loads(Path(args.roles).read_text()) if args.roles else None
+    tables, cells, refs = read_tables(Database(cfg.database), doc_id)
+    cards = build_cards(tables, cells, refs, overrides=overrides)
+    out = write_chunk_file(args.text_chunks, cards, args.out)
+    report = role_report(tables, refs, overrides)
+    if args.report:
+        with open(args.report, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(report[0]))
+            w.writeheader()
+            w.writerows({**r, "parts": " ".join(r["parts"])} for r in report)
+    n_ex = sum(r["role"] == "example" for r in report)
+    print(f"{len(cards)} cards ({sum(c['index'] == 'grid' for c in cards)} in the grid index) from {len(tables)} table "
+          f"parts; {len(report)} tables, {n_ex} worked examples; written to {out} (policy text inside)")
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="policy-rag", description="Grounded question answering over insurance policies.")
     sub = ap.add_subparsers(dest="command", required=True)
@@ -205,6 +229,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--splits", nargs="+", default=["dev", "test"], choices=["dev", "test"])
     p.add_argument("--out", help="output folder (default <output_dir>/compare_<baseline>)")
     p.set_defaults(func=cmd_compare)
+
+    p = common(sub.add_parser("build-cards", help="table cards from the database, appended to a text chunk file (R1)"))
+    p.add_argument("--text-chunks", required=True, help="the text chunk file the cards are appended to")
+    p.add_argument("--out", required=True, help="the chunk file to write (text chunks + cards)")
+    p.add_argument("--document", help="document id (default: the config's first document)")
+    p.add_argument("--roles", help='JSON {table_id: "rule" | "example"}: the owner\'s corrections to the table roles')
+    p.add_argument("--report", help="write the table roles to this CSV for review")
+    p.set_defaults(func=cmd_build_cards)
 
     p = common(sub.add_parser("agreement", help="kappa between the automatic verdicts and human labels"))
     p.add_argument("run")
