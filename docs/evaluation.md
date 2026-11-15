@@ -1,6 +1,8 @@
 # Evaluation
 
-How the system is measured, what the baseline scored, every failure, and how far the numbers can be trusted.
+How the system is measured, what the baseline scored on the 113-question development set, every failure, and how
+far the numbers can be trusted. The evaluation of the adopted system (v3.4) on 329 new questions is in
+[final_evaluation.md](final_evaluation.md); that is where its accuracy on unseen questions is measured.
 
 ## Approach
 
@@ -33,8 +35,10 @@ by hand from the policy wording.
 
 32 questions are in everyday wording: the 17 of type "paraphrase" and 15 of other types (6 conditional, 4 out of
 scope, 2 multi-section, 1 each false premise, partial and comparison). 19 cannot be answered from the policy
-(15 out of scope, 4 false premises). **dev** (25) is for debugging; **test** (88) is held out and is the
-only split on which a change is adopted or rejected.
+(15 out of scope, 4 false premises). **dev** (25) is for debugging; **test** (88) is the only split on which
+a change was adopted or rejected. "Held out" means held out from debugging, not unseen: every answer of the set was
+read during development and the table route's patterns were written with it in view, so its scores are optimistic.
+New questions are measured in [final_evaluation.md](final_evaluation.md).
 
 Each question has:
 
@@ -110,7 +114,11 @@ person marks each one as fully correct (1) or not (0); then `policy-rag agreemen
 prints Cohen's kappa (target ≥ 0.7) and every disagreement. A check that disagrees for a clear reason gets fixed,
 which makes a new checks version, and runs are re-scored.
 
-**Status:** this has **not yet been done with independent labels**. What has been done:
+**Status:** for the 113-question set, this has **not been done with independent labels**. Blind labels by a person
+were collected later on the fresh question sets: 30 answers in fresh v3 (kappa 0.52) and 66 in fresh v4 (kappa 0.63;
+0.75 on v3.4's 33 answers). See [experiments.md](experiments.md) (10 and 11) and
+[final_evaluation.md](final_evaluation.md#9-how-reliable-these-measurements-are). What was done for the 113-question
+set:
 
 - During development, all 113 baseline answers were read and judged by hand, not blind. That reading is by the AI
   assistant that wrote the checks, not by an independent person.

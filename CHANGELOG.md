@@ -1,15 +1,31 @@
 # Changelog
 
-## Evaluation after 3.4.0 (12–15 November 2026): no change to the system
+## 3.4.1 (15 November 2026)
 
-v3.4 stays the default. The last candidate, R1 (a search card for every printed table row; branch `r1-candidate`),
-was judged on two new question sets under rules fixed before any answer, and not adopted: on fresh v3 the checks
-failed their check against a person (kappa 0.52), and on fresh v4 the gain on table questions, judged by a person,
-was not significant (6 fixed, 2 broken, p = 0.29). R1 did remove every search failure of a fact printed only in a
-table (13 of 13). Details: [docs/experiments.md](docs/experiments.md) (10 and 11); limits and ideas not built:
-[README](README.md#limitations).
+**No change to the system.** Retrieval, prompts, models and the system's configs are unchanged. This release
+contains the repaired checks, the last decision, the evaluation of v3.4 on every question set, and a cleaned-up
+repository.
 
-## Unreleased
+### Evaluation
+
+- **Final round: R1 not adopted, v3.4 stays.** The last candidate, R1 (a search card for every printed table row;
+  branch `r1-candidate`), was judged on two new question sets under rules fixed before any answer:
+  - on fresh v3, the checks failed their check against a person (kappa 0.52);
+  - on fresh v4, the gain on table questions, judged by a person, was not significant (6 fixed, 2 broken,
+    p = 0.29).
+
+  R1 did remove every search failure of a fact printed only in a table (13 of 13). Details:
+  [docs/experiments.md](docs/experiments.md) (10 and 11).
+- **Evaluation of v3.4 on every question set** ([docs/final_evaluation.md](docs/final_evaluation.md),
+  [`results/final_evaluation/`](results/final_evaluation/)).
+  - **Accuracy:** 255/329 = 77.5% fully correct on new questions (95% CI 73–82%), against 101/113 on the
+    development set it was tuned on.
+  - **By question kind:** table questions 49/84, text questions 177/216.
+  - **Where the 76 failures counted by the checks started:** search 26 (all facts printed only in a table), context
+    15, gate 1, the answer 34.
+  - **The 34 answer-stage failures, read one by one:** 17 clear model errors.
+
+### Checks
 
 **Grader repairs** (evaluation only; no change to retrieval, prompts or models). Reading the answers behind the
 experiment's verdicts showed the deterministic checks failing correct answers and passing hedges; each repair is a
@@ -28,6 +44,21 @@ general rule, applied alike to every run, and is to be validated against new hum
 - **Hedges:** an answerable question's answer that opens by saying the policy text does not give the answer ("Not
   specified in the provided policy text.", "The policy text does not explicitly list ...") is not fully correct,
   whatever follows (new issue kind `hedge`), except where the reference answer itself says so.
+
+### Repository
+
+- **README:** the headline is now v3.4's accuracy on new questions. The 113-question results are labelled as
+  development-set results, the diagram shows v3.4, and the limitations follow the final evaluation.
+- **New:** [`scripts/export_final_evaluation.py`](scripts/export_final_evaluation.py) rebuilds
+  `results/final_evaluation/` from the private run files with this repository's checks, and three tests recompute its
+  numbers.
+- **Updated:**
+  - [`results/README.md`](results/README.md) lists every results folder and private run file;
+  - [docs/experiments.md](docs/experiments.md) adds experiment 12, the decision records' fingerprints, and what was
+    not run;
+  - [docs/evaluation.md](docs/evaluation.md) says what "held out" meant for the development set.
+- **Removed:** `configs/experiments/larger_context.yaml` and `configs/experiments/dense_only.yaml`. Neither was ever
+  run, and nothing referred to them.
 
 ## 3.4.0 (3 November 2026)
 

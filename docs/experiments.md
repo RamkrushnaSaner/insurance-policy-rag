@@ -1,20 +1,22 @@
 # Experiments
 
-Every experiment run in this project, in the order it was run, with what it measured and where the evidence is. All
+Every experiment run in this project, in the order it was run, with what it measured and where the evidence is. The
 numbers come from the files in [`results/`](../results/), and
 [`tests/test_published_results.py`](../tests/test_published_results.py) recomputes the headline figures from them.
-Things that were planned or claimed earlier but cannot be backed by evidence are listed at the end.
+The decisions of experiments 10 and 11 come from private decision records, whose sha256 are given there. Things that
+were planned or claimed earlier but cannot be backed by evidence are listed at the end.
 
 **Words used here.** *Fully correct*: the answer has every key fact, no critical error and is not cut off (for a
-question the policy does not answer: it says so at the start). *Test split*: the 88 held-out questions on which
-changes are adopted or rejected; *dev*: 25 questions for development. *McNemar p*: the chance of a difference at least
+question the policy does not answer: it says so at the start). *Test split*: the 88 questions of the 113-question
+development set on which changes were adopted or rejected; *dev*: its other 25 questions. Because the whole set was
+read during development, its numbers are optimistic: v3.4 scores 89.4% on it and 77.5% on new questions (12). *McNemar p*: the chance of a difference at least
 this large between two systems if they were really equally good, counting only the questions where they disagree.
 
 ## Summary
 
 | # | Experiment | Date | Main result | Decision | Evidence |
 |---|---|---|---|---|---|
-| 1 | [Baseline](#1-baseline) | 22 Oct 2026 | 79/88 fully correct on test (89.8%, 95% CI 82–95%), 97/113 overall | the published system | [`results/baseline/`](../results/baseline/) |
+| 1 | [Baseline](#1-baseline) | 22 Oct 2026 | 79/88 fully correct on test (89.8%, 95% CI 82–95%), 97/113 overall | the first published system | [`results/baseline/`](../results/baseline/) |
 | 2 | [Correcting the checks](#2-correcting-the-checks) | before 24 Oct 2026 (v3.2) | 6 verdicts changed (5 false failures, 1 missed false statement) | checks v3.2 | [`results/baseline/per_question.csv`](../results/baseline/per_question.csv) |
 | 3 | [v2.6 against v3.1](#3-v26-against-v31) | 20 and 22 Oct 2026 | 11 → 17 of 24 dev questions, p = 0.031 | v3 kept | [`results/v2_6_vs_v3_1/`](../results/v2_6_vs_v3_1/) |
 | 4 | [Reproduction](#4-reproduction) | 23–29 Oct 2026 | same contexts, prompts, verdicts and groundedness in every session | – | [`results/reproduction/`](../results/reproduction/) |
@@ -25,6 +27,7 @@ this large between two systems if they were really equally good, counting only t
 | 9 | [Neon + table route, full answers](#9-neon--table-route-full-answers) | 3 Nov 2026 | 78/88 on test against 79/88 (5 fixed, 6 broken, p = 1.0); 100/113 overall | adopted: not worse (v3.4) | [`results/neon_tables/`](../results/neon_tables/) |
 | 10 | [R1: table cards, on fresh v3](#10-r1-table-cards-on-fresh-v3) | 12–13 Nov 2026 | 94 vs 88 of 107 fully correct; table questions 26 vs 18 (9 fixed, 1 broken, p = 0.02); checks against a person: kappa 0.52 (rule: ≥ 0.7) | not adopted: the check on the checks failed | this page |
 | 11 | [Final round: R1 against v3.4, on fresh v4](#11-final-round-r1-against-v34-on-fresh-v4) | 13–15 Nov 2026 | table questions judged by a person 24 vs 20 (6 fixed, 2 broken, p = 0.29); text 42 vs 40; declines 8/8 for both | **not adopted: v3.4 stays**; the last decision | this page |
+| 12 | [Evaluation of v3.4 on every question set](#12-evaluation-of-v34-on-every-question-set) | 15 Nov 2026 | 255/329 = 77.5% fully correct on new questions (95% CI 73–82%); 101/113 on the development set | – (no change) | [`results/final_evaluation/`](../results/final_evaluation/) |
 
 ## 1. Baseline
 
@@ -223,6 +226,9 @@ this large between two systems if they were really equally good, counting only t
 - **Limitations.** The 30 labelled answers held only 4 that the checks failed, so one or two disagreements decided
   kappa; a sample balanced between passes and failures would have been more informative. The questions and keys were
   written by the AI assistant.
+- **Evidence.** The private decision record (sha256 `a165b078e3fccbdf…`), the rules fixed before the run
+  (`b239e76613d97693…`) and the question set (`fc7c4ab84d510395…`). v3.4's answers to this set are scored per
+  question in [`results/final_evaluation/`](../results/final_evaluation/) (`fresh_v3`).
 
 ## 11. Final round: R1 against v3.4, on fresh v4
 
@@ -246,11 +252,37 @@ this large between two systems if they were really equally good, counting only t
   systems the same verdict were not labelled. R1's answers sometimes cite table cards, so the system behind an answer
   could sometimes be guessed. The questions and reference answers were written by the AI assistant; the person
   judged against the policy.
+- **Evidence.** The private decision record (sha256 `65c40c37584ee5e0…`, which holds the 66 labels), the rules fixed
+  before the run (`9282e14a8a4ce3e1…`) and the question set (`23b6f7f790771875…`). v3.4's answers, with the person's
+  labels, are scored per question in [`results/final_evaluation/`](../results/final_evaluation/) (`fresh_v4`).
 
 **Across both rounds.** R1 removed every search failure of a fact printed only in a table (13 of 13), and its
 answers to table questions were better in both rounds (+8 by the checks, +4 by a person), but neither round met the
 rules fixed in advance. Pooling the two rounds after seeing them would be a test chosen after the fact, so it is not
 used. The failures left in both systems are in context selection and in the answers.
+
+## 12. Evaluation of v3.4 on every question set
+
+- **Objective.** Measure how the adopted system performs on questions it was never tuned on, where it fails and why,
+  without changing it. Done after the last decision.
+- **Method.** The five saved runs of v3.4 were re-scored with the repaired checks, with the person's 33 blind labels
+  in fresh v4 replacing the checks' verdict. The runs cover the development set and fresh v1–v4 (329 questions
+  written after v3.4). Nothing was regenerated. Each failure was placed at the first stage that lost what the answer
+  needed, and the 34 answer-stage failures were read one by one. Full write-up:
+  [final_evaluation.md](final_evaluation.md).
+- **Result.**
+  - **Accuracy:** 255/329 = 77.5% fully correct on new questions (95% CI 73–82%), against 101/113 on the
+    development set.
+  - **By question kind:** table questions 49/84, text questions 177/216, unanswerable questions declined 29/29.
+  - **Where the 76 failures counted by the checks started:** search 26 (every one a fact printed only in a table),
+    context 15, gate 1, the answer 34.
+  - **The reading of the 34:** 17 clear model errors (9 answers opened with the refusal sentence although they then
+    applied the right rule, 8 missed a qualifier), 8 context failures the checks misfiled, and 9 acceptable answers.
+- **Limitations.** One run per set on one GPU type. The fresh questions were written by the AI assistant. The reading
+  of the failures is one reviewer's judgement, apart from the person's labels.
+- **Evidence.** [`results/final_evaluation/`](../results/final_evaluation/) (a row per question and set, a
+  scorecard, the reading of the failures, the sha256 of every input).
+- **Reproduce.** `scripts/export_final_evaluation.py` with the private run files (command in the results folder).
 
 ## Not run, or not verifiable
 
@@ -265,3 +297,6 @@ used. The failures left in both systems are in context selection and in the answ
 | Model download size (about 20 GB) | An estimate from the models' published sizes, not measured in a run. |
 | The table route on new questions | Measured on the fresh sets: it did not reach a fact printed only in a table for 13 of 35 failures on fresh v1–v2, 6 of 29 table questions on fresh v3 and 7 of 30 on fresh v4. |
 | Query latency and concurrency in a deployed service | Not measured; only per-question timings inside evaluation runs on Colab. |
+| The baseline (`configs/default.yaml`) on the fresh question sets | Not run: the fresh numbers describe v3.4 only. |
+| A changed answer instruction (no refusal sentence before an answer, explicit false-premise correction) | Suggested by the evaluation (12); not run. |
+| Rebuilding v3.4's chunk file and database from this repository | Not possible: they were made by a private ingestion bundle; this repository has the schema and the code that reads them. |

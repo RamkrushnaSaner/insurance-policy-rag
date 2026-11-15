@@ -1,0 +1,36 @@
+set,id,category,reviewer,note
+fresh_v1,H45,context_lacked_the_answer,AI assistant,The list item the question names was not in the passages read; the key fact matched the list's heading
+fresh_v1,H47,context_lacked_the_answer,AI assistant,The listed procedure the question names was not in the passages read
+fresh_v1,H53,context_lacked_the_answer,AI assistant,The exclusion that answers it was not in the passages read; the key word matched the answer's own wording
+fresh_v1,H62,context_lacked_the_answer,AI assistant,No passage read covers the question; the key fact matched an unrelated word in a disclaimer
+fresh_v2,W08a,context_lacked_the_answer,AI assistant,The passages read do not say which plan gets which percentage; the answer gave a table amount instead
+fresh_v2,W08b,context_lacked_the_answer,AI assistant,The passages read do not say which plan gets which percentage
+fresh_v2,W08c,context_lacked_the_answer,AI assistant,The passages read do not name the plan
+fresh_v4,Y025,context_lacked_the_answer,AI assistant,The exclusion that answers it was not in the passages read; the key fact matched a heading
+fresh_v4,Y077,context_lacked_the_answer,person (blind label: not correct),The list item was not in the passages read; the checks passed the answer and the person failed it
+fresh_v1,H07,answer_acceptable,AI assistant,Right deadline; flagged for naming another section it explicitly set aside; one key word missing
+fresh_v1,H26,answer_acceptable,AI assistant,The flagged figure is a correct subtraction of two figures in the context
+fresh_v2,J20,answer_acceptable,AI assistant,Says what the key says in other words
+fresh_v3,V069,answer_acceptable,AI assistant,Answers the question; the key also asks for a point the question did not raise
+fresh_v3,V088,answer_acceptable,AI assistant,Follows Annexure B's title where Section 4.3 says otherwise (the same conflict as Y075 and Y076)
+fresh_v3,V089,answer_acceptable,AI assistant,Follows Annexure B's title where Section 4.3 says otherwise (the same conflict as Y075 and Y076)
+fresh_v4,Y056,answer_acceptable,person (blind label: correct),Gave both premiums but not their difference
+fresh_v4,Y075,answer_acceptable,person (blind label: correct),Follows Annexure B's title where Section 4.3 says otherwise
+fresh_v4,Y076,answer_acceptable,person (blind label: correct),Follows Annexure B's title where Section 4.3 says otherwise
+fresh_v1,H29,disowned_a_correct_answer,AI assistant,Quotes the exclusion that answers it but opens with the refusal sentence
+fresh_v2,J23,disowned_a_correct_answer,AI assistant,False premise corrected in the body; opens with the refusal sentence
+fresh_v2,J26,disowned_a_correct_answer,AI assistant,False premise corrected in the body; opens with the refusal sentence
+fresh_v3,V019,disowned_a_correct_answer,AI assistant,States the rule that answers it; opens with the refusal sentence
+fresh_v3,V036,disowned_a_correct_answer,AI assistant,The saved thinking reaches the exclusion several times then reverts because the exact word is not in the policy
+fresh_v3,V071,disowned_a_correct_answer,AI assistant,False premise corrected in the body; opens with the refusal sentence
+fresh_v4,Y015,disowned_a_correct_answer,AI assistant,Cites the exclusions that answer it then says it cannot be confirmed
+fresh_v4,Y022,disowned_a_correct_answer,person (blind label: not correct),Right conclusion in the body; opens with the refusal sentence
+fresh_v4,Y043,disowned_a_correct_answer,AI assistant,False premise corrected in the body; opens with the refusal sentence
+fresh_v1,H02,misread_a_fact_in_the_context,AI assistant,Two rates given 'respectively'; took the wrong one
+fresh_v1,H60,misread_a_fact_in_the_context,AI assistant,Accepted the false premise and used another waiting-period rule than the one that applies
+fresh_v3,V002,misread_a_fact_in_the_context,AI assistant,Overlooked the sentence that answers it and said the policy is silent
+fresh_v3,V003,misread_a_fact_in_the_context,AI assistant,Thinking stopped at the 1024-token budget; left out the distinction the key asks for
+fresh_v3,V007,misread_a_fact_in_the_context,AI assistant,Thinking found the right clause then talked itself out of it; stopped at the budget and answered no
+fresh_v4,Y008,misread_a_fact_in_the_context,AI assistant,Read a condition of the cover backwards
+fresh_v4,Y014,misread_a_fact_in_the_context,person (blind label: not correct),Missed an exception inside an exclusion and applied another exclusion
+fresh_v4,Y038,misread_a_fact_in_the_context,AI assistant,Missed the payment condition and answered yes
