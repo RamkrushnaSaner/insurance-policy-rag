@@ -1,5 +1,14 @@
 # Changelog
 
+## Evaluation after 3.4.0 (12–15 November 2026): no change to the system
+
+v3.4 stays the default. The last candidate, R1 (a search card for every printed table row; branch `r1-candidate`),
+was judged on two new question sets under rules fixed before any answer, and not adopted: on fresh v3 the checks
+failed their check against a person (kappa 0.52), and on fresh v4 the gain on table questions, judged by a person,
+was not significant (6 fixed, 2 broken, p = 0.29). R1 did remove every search failure of a fact printed only in a
+table (13 of 13). Details: [docs/experiments.md](docs/experiments.md) (10 and 11); limits and ideas not built:
+[README](README.md#limitations).
+
 ## Unreleased
 
 **Grader repairs** (evaluation only; no change to retrieval, prompts or models). Reading the answers behind the
