@@ -187,6 +187,24 @@ class TablesConfig:
 
 
 @dataclass
+class SqlConfig:
+    """The SQL step (policy_rag/sql_step.py, v3.5): questions about the policy's numeric tables (premiums, check-up
+    limits, deductible discounts) are answered from SQL the answer model writes over schema ``policy_sql``
+    (migration 003). The login must be a member of group ``rag_sql``, which reads ``policy_sql`` and nothing else;
+    its connection string is read from the environment variable named here, never from a config file. The SQL is
+    written by the answer model with its configured generation settings (thinking included)."""
+    enabled: bool = False
+    url_env: str = "SQL_DATABASE_URL"
+    connect_timeout: int = 30            # seconds; a suspended Neon compute needs a moment to start
+    statement_timeout_ms: int = 5000     # a longer query is cancelled (and the model told so)
+    max_rows: int = 50                   # a query may return at most this many rows
+    max_retries: int = 2                 # corrected replies after one that could not be used (not JSON, refused SQL, ...)
+    max_new_tokens: int = 400            # answer tokens of one SQL reply; the thinking settings are unchanged
+    template: str = "sql_v1"             # prompts.SQL_TEMPLATES
+    examples: int = 2                    # example rows per table in the schema card
+
+
+@dataclass
 class Config:
     documents: List[DocumentConfig] = field(default_factory=list)
     embedder: EmbedderConfig = field(default_factory=EmbedderConfig)
@@ -202,6 +220,7 @@ class Config:
     decision: DecisionConfig = field(default_factory=DecisionConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     tables: TablesConfig = field(default_factory=TablesConfig)
+    sql: SqlConfig = field(default_factory=SqlConfig)
     plugins: List[str] = field(default_factory=list)   # modules imported first (they can register new component types)
     source: Optional[str] = None         # the file this config was read from (set by load_config)
 
@@ -336,6 +355,11 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
         raise ConfigError(f"tables.doc_id: required with tables.enabled when several documents are configured ({ids})")
     if cfg.tables.enabled and cfg.tables.doc_id and cfg.tables.doc_id not in ids:
         raise ConfigError(f"tables.doc_id: {cfg.tables.doc_id!r} is not a configured document ({ids})")
+    if cfg.sql.enabled and cfg.tables.enabled:
+        raise ConfigError("sql.enabled and tables.enabled cannot both be on: migration 003 replaced the typed tables "
+                          "the table route reads (use the SQL step with a database at migration 003)")
+    if cfg.sql.max_rows < 1 or cfg.sql.max_retries < 0 or cfg.sql.statement_timeout_ms < 1 or cfg.sql.examples < 0:
+        raise ConfigError("sql: max_rows and statement_timeout_ms must be at least 1, max_retries and examples at least 0")
     if cfg.embedder.padding_side not in (None, "left", "right"):
         raise ConfigError(f"embedder.padding_side: expected left, right or null, got {cfg.embedder.padding_side!r}")
     return cfg

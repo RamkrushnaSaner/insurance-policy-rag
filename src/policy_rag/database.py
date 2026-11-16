@@ -77,6 +77,11 @@ class Database:
             return [dict(zip(names, r)) for r in cur.fetchall()]
         return self._run(sql, params, rows)
 
+    def query_columns(self, sql: str, params=()) -> Tuple[List[str], List[tuple]]:
+        """Column names (repeated names kept) and rows of one read-only query. ``params=None`` sends the SQL as it is
+        (no placeholders: a model-written ``LIKE '%x%'`` stays valid)."""
+        return self._run(sql, params, lambda cur: ([d[0] for d in cur.description], list(cur.fetchall())))
+
     def _run(self, sql, params, read):
         for attempt in (0, 1):
             try:
@@ -84,6 +89,9 @@ class Database:
                     self._con = self._open()
                 return read(self._con.execute(sql, params))
             except self._retry_on:
+                con = self._con
+                if con is not None and not con.closed and not getattr(con, "broken", False):
+                    raise                    # the statement failed (e.g. cancelled at the timeout); the connection is fine
                 self.close()
                 if attempt:
                     raise
