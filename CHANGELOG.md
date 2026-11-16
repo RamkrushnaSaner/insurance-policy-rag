@@ -53,6 +53,23 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   - the prompt's rules use invented example values, so no rule is written for one question, and one rule covers
     every category the tables list (plans, tiers and their places, policy types): never an outside classification.
   - `sql_v1` is kept for the record; `sql.template` defaults to `sql_v2`.
+- **Arithmetic in code** (after the held-out run of step 5, where the calculations missed their target): the model
+  only fetches the numbers; code computes, in Decimal, from whatever rows come back:
+  - with two rows, the difference of each amount column (higher minus lower, naming both rows) and the total;
+    with up to 8 rows, the total;
+  - in one row, the difference of two amount columns of the same table (two Sums Insured);
+  - in one row, an amount less a percentage from another table (a premium after a discount), and the amount
+    taken off.
+
+  Amount and percent columns are recognised by their printed headings; columns that chose the rows (= or IN in the
+  query) and columns the model computed are never calculated with. The calculations go into the result block, so
+  the figure check accepts them, and grading counts them. Aliases made in subqueries now keep their printed
+  heading. The prompt is unchanged (`sql_v2`).
+  - Replayed on the saved runs (same model replies, code added; not a test, since the change was made after
+    seeing them): held-out calculations 3/7 → 6/7, dev run 1 0/7 → 6/7. The two critical held-out rows are
+    unchanged: one difference with the opposite sign (S045) and one amount outside a column's printed amounts
+    (S075, the coverage check, planned for later).
+  - The change will be judged on new questions (the table questions of the fresh set in step 7).
 - **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
   `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
   database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived

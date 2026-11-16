@@ -409,3 +409,68 @@ def test_the_step_records_closeness():
                 db=FakeDb(lambda q: ROWS), card=SchemaCard(card_tables()), embedder=WordVectors())
     out = s.run("What would Zenith set me back annually for a 25 lakh sum insured?")
     assert out.kinds == ["similar"] and out.similarity > 0.3 and out.to_dict()["similarity"] == out.similarity
+
+
+# ---------------------------------------------------------------------------------------------------- arithmetic in code
+from policy_rag.sql_step import column_kind, derive, money  # noqa: E402
+
+PREM = "Sum Insured 1,000,000 (premium in Rs.)"
+
+
+def test_column_kinds_and_money():
+    assert column_kind(PREM) == "amount" and column_kind("Deductible amount (INR)") == "amount"
+    assert column_kind("Zenith Care (discount %)") == "percent" and column_kind("Age") is None and column_kind("plan") is None
+    assert money(Decimal("2025")) == "Rs 2,025" and money(Decimal("17212.50")) == "Rs 17,212.5"
+    assert money(Decimal("-859")) == "Rs -859" and money(Decimal("1000000")) == "Rs 10,00,000"
+
+
+def test_two_rows_give_a_difference_and_a_total():
+    d = derive(["age", "si_1000000"], ["Age", PREM], ["premium_table", "premium_table"],
+               [("30", 16157), ("40", 18182)], keys=["age"])
+    assert [(x["kind"], x["value"]) for x in d] == [("difference", 2025), ("total", 34339)]
+    assert d[0]["text"] == f"Difference in {PREM}: age 40 (Rs 18,182) minus age 30 (Rs 16,157) = Rs 2,025"
+
+
+def test_two_amount_columns_of_one_row_and_a_discount():
+    one = derive(["si_10000000", "si_5000000"], ["Sum Insured 10,000,000 (premium in Rs.)", "Sum Insured 5,000,000 (premium in Rs.)"],
+                 ["premium_table", "premium_table"], [(25400, 21400)])
+    assert [(x["kind"], x["value"]) for x in one] == [("difference", 4000)]
+    disc = derive(["premium", "discount"], [f"premium ({PREM})", "discount (Zenith Care (discount %))"],
+                  ["premium_table", "deductible_discount_table"], [(15600, Decimal("25.00"))])
+    assert [(x["kind"], x["value"]) for x in disc] == [("after_percent", Decimal("11700"))]
+    assert "Rs 15,600 less 25% (discount (Zenith Care (discount %))): Rs 15,600 x (1 - 25/100) = Rs 11,700 (taken off: Rs 3,900)" \
+        in disc[0]["text"]
+
+
+def test_no_arithmetic_on_keys_same_table_percentages_computed_columns_or_long_lists():
+    assert derive(["deductible_inr", "pct_zenith"], ["Deductible amount (INR)", "Zenith Care (discount %)"],
+                  ["deductible_discount_table"] * 2, [(25000, Decimal("25")), (50000, Decimal("40"))],
+                  keys=["deductible_inr"]) == []                      # a key and a percentage of the same table
+    assert derive(["difference"], ["difference"], [None], [(-859,)]) == []                     # computed by the model
+    assert derive(["age", "si_1000000"], ["Age", PREM], ["premium_table"] * 2,
+                  [(str(a), 9000 + a) for a in range(9)], keys=["age"]) == []                  # 9 rows: a listing
+
+
+def test_the_block_carries_the_calculations_and_the_figure_check_accepts_them():
+    sql = "SELECT age, si_1000000 FROM premium_table WHERE plan = 'Zenith Care' AND tier = 1 AND age IN ('30', '31')"
+    s = step([{"action": "query", "sql": sql}], lambda q: (["age", "si_1000000"], [("30", 9100), ("31", 9300)]))
+    out = s.run("How much more is the premium at 31 than at 30 for Zenith Care, Tier 1, 10 lakh?")
+    assert out.sources == ["premium_table", "premium_table"] and [d["value"] for d in out.derived] == [200, 18400]
+    block = out.block()
+    assert "Calculated by code from these rows (exact):\n- Difference in Sum Insured 1,000,000 (premium in Rs.): " \
+           "age 31 (Rs 9,300) minus age 30 (Rs 9,100) = Rs 200" in block
+    assert out.verify("It is Rs 200 more (Rs 9,300 against Rs 9,100).") == []
+    assert out.to_dict()["derived"][0] == {"kind": "difference", "value": 200, "text": out.derived[0]["text"]}
+
+
+def test_the_checks_record_the_columns_that_choose_rows(validator):
+    c = validator.check("SELECT age, si_500000 FROM premium_table WHERE plan = 'Zenith Care' AND tier = 1 "
+                        "AND age IN ('30', '31') AND si_500000 > 1000")
+    assert c.keys == ["age", "plan", "tier"]
+
+
+def test_aliases_made_in_subqueries_keep_their_printed_heading(validator):
+    c = validator.check("SELECT a.zc - b.zcp AS diff, a.zc, b.zcp FROM (SELECT si_500000 AS zc FROM premium_table "
+                        "WHERE plan = 'Zenith Care') a, (SELECT si_500000 AS zcp FROM premium_table "
+                        "WHERE plan = 'Zenith Care Plus') b")
+    assert c.aliases == {"zc": "si_500000", "zcp": "si_500000"}

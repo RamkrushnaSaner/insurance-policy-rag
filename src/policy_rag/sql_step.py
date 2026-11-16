@@ -19,10 +19,12 @@ other printed table is text chunks, searched like the rest of the policy.
    schema ``policy_sql`` and nothing else (group ``rag_sql``).
 6. A reply that cannot be used (not JSON, refused SQL, a database error, no rows, too many rows) is shown to the
    model with the reason, and a corrected reply asked for, up to ``max_retries`` times.
-7. ``SqlOutcome.block()``: the rows for the answer model's context, each value under its printed heading, with the
-   query and the tables' printed titles, pages, introducing sentences and footnotes; ``linked_text``: the text
-   chunks to read with the tables; ``verify(answer)``: figures in an answer that are in neither the rows nor the
-   question.
+7. ``derive``: differences, totals and amounts after a discount, computed by code in Decimal from the returned
+   rows, so the model never has to do the arithmetic.
+8. ``SqlOutcome.block()``: the rows for the answer model's context, each value under its printed heading, with the
+   query, the calculations and the tables' printed titles, pages, introducing sentences and footnotes;
+   ``linked_text``: the text chunks to read with the tables; ``verify(answer)``: figures in an answer that are in
+   neither the block nor the question.
 
 Nothing is invented here: values come only from rows a query returned, a missing detail is asked for, and a value the
 tables do not hold is reported as such.
@@ -299,6 +301,13 @@ class SchemaCard:
                 return h
         return column
 
+    def table_of(self, column: str, tables: Sequence[str]) -> Optional[str]:
+        """The first of ``tables`` that has ``column`` (None for a computed column)."""
+        for t in tables:
+            if any(c["name"] == column for c in self.tables.get(t, {}).get("columns", [])):
+                return t
+        return None
+
     def text_columns(self) -> List[str]:
         """Columns of text type (compared only with = or IN to listed values)."""
         return sorted({c["name"] for t in self.tables.values() for c in t["columns"]
@@ -407,6 +416,7 @@ class CheckedSql:
     tables: List[str]                     # the policy tables it reads
     fetch_limit: Optional[int]            # the LIMIT added or lowered here (max_rows + 1: more rows = too many)
     aliases: Dict[str, str] = field(default_factory=dict)   # output name -> table column it shows unchanged
+    keys: List[str] = field(default_factory=list)           # columns that choose rows (= or IN against values)
 
 
 class SqlValidator:
@@ -467,14 +477,11 @@ class SqlValidator:
             if text:
                 raise SqlProblem(f"{', '.join(text)} is text: compare it with = or IN to values written exactly as "
                                  "listed, not with BETWEEN, <, >, <= or >=")
-        aliases = {}
         for sel in _output_selects(tree):
             for proj in sel.expressions:
                 if proj.find(exp.Column) is None and proj.find(exp.Star) is None:
                     raise SqlProblem(f"every selected value must come from a table column (found the constant "
                                      f"{proj.sql(dialect='postgres')!r})")
-                if isinstance(proj, exp.Alias) and isinstance(proj.this, exp.Column):
-                    aliases[proj.alias] = proj.this.name
         limit = tree.args.get("limit")
         fetch = None
         if limit is None:
@@ -485,9 +492,16 @@ class SqlValidator:
                 raise SqlProblem("LIMIT must be a whole number")
             if int(value.this) > self.max_rows:
                 fetch = self.max_rows + 1
+        named: Dict[str, set] = {}                          # aliases anywhere in the query (subqueries too)
+        for a in tree.find_all(exp.Alias):
+            if isinstance(a.this, exp.Column):
+                named.setdefault(a.alias, set()).add(a.this.name)
+        aliases = {alias: next(iter(cols)) for alias, cols in named.items() if len(cols) == 1}
+        keys = sorted({c.name for cmp in tree.find_all(exp.EQ, exp.In) for c in [cmp.this]
+                       if isinstance(c, exp.Column) and (isinstance(cmp, exp.In) or isinstance(cmp.expression, exp.Literal))})
         if fetch is not None:
             tree = tree.limit(fetch)
-        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases)
+        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys)
 
 
 def _output_selects(node) -> list:
@@ -499,6 +513,93 @@ def _output_selects(node) -> list:
     if isinstance(node, exp.Subquery):
         return _output_selects(node.this)
     return []
+
+
+# ---------------------------------------------------------------------------------------------------- 6b. arithmetic
+_MONEY_LABEL = re.compile(r"\b(rs\.?|inr|premium|amount|limit)\b", re.I)
+DERIVE_MAX_ROWS = 8               # no arithmetic over longer results (listings, not calculations)
+
+
+def column_kind(label: str) -> Optional[str]:
+    """'percent' when the printed heading has a %, 'amount' when it names money (Rs., INR, premium, amount, limit)."""
+    if "%" in label:
+        return "percent"
+    return "amount" if _MONEY_LABEL.search(label) else None
+
+
+def money(d: Decimal) -> str:
+    """'Rs 2,025' / 'Rs 17,212.5' (Indian grouping; the fraction kept as computed)."""
+    d = d.normalize()
+    whole = int(d.to_integral_value(rounding="ROUND_DOWN")) if d >= 0 else -int((-d).to_integral_value(rounding="ROUND_DOWN"))
+    frac = format(abs(d - whole), "f")[1:] if d != whole else ""
+    return f"Rs {group_inr(whole)}{frac.rstrip('0').rstrip('.') if frac else ''}"
+
+
+def derive(columns: Sequence[str], labels: Sequence[str], sources: Sequence[Optional[str]], rows: Sequence[Sequence],
+           keys: Sequence[str] = ()) -> List[dict]:
+    """Calculations done by code, in Decimal, from the rows a query returned, so the model never has to do the
+    arithmetic (and a difference never depends on which way round the model subtracted):
+
+    - two rows: for each amount column, the difference (higher minus lower, naming both rows) and the total;
+      more rows (up to 8): the total;
+    - one row with exactly two amount columns of the same table: their difference;
+    - one row with an amount and a percentage from different tables (a premium and a discount): the amount after
+      the percentage is taken off, and the amount taken off.
+
+    Amount and percent columns are recognised by their printed headings (``column_kind``); columns that chose the
+    rows (``keys``: = or IN in the query) and computed columns (no source table) are never calculated with."""
+    def num(v):
+        return Decimal(str(v)) if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool) else None
+    kinds = [column_kind(l) if src and c not in keys else None for c, l, src in zip(columns, labels, sources)]
+    def ident(r):
+        """What tells a row apart: its text values and the values that chose it (not page, not computed numbers)."""
+        parts = [f"{columns[i]} {rows[r][i]}" for i, k in enumerate(kinds)
+                 if k is None and columns[i] != "page" and rows[r][i] is not None
+                 and (num(rows[r][i]) is None or columns[i] in keys)]
+        return ", ".join(dict.fromkeys(parts)) or f"row {r + 1}"
+    out = []
+    if not rows or len(rows) > DERIVE_MAX_ROWS:
+        return out
+    amounts = [i for i, k in enumerate(kinds) if k == "amount"]
+    percents = [i for i, k in enumerate(kinds) if k == "percent"]
+    if len(rows) >= 2:
+        for i in amounts:
+            vals = [num(r[i]) for r in rows]
+            if any(v is None for v in vals):
+                continue
+            if len(rows) == 2:
+                hi, lo = (0, 1) if vals[0] >= vals[1] else (1, 0)
+                out.append({"kind": "difference", "value": vals[hi] - vals[lo],
+                            "text": f"Difference in {labels[i]}: {ident(hi)} ({money(vals[hi])}) minus {ident(lo)} "
+                                    f"({money(vals[lo])}) = {money(vals[hi] - vals[lo])}"})
+            out.append({"kind": "total", "value": sum(vals),
+                        "text": f"Total of {labels[i]} over the {len(rows)} rows = {money(sum(vals))}"})
+    for r, row in enumerate(rows):
+        by_table: Dict[str, List[int]] = {}
+        for i in amounts:
+            if num(row[i]) is not None:
+                by_table.setdefault(sources[i], []).append(i)
+        for cols in by_table.values():
+            if len(cols) == 2:
+                a, b = sorted(cols, key=lambda i: num(row[i]), reverse=True)
+                d = num(row[a]) - num(row[b])
+                out.append({"kind": "difference", "value": d,
+                            "text": f"Difference in {ident(r)}: {labels[a]} ({money(num(row[a]))}) minus {labels[b]} "
+                                    f"({money(num(row[b]))}) = {money(d)}"})
+        for p in percents:
+            pct = num(row[p])
+            if pct is None:
+                continue
+            for a in amounts:
+                if sources[a] == sources[p] or num(row[a]) is None:
+                    continue
+                amount = num(row[a])
+                off = amount * pct / 100
+                out.append({"kind": "after_percent", "value": amount - off,
+                            "text": f"{labels[a]} {money(amount)} less {_plain(pct)}% ({labels[p]}): "
+                                    f"{money(amount)} x (1 - {_plain(pct)}/100) = {money(amount - off)} "
+                                    f"(taken off: {money(off)})" + (f" [{ident(r)}]" if len(rows) > 1 else "")})
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------- 5. runner
@@ -539,6 +640,8 @@ class SqlOutcome:
     tables: List[str] = field(default_factory=list)
     columns: List[str] = field(default_factory=list)
     labels: List[str] = field(default_factory=list)          # printed heading (or name) of each column
+    sources: List[Optional[str]] = field(default_factory=list)  # the table each column comes from (None: computed)
+    derived: List[dict] = field(default_factory=list)        # calculations done by code from the rows (``derive``)
     rows: List[tuple] = field(default_factory=list)
     printed: List[dict] = field(default_factory=list)        # the printed tables behind the rows
     linked_text: List[dict] = field(default_factory=list)    # text chunks to read with them {relation, label, text}
@@ -577,6 +680,9 @@ class SqlOutcome:
         lines.append(f"Rows ({len(self.rows)}):")
         for row in self.rows:
             lines.append("- " + "; ".join(f"{label}: {self.value_text(label, v)}" for label, v in zip(self.labels, row)))
+        if self.derived:
+            lines.append("Calculated by code from these rows (exact):")
+            lines += [f"- {d['text']}" for d in self.derived]
         for note in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n):
             lines.append(f"Footnote: {note}")
         return "\n".join(lines)
@@ -594,7 +700,9 @@ class SqlOutcome:
         return {"question": self.question, "kinds": self.kinds, "similarity": self.similarity, "status": self.status,
                 "sql": self.sql,
                 "tables": self.tables, "columns": self.columns, "labels": self.labels,
-                "rows": [[plain(v) for v in r] for r in self.rows], "clarification": self.clarification,
+                "rows": [[plain(v) for v in r] for r in self.rows], "sources": self.sources,
+                "derived": [{"kind": d["kind"], "value": plain(d["value"]), "text": d["text"]} for d in self.derived],
+                "clarification": self.clarification,
                 "reason": self.reason, "linked_text": [l.get("label") for l in self.linked_text],
                 "attempts": self.attempts, "block": self.block()}
 
@@ -661,6 +769,8 @@ class SqlStep:
             out.status, out.sql, out.tables = "answered", checked.sql, checked.tables
             out.columns, out.rows = list(columns), [tuple(r) for r in rows]
             out.labels = [self._label(checked, c) for c in columns]
+            out.sources = [self.card.table_of(checked.aliases.get(c, c), checked.tables) for c in columns]
+            out.derived = derive(out.columns, out.labels, out.sources, out.rows, checked.keys)
             out.printed = self.card.printed(checked.tables)
             out.linked_text = self.card.linked_text(checked.tables)
             return out
