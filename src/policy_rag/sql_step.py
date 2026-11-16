@@ -678,14 +678,35 @@ class SqlOutcome:
             lines.append(f"Introduced by: {line}")
         lines.append(f"Query: {self.sql}")
         lines.append(f"Rows ({len(self.rows)}):")
-        for row in self.rows:
-            lines.append("- " + "; ".join(f"{label}: {self.value_text(label, v)}" for label, v in zip(self.labels, row)))
+        lines += self.row_lines()
         if self.derived:
             lines.append("Calculated by code from these rows (exact):")
             lines += [f"- {d['text']}" for d in self.derived]
         for note in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n):
             lines.append(f"Footnote: {note}")
         return "\n".join(lines)
+
+    def row_lines(self) -> List[str]:
+        return ["- " + "; ".join(f"{label}: {self.value_text(label, v)}" for label, v in zip(self.labels, row))
+                for row in self.rows]
+
+    def plain_text(self) -> str:
+        """The rows written out plainly (no answer model): what replaces an answer whose figures are not in the
+        context (``sql.on_unsupported_figures: rows``)."""
+        if not self.answered:
+            return ""
+        lines = ["From the policy's tables (exact values as printed):"] + self.row_lines()
+        if self.derived:
+            lines += ["Calculated from these values:"] + [f"- {d['text']}" for d in self.derived]
+        lines += [f"Note: {n}" for n in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n)]
+        where_ = "; ".join(dict.fromkeys(printed_line(p).replace("Printed table: ", "") for p in self.printed))
+        return "\n".join(lines + ([f"Source: {where_}"] if where_ else []))
+
+    def sources_line(self) -> str:
+        """'Annexure C, pages 19-20; ...': where the rows are printed."""
+        return "; ".join(dict.fromkeys(", ".join(x for x in (where(p["section_id"]) if p.get("section_id") else "",
+                                                               pages_text(p.get("pages"))) if x)
+                                       for p in self.printed))
 
     def verify(self, answer: str, context: str = "") -> List[str]:
         """Figures in ``answer`` found in neither the rows (with ``context``, e.g. the text passages) nor the question."""

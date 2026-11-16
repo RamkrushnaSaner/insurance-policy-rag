@@ -202,7 +202,7 @@ def cut_off(answer: str, gen):
 # ---------------------------------------------------------------------------------------------------- verdict
 STAGES = ["reliability", "corpus", "retrieval", "context", "gate", "generation"]
 CRITICAL = {"table_wrong", "known_false", "off_scope", "polarity", "wrong_order", "unsupported_figures", "not_declined"}
-INCOMPLETE = {"missing_fact", "table_missing", "refused", "hedge", "no_admit", "cut_off"}
+INCOMPLETE = {"missing_fact", "table_missing", "refused", "asked", "hedge", "no_admit", "cut_off"}
 
 
 def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=None, gate_route="answer", error=None,
@@ -239,6 +239,8 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
         v["hedged"] = bool(a) and not v["refused"] and not gap_expected and opens_with_hedge(a)
         if gate_route == "no_answer":
             add("gate", "refused", "refused by the relevance gate")
+        elif gate_route == "ask":
+            add("gate", "asked", "asked the user for a detail instead of answering (SQL step)")
         elif v["false_refusal"]:
             add("generation", "refused", "model refused")
         elif v["hedged"]:
@@ -265,7 +267,7 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
                                                     if not ok and fact_found(f, c_norm)]
             if missing_said:
                 add("generation", "says_missing", "says something is not shown, but the context has: " + ", ".join(missing_said))
-    elif not declines_at_start(a):
+    elif gate_route != "ask" and not declines_at_start(a):
         add("generation", "not_declined", "answered instead of saying the policy does not cover it")
     if a and not is_no_answer(a):
         for p in item.get("must_not", []):
@@ -286,7 +288,7 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
     if item["answerable"]:
         v["fully_correct"] = not error and not (kinds & (CRITICAL | INCOMPLETE))
     else:
-        v["abstained"] = declines_at_start(a)
+        v["abstained"] = declines_at_start(a) or gate_route == "ask"     # asking back states nothing: not an answer
         v["fully_correct"] = not error and v["abstained"] and not (kinds & CRITICAL)
     v["issues"] = issues
     v["first_stage"] = None if v["fully_correct"] else next((s for s in STAGES if any(i["stage"] == s for i in issues)), None)

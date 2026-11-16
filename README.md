@@ -19,8 +19,8 @@ There are two configurations:
 
 **In progress: v3.5.** The numeric tables (premiums, check-up limits, deductible discounts) become SQL tables in their
 printed layout, queried with SQL that the answer model writes and code checks before a read-only login runs it; every
-other printed table becomes text chunks searched like the rest of the policy. It is being built step by step and is
-not evaluated or adopted yet ([how it works](docs/how_it_works.md#3c-the-sql-step-v35-in-progress),
+other printed table becomes text chunks searched like the rest of the policy. It is being built step by step
+([`configs/experiments/v35.yaml`](configs/experiments/v35.yaml)) and is not evaluated or adopted yet ([how it works](docs/how_it_works.md#3c-the-sql-step-v35-in-progress),
 [CHANGELOG](CHANGELOG.md)). The project's own Neon database moved to v3.5's data on 16 November 2026; v3.4 needs a
 database with v3.4's data (migrations 001 and 002), which is kept on a snapshot branch of that database.
 
@@ -283,7 +283,7 @@ insurance-policy-rag/
 ├── db/                    the Postgres + pgvector schema (migrations 001-003; no policy text)
 ├── scripts/               export_results.py and export_final_evaluation.py: rebuild results/ from private run files
 ├── notebooks/             Colab quick start
-├── tests/                 324 tests with stand-in components and the published results (no GPU, no downloads;
+├── tests/                 352 tests with stand-in components and the published results (no GPU, no downloads;
 │                          45 of them need a Postgres, run in CI on one database at migration 002 and one at 003)
 ├── docs/                  final evaluation, how it works, evaluation method, experiments, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)

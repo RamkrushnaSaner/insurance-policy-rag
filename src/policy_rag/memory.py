@@ -43,6 +43,7 @@ class Conversation:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     turns: List[Turn] = field(default_factory=list)
     documents: Optional[List[str]] = None   # document filter kept for every turn (None = all documents)
+    pending: Optional[str] = None           # a question the SQL step asked a detail for: the next reply completes it
 
     def add(self, question: str, standalone: str, answer: str, sources=None, route: str = ""):
         self.turns.append(Turn(question, standalone, answer, list(sources or []), route))
@@ -57,13 +58,16 @@ class Conversation:
 
     def clear(self):
         self.turns.clear()
+        self.pending = None
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "documents": self.documents, "turns": [asdict(t) for t in self.turns]}
+        return {"id": self.id, "documents": self.documents, "turns": [asdict(t) for t in self.turns],
+                "pending": self.pending}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Conversation":
-        return cls(d.get("id") or uuid.uuid4().hex[:12], [Turn(**t) for t in d.get("turns", [])], d.get("documents"))
+        return cls(d.get("id") or uuid.uuid4().hex[:12], [Turn(**t) for t in d.get("turns", [])], d.get("documents"),
+                   d.get("pending"))
 
     def save(self, path) -> Path:
         """Write the conversation as JSON. It contains policy text: keep it out of public repositories."""

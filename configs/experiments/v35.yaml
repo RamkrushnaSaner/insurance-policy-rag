@@ -1,0 +1,16 @@
+# v3.5: every non-numeric table is text (the 187-chunk file: 109 text chunks, 68 table-row chunks, 10 list chunks)
+# searched with Qwen3 vectors stored in Postgres, and the numeric tables (premiums, check-up limits, deductible
+# discounts) are read with SQL the answer model writes (the SQL step), with arithmetic done by code.
+# Needs: pip install -e ".[models,db]"; the private chunk file at data/policy_text_chunks_v35.json; the read-only
+# app login in DATABASE_URL and a login in group rag_sql in SQL_DATABASE_URL (db/README.md); a database at
+# migration 003 holding v3.5's load.
+# Frozen in step 5: prompt sql_v2, gate closeness 0.678 (calibrated on the dev questions).
+#   policy-rag evaluate --config configs/experiments/v35.yaml --name v35 --splits dev test
+extends: qwen3_text_pgvector.yaml
+documents:
+  - id: optima-secure
+    name: "HDFC ERGO my:Optima Secure"
+    chunks: data/policy_text_chunks_v35.json   # private bundle policy_ingest_v3: 187 chunks
+sql:
+  enabled: true
+  gate_similarity: 0.678

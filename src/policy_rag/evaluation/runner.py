@@ -74,6 +74,20 @@ def table_summary(st: dict) -> Optional[dict]:
             "pinned": [int(i) for i in st.get("table_pinned") or []], "in_context": bool(st.get("facts"))}
 
 
+def sql_summary(st: dict) -> Optional[dict]:
+    """What the SQL step did for one question: status, query, row and calculation counts, replies (the run files are
+    private; the query names plans, ages and amounts)."""
+    out = st.get("sql")
+    if out is None:
+        return None
+    secs = [a.get("seconds") for a in out.attempts if a.get("seconds") is not None]
+    return {"status": out.status, "kinds": out.kinds, "similarity": out.similarity, "sql": out.sql, "tables": out.tables,
+            "rows": len(out.rows), "derived": len(out.derived), "clarification": out.clarification, "reason": out.reason,
+            "attempts": len(out.attempts), "seconds": round(sum(secs), 2) if secs else None,
+            "linked_added": [int(i) for i in st.get("sql_linked") or []],
+            "pinned": [int(i) for i in st.get("sql_pinned") or []], "in_context": bool(st.get("facts"))}
+
+
 def build_record(item: dict, st: dict, context, gate) -> dict:
     """One question's record (as saved in run.json) from a pipeline state: retrieval, context, gate; no verdict yet.
     With the table route, ``context`` starts with the table passage (``facts``), as in the prompt."""
@@ -94,7 +108,8 @@ def build_record(item: dict, st: dict, context, gate) -> dict:
             "oom_retry": bool(st.get("oom_retry")), "retrieval": {}, "verdict": None, "grounding": None,
             "facts": facts, "table": table_summary(st),
             "table_evidence": table.evidence_text if table is not None and table.answered and facts else "",
-            "table_check": None, "table_error": st.get("table_error")}
+            "table_check": None, "table_error": st.get("table_error"),
+            "sql": sql_summary(st), "sql_check": None, "sql_error": st.get("sql_error")}
 
 
 class Evaluation:
@@ -171,8 +186,9 @@ class Evaluation:
             self._print(f"  test set vs chunk file: {p['id']}: {p['problem']} ({p['detail']})")
 
     def _table_text(self) -> str:
-        """Every printed table row, when the table route is on (the tables are then part of what can be answered)."""
-        if not self.cfg.tables.enabled:
+        """Every printed table row, when the table route or the SQL step is on (the tables are then part of what can
+        be answered)."""
+        if not (self.cfg.tables.enabled or self.cfg.sql.enabled):
             return ""
         tables = getattr(self.system, "tables", None) if self.system is not None else None
         try:
@@ -279,6 +295,9 @@ class Evaluation:
                         repeat_retrieval["different"].append(item["id"])
                     rec["answer"], rec["error"], gen = st.get("answer"), st.get("error"), st.get("gen")
                     rec["table_check"] = st.get("table_check")
+                    rec["sql_check"] = st.get("sql_check")
+                    if st.get("route") == "ask":
+                        rec["gate_route"] = "ask"
                 if gen:
                     rec["gen"] = {k: gen.get(k) for k in ("key", "prompt_tokens", "new_tokens", "think_tokens",
                                                           "answer_tokens", "thinking_forced", "hit_limit", "seconds", "from_cache")}
@@ -452,6 +471,12 @@ class Evaluation:
             if tables is not None:                    # which tables were read (no login details)
                 out["tables"] = {"doc_id": tables.data.doc, "version_id": tables.cat["version_id"],
                                  "version_label": tables.cat["version_label"]}
+            sql = getattr(self.system, "sql", None)
+            if sql is not None:                       # the SQL step's settings and the card it read
+                import hashlib
+                out["sql"] = {"template": cfg.sql.template, "gate_similarity": cfg.sql.gate_similarity,
+                              "card_sha256": hashlib.sha256(sql.card_text.encode()).hexdigest(),
+                              "on_unsupported_figures": cfg.sql.on_unsupported_figures}
         return out
 
     def _environment(self, started) -> dict:

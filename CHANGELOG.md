@@ -70,6 +70,19 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     unchanged: one difference with the opposite sign (S045) and one amount outside a column's printed amounts
     (S075, the coverage check, planned for later).
   - The change will be judged on new questions (the table questions of the fresh set in step 7).
+- **The SQL step in the pipeline** (step 6; [`configs/experiments/v35.yaml`](configs/experiments/v35.yaml)): a graph
+  node after the search.
+  - When rows come back, the result block is the first context passage, the text linked to the tables read is pinned
+    after it, and the rows open the gate.
+  - When a detail is missing, the step's question is the reply (route `ask`); in a conversation, the next message
+    completes the question.
+  - When the tables hold no value, a one-line note says so and the text passages answer (never a forced decline).
+  - Figures of an answer that are in neither the context nor the question are replaced by the rows written out
+    plainly (`sql.on_unsupported_figures: rows`).
+  - Evaluation runs record what the step did per question, count an `ask` as not answered (as declined when the
+    policy does not answer), and read the printed cells of the numeric tables as part of the document.
+  - `v35.yaml`: the 187-chunk file, Qwen3 vectors in Postgres, the SQL step with prompt `sql_v2` and gate closeness
+    0.678 as frozen in step 5.
 - **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
   `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
   database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived
