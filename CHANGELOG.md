@@ -20,6 +20,15 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   connection (e.g. cancelled at the timeout) is no longer run a second time on a new connection.
 - `sql.enabled` and `tables.enabled` cannot both be on (after 003 the table route has nothing to read).
 - `sqlglot>=27,<31` joins the `db` extra (tested with 27.29 and 30.31).
+- **SQL step evaluation** (step 5; [`evaluation/sql_eval.py`](src/policy_rag/evaluation/sql_eval.py),
+  `policy-rag evaluate-sql`, [`configs/experiments/v35_sql_step.yaml`](configs/experiments/v35_sql_step.yaml)):
+  runs the SQL step on its own question set (kept private: it holds the policy's figures) and grades each reply
+  by type: lookups and calculations must return the expected printed values (a calculation's result computed in
+  SQL), questions missing a detail must be asked back, values the tables do not hold must be declined, wording
+  questions must not be blocked, and other questions must be skipped by the gate. Rows without the expected
+  values, or for a value the tables do not hold, are critical. The held-out half is fingerprinted, and its
+  targets are part of the question set, fixed before it runs. Saved rows keep numbers as numbers, and text
+  cells (a printed age) never count as values. 28 tests.
 - **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
   `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
   database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived

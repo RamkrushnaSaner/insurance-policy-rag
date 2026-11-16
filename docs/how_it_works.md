@@ -167,6 +167,9 @@ searched like the rest of the policy. Instead of fixed queries, the answer model
    footnotes. The text chunks linked to the tables (`read_with`, `introduced_by`, …) come with it, and
    `verify(answer)` lists figures in an answer that are in neither the rows, the passages nor the question.
 
+Measured on its own question set with `policy-rag evaluate-sql` ([`sql_eval.py`](../src/policy_rag/evaluation/sql_eval.py)):
+a dev half shapes the prompt and the gate, and a held-out half is run once against targets fixed before it.
+
 The model never states a value the database did not return: a missing detail is asked for, a value the tables do not
 hold is reported as such, and the figure check catches anything else.
 

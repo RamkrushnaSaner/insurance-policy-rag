@@ -10,6 +10,7 @@
     policy-rag compare runs/baseline/run.json runs/candidate/run.json
     policy-rag agreement runs/baseline/run.json labels_filled.csv
     policy-rag evaluate-dialogues --name memory                  # follow-up questions with and without memory
+    policy-rag evaluate-sql --config configs/experiments/v35_sql_step.yaml --testset sql_testset_v1.json --name sql_dev
 
 Every command takes ``--config`` (default ``configs/default.yaml``) and ``--set key=value`` overrides.
 """
@@ -96,6 +97,23 @@ def cmd_evaluate_dialogues(args):
     run = DialogueEvaluation(cfg, args.name, args.splits, args.conditions, args.resume_from).run(make_zip_file=args.zip)
     if run.get("zip"):
         print(f"Zip: {run['zip']}")
+
+
+def cmd_evaluate_sql(args):
+    import dataclasses
+    from . import registry
+    from .evaluation.sql_eval import SqlEvaluation
+    from .generation import Answerer, AnswerCache
+    from .sql_step import SqlStep
+    cfg = _config(args)
+    generator = registry.build("generator", cfg.generator)             # weights load on the first SQL reply
+    answerer = Answerer(generator, AnswerCache(cfg.cache.path, cfg.cache.enabled))
+    step = SqlStep(cfg.sql, answerer)
+    settings = {"config": cfg.source, "config_fingerprint": cfg.fingerprint(), "overrides": list(args.set or []),
+                "sql": dataclasses.asdict(cfg.sql), "generator": generator.signature()}
+    run = SqlEvaluation(step, args.testset, args.name, args.splits, cfg.evaluation.output_dir, settings).run()
+    print(f"\nRun folder: {Path(cfg.evaluation.output_dir) / args.name} (holds the policy's figures: keep it private)")
+    return run
 
 
 def cmd_evaluate(args):
@@ -198,6 +216,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resume-from", action="append", help="add answers from an answer_cache.jsonl, results zip or run.json")
     p.add_argument("--zip", action="store_true", help="also write one zip of the results folder")
     p.set_defaults(func=cmd_evaluate_dialogues)
+
+    p = common(sub.add_parser("evaluate-sql", help="the SQL step on its question set (needs sql.url_env)"))
+    p.add_argument("--testset", required=True, help="the SQL question set (JSON; private: it holds the policy's figures)")
+    p.add_argument("--name", required=True, help="results go to <output_dir>/<name>/")
+    p.add_argument("--splits", nargs="+", default=["dev"], choices=["dev", "held_out"],
+                   help="default dev; run held_out once, after the prompt and the gate are frozen")
+    p.set_defaults(func=cmd_evaluate_sql)
 
     p = common(sub.add_parser("compare", help="paired comparison of runs and the adopt/keep decision"))
     p.add_argument("baseline")

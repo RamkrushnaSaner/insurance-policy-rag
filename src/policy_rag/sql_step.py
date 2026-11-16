@@ -491,8 +491,10 @@ class SqlOutcome:
         return unsupported_figures(answer, self.block() + "\n" + (context or ""), self.question)
 
     def to_dict(self) -> dict:
-        def plain(v):
-            return _plain(v) if isinstance(v, Decimal) else v
+        def plain(v):                                    # numbers stay numbers in JSON (exact for numeric(5,2))
+            if isinstance(v, Decimal):
+                return int(v) if v == v.to_integral_value() else float(v)
+            return v
         return {"question": self.question, "kinds": self.kinds, "status": self.status, "sql": self.sql,
                 "tables": self.tables, "columns": self.columns, "labels": self.labels,
                 "rows": [[plain(v) for v in r] for r in self.rows], "clarification": self.clarification,

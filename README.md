@@ -283,7 +283,7 @@ insurance-policy-rag/
 ├── db/                    the Postgres + pgvector schema (migrations 001-003; no policy text)
 ├── scripts/               export_results.py and export_final_evaluation.py: rebuild results/ from private run files
 ├── notebooks/             Colab quick start
-├── tests/                 296 tests with stand-in components and the published results (no GPU, no downloads;
+├── tests/                 324 tests with stand-in components and the published results (no GPU, no downloads;
 │                          45 of them need a Postgres, run in CI on one database at migration 002 and one at 003)
 ├── docs/                  final evaluation, how it works, evaluation method, experiments, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)
