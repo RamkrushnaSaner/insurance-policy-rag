@@ -136,6 +136,39 @@ them before reranking:
 
 A failure of the route (the database unreachable) is logged and the question is answered from the text alone.
 
+## 3c. The SQL step (v3.5, in progress)
+
+[`sql_step.py`](../src/policy_rag/sql_step.py) · **Off by default** (`sql.enabled`; not yet wired into the pipeline).
+Needs a database at migration 003 ([`db/README.md`](../db/README.md)).
+
+In v3.5 only the three numeric tables stay tables: premiums, preventive health check-up limits and aggregate
+deductible discounts, stored in their printed layout (one SQL row per printed row, one column per printed column,
+the printed heading in each column's comment). Every other printed table becomes text chunks with vectors and is
+searched like the rest of the policy. Instead of fixed queries, the answer model writes the SQL:
+
+1. **Gate.** Patterns spot questions about a premium or cost, a check-up or a deductible; only those get the SQL
+   step (one more call of the answer model, with its configured settings, thinking included).
+2. **Schema card.** Read from the database at start-up (schema `policy_sql`): each table's description, printed
+   titles, pages, introducing sentence and footnotes; each column's type and printed heading; the values its text
+   columns hold (ages as `'0' to '65', '66*' to '89*', '>=90*'`); two example rows. Nothing is written by hand.
+3. **One JSON reply.** `query` (one SELECT), `ask` (a detail needed to choose the rows is missing and the rows for
+   every choice would not fit in 8 rows: one question for the user), `not_in_tables` (the tables do not hold the
+   value: an age, a Sum Insured or a plan that is not printed) or `text_only` (the question is about the wording).
+4. **Checks before running** (sqlglot): one SELECT or WITH … SELECT; only the policy tables (unqualified names are
+   qualified with `policy_sql`); only listed functions (no `pg_sleep`, no settings, no table functions); every
+   selected value comes from a column (no constants); no locks, `INTO` or parameters; at most 50 rows.
+5. **Running.** EXPLAIN, then the query, in a read-only session with a 5-second statement timeout, as a login that
+   is only a member of `rag_sql`: it can read `policy_sql` and nothing else.
+6. **Retries.** A reply that cannot be used (not JSON, refused SQL, a database error, a timeout, no rows, too many
+   rows) is shown to the model with the reason, and a corrected reply asked for, up to two times.
+7. **Result block.** The rows for the answer model's context, each value under its printed heading (amounts with
+   Indian digit grouping, discounts with `%`), with the query, the printed titles, pages, introducing sentences and
+   footnotes. The text chunks linked to the tables (`read_with`, `introduced_by`, …) come with it, and
+   `verify(answer)` lists figures in an answer that are in neither the rows, the passages nor the question.
+
+The model never states a value the database did not return: a missing detail is asked for, a value the tables do not
+hold is reported as such, and the figure check catches anything else.
+
 ## 4. The gate: refuse without guessing
 
 If the best reranker score is below −5 (`gate.min_score`), the pipeline answers *"Not specified in the provided policy

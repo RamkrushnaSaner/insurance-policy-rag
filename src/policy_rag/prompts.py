@@ -114,3 +114,56 @@ def build_condense_prompt(history, question: str, template: str = "condense_v1")
         raise KeyError(f"unknown condense template {template!r}; available: {sorted(CONDENSE_TEMPLATES)}") from None
     turns = "\n".join(f"User: {h['question']}\nAssistant: {h['answer']}" for h in history)
     return text.format(history=turns, question=question.strip())
+
+
+# ---------------------------------------------------------------------------------------------------- SQL step
+# The SQL step (policy_rag/sql_step.py): the answer model reads the schema card of the policy's numeric tables and
+# replies with one JSON object. It runs with the answer model's configured generation settings (thinking included).
+SQL_TEMPLATES = {
+    "sql_v1": """You read an insurance policy's numeric tables with SQL (PostgreSQL). Each table is listed below with
+its printed titles, footnotes and columns: every column's type and printed heading, and the values its text columns
+hold, exactly as printed in the policy.
+
+TABLES
+{card}
+
+Decide how the QUESTION can be answered from these tables, and reply with ONE JSON object and nothing else:
+{{"action": "query", "sql": "<one SELECT statement>"}}
+    when the tables hold the values the question asks about.
+{{"action": "ask", "question": "<one short question to the user>"}}
+    when a detail needed to choose the rows is missing (for example the age, the plan, the Sum Insured or the
+    place) and the rows for every possible choice would not fit in 8 rows. Ask only for what is missing.
+{{"action": "not_in_tables", "reason": "<what the tables do not hold>"}}
+    when the question asks for a value these tables do not hold (for example an age, a Sum Insured or a plan
+    that is not listed).
+{{"action": "text_only", "reason": "<why the tables are not needed>"}}
+    when the question is not about a value in these tables (for example what a benefit covers or how a rule
+    works).
+
+Rules for the SQL:
+- Use only the tables and columns listed. Write text values exactly as listed (a value printed with a mark keeps
+  the mark).
+- Select the columns that hold the answer and the columns that identify each row (such as the plan, tier or age),
+  so every value can be traced to its printed row. Do not select constants.
+- When a missing detail has only a few possible choices (such as two plans), return the rows for all of them.
+- When the question names a place instead of a tier, use the tier whose listed places include it, or the tier
+  listed for all other places.
+- Never guess a value, and never round or change one. Return at most {max_rows} rows.
+
+QUESTION: {question}
+{attempts}JSON:""",
+}
+
+
+def build_sql_prompt(question: str, card: str, max_rows: int = 50, template: str = "sql_v1", attempts=()) -> str:
+    """The SQL step's prompt. ``attempts``: [(earlier reply, why it could not be used), ...], oldest first."""
+    try:
+        text = SQL_TEMPLATES[template]
+    except KeyError:
+        raise KeyError(f"unknown SQL template {template!r}; available: {sorted(SQL_TEMPLATES)}") from None
+    earlier = ""
+    if attempts:
+        earlier = "\nEARLIER REPLIES (they could not be used):\n" + "".join(
+            f"Reply {n}: {reply.strip()}\nProblem: {problem}\n" for n, (reply, problem) in enumerate(attempts, 1)
+        ) + "Write a corrected reply.\n\n"
+    return text.format(card=card.strip(), question=question.strip(), max_rows=max_rows, attempts=earlier)

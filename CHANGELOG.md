@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased: v3.5, numeric tables as SQL (step 4 of the v3.5 plan)
+
+Nothing changes unless a config asks for it; the SQL step is not yet in the pipeline (step 6).
+
+- **Migration 003** ([`db/migrations/003_numeric_tables_sql.sql`](db/migrations/003_numeric_tables_sql.sql)), byte for
+  byte the file applied to the development database: drops the typed tables of 001 and 002; keeps the three numeric
+  tables (premiums, check-up limits, deductible discounts) as SQL tables in their printed layout; schema
+  `policy_sql` with views of the active version, the reference text of each table and the printed column headings;
+  group `rag_sql` (reads `policy_sql` only); the chunk link `read_with`. Every other printed table is now text
+  chunks with vectors.
+- **SQL step** ([`sql_step.py`](src/policy_rag/sql_step.py), `sql.*`, off by default): a gate for premium,
+  check-up and deductible questions; a schema card read from the database; a prompt (`prompts.SQL_TEMPLATES`,
+  `sql_v1`) asking the answer model for one JSON reply (`query`, `ask`, `not_in_tables`, `text_only`); sqlglot checks
+  (one SELECT, policy tables only, listed functions only, no constants, no locks or INTO, at most 50 rows); EXPLAIN
+  then the query, read-only with a 5-second timeout, as a `rag_sql` login (`SQL_DATABASE_URL`); up to two corrected
+  replies; a result block with printed headings, pages and footnotes, the linked text and a figure check.
+- `Database.query_columns` (column names and rows, SQL sent as it is); a statement that fails on a working
+  connection (e.g. cancelled at the timeout) is no longer run a second time on a new connection.
+- `sql.enabled` and `tables.enabled` cannot both be on (after 003 the table route has nothing to read).
+- `sqlglot>=27,<31` joins the `db` extra (tested with 27.29 and 30.31).
+- Tests: 51 without a database (gate, card, reply parsing, SQL checks, retries, result block, config), 4 opt-in tests
+  on a Postgres at migration 003 (`POLICY_RAG_TEST_DATABASE_URL_V35`: card, answers, the `rag_sql` login's
+  permissions, the timeout). CI keeps a database at 002 for v3.4 and one at 003 for v3.5, and installs the `db`
+  extra in the unit-test job.
+
 ## 3.4.1 (15 November 2026)
 
 **No change to the system.** Retrieval, prompts, models and the system's configs are unchanged. This release

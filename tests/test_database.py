@@ -276,6 +276,27 @@ def test_a_second_drop_is_raised():
     assert db.reconnects == 1 and db._con is None
 
 
+def test_a_failed_statement_on_a_working_connection_is_not_run_again():
+    """A statement cancelled at the timeout raises an OperationalError too; the connection is fine, so no reconnect."""
+    log, opened = [], []
+
+    class Con(FakeConnection):
+        def execute(self, sql, params=()):
+            self.log.append(sql)
+            if "slow" in sql:
+                raise Dropped("canceling statement due to statement timeout")      # connection stays open
+            return types.SimpleNamespace(fetchall=lambda: [(1,)], description=[("x",)])
+
+    def connect():
+        opened.append(Con(log))
+        return opened[-1]
+    db = Database(DatabaseConfig(), connect=connect, retry_on=(Dropped,))
+    with pytest.raises(Dropped):
+        db.query("SELECT slow")
+    assert db.reconnects == 0 and len(opened) == 1 and sum("slow" in s for s in log) == 1
+    assert db.query_columns("SELECT 1", None) == (["x"], [(1,)]) and len(opened) == 1
+
+
 def test_missing_environment_variable_is_explained(monkeypatch):
     monkeypatch.delenv("POLICY_RAG_TEST_NO_SUCH_VAR", raising=False)
     with pytest.raises(DatabaseError, match="POLICY_RAG_TEST_NO_SUCH_VAR is not set"):
