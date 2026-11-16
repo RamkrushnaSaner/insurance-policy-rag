@@ -41,9 +41,17 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   - a general city classification instead of the policy's tiers, an amount outside a column's printed amounts
     (30 lakh read as "20, 25 & 50 Lakhs"), a column split at 20 lakh read on the wrong side, a wording question
     declined as not in the tables: one rule each in `sql_v2`;
-  - the gate missed all 4 loosely worded questions: money words ("cost", "price", "shell out") now count with a plan
-    name or an age, "screening" and "health check" count as check-up words, and "the first Rs ... of claims" as a
-    deductible. On the 113-question development set the gate passes 11 questions (5 about the tables).
+  - the gate missed all 4 loosely worded questions. No word list foresees every wording, so the gate gains a second
+    half instead of more words: closeness (cosine, with the v3.4 embedder) between the question and the tables'
+    reference text (descriptions, printed titles, introducing sentences, column headings), recorded for every
+    question. Its threshold (`sql.gate_similarity`) is set by a rule fixed before the run (`evaluate-sql
+    --calibrate-gate`): the lowest threshold at which at most 10% of the questions not about the tables pass, with
+    the dev questions about the tables as positives and, as negatives, the dev controls and the 113-question
+    development set without the sections the tables come from or link to. The held-out half is never used. The word
+    list keeps its words and one general rule: a common money word ("cost", "price", "pay") with a plan name or an
+    age.
+  - the prompt's rules use invented example values, so no rule is written for one question, and one rule covers
+    every category the tables list (plans, tiers and their places, policy types): never an outside classification.
   - `sql_v1` is kept for the record; `sql.template` defaults to `sql_v2`.
 - **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
   `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon

@@ -4,8 +4,9 @@ The numeric tables (premiums, preventive health check-up limits, aggregate deduc
 printed layout (migration 003) and shown, for the active version only, as the views of schema ``policy_sql``. Every
 other printed table is text chunks, searched like the rest of the policy.
 
-1. ``gate``: a quick pattern check. Only questions about a premium or cost, a check-up or a deductible get the SQL
-   step (one more call of the answer model); every other question goes straight to the text search.
+1. ``SqlGate``: a quick check. Questions whose words name a premium or cost, a check-up or a deductible, or whose
+   embedding is close to the tables' reference text (``sql.gate_similarity``), get the SQL step (one more call of
+   the answer model); every other question goes straight to the text search.
 2. ``SchemaCard``: what the model is shown, read from the database at start-up: each table's description, printed
    titles, pages, introducing sentence and footnotes, and each column's type, printed heading and (text columns)
    the values it holds, plus a few example rows. Nothing in it is written by hand.
@@ -53,19 +54,17 @@ _INSURANCE = re.compile(r"\b(policy|plan|cover|insurance|premium)\b", re.I)
 _AGE = re.compile(r"\b\d{1,3}\s*-?\s*(years?|yrs?)\b|\baged?\s*\d", re.I)
 _PREMIUM_NOT = re.compile(r"instal+ment|grace period|refund|deduction|income tax|\bgst\b|\btax\b|discount|loading"
                           r"|cash ?back|\bmonthly\b", re.I)
-# money words that count when the question also names a plan the tables hold, or an age ("What would X cost ...")
-_MONEY = re.compile(r"\b(costs?|costing|prices?|priced|pricing|charges?|rates?|spend|shell(?:ing)? out|fork(?:ing)? out)\b",
-                    re.I)
-_CHECKUP = re.compile(r"\bcheck[\s-]?ups?\b|\bhealth[\s-]+checks?\b|\bscreenings?\b", re.I)
-# an aggregate deductible described in words: "the first Rs 3 lakh of claims"
-_DEDUCTIBLE = re.compile(r"\bdeductibles?\b|\bfirst\b[^?]{0,40}?\bof\s+(?:the\s+|each\s+|every\s+|my\s+|our\s+)?claims?\b",
-                         re.I)
+# common money words: they count when the question also names a plan the tables hold, or an age
+_MONEY = re.compile(r"\b(costs?|prices?|priced|pricing|charges?|rates?|pay|paying|spend)\b", re.I)
+_CHECKUP = re.compile(r"\bcheck[\s-]?ups?\b", re.I)
+_DEDUCTIBLE = re.compile(r"\bdeductibles?\b", re.I)
 
 
 def gate(question: str, names: Sequence[str] = ()) -> List[str]:
     """What the question is about, among premium, checkup and deductible ([] = no SQL step). ``names``: names the
-    tables hold (plans, ...); a cost question counts when it names one, a policy word or an age, and a money word
-    ("cost", "price", "shell out") when it names one or an age."""
+    tables hold (plans, ...); a cost question counts when it names one, a policy word or an age, and a common money
+    word ("cost", "price", "pay") when it names one or an age. Other wordings are left to ``SqlGate``'s closeness to
+    the tables' reference text."""
     q = question or ""
     kinds = []
     named = any(re.search(r"\b" + re.escape(n) + r"\b", q, re.I) for n in names)
@@ -78,6 +77,53 @@ def gate(question: str, names: Sequence[str] = ()) -> List[str]:
     if _DEDUCTIBLE.search(q):
         kinds.append("deductible")
     return kinds
+
+
+def table_profiles(card: "SchemaCard") -> List[str]:
+    """Short texts that say what the tables hold, read from the card: each table's description, printed titles,
+    introducing sentences and column headings. A question close to one of them is about the tables."""
+    out = []
+    for t in card.tables.values():
+        texts = [t["description"]] + [p["title"] for p in t["printed"]] + [p["introduced_by"] for p in t["printed"]]
+        texts += [re.sub(r"(?i)^printed heading:\s*", "", c["comment"]) for c in t["columns"]
+                  if c["comment"].lower().startswith("printed heading:")]
+        out += [x.strip() for x in texts if x and x.strip() and x.strip() not in out]
+    return out
+
+
+class SqlGate:
+    """Words (``gate``) or closeness: a question passes when its words name a premium, a check-up or a deductible, or
+    when its embedding is at least ``threshold`` (cosine) from one of the tables' reference texts. The closeness is
+    computed whenever an embedder is given (it is recorded for every question), and used only when ``threshold`` is
+    set: it lets wordings through that no word list foresees ("What's the yearly price tag of ...")."""
+
+    def __init__(self, names: Sequence[str] = (), embedder=None, profiles: Sequence[str] = (),
+                 threshold: Optional[float] = None):
+        self.names, self.embedder, self.threshold = list(names), embedder, threshold
+        self.profiles = list(profiles)
+        self._profile_vecs = None
+        if embedder is not None and self.profiles:
+            self._profile_vecs = _unit(embedder.encode_documents(self.profiles))
+
+    def similarity(self, question: str) -> Optional[float]:
+        if self._profile_vecs is None:
+            return None
+        import numpy as np
+        q = _unit(np.asarray(self.embedder.encode_query(question), dtype="float32").reshape(1, -1))[0]
+        return round(float((self._profile_vecs @ q).max()), 4)
+
+    def check(self, question: str) -> Tuple[List[str], Optional[float]]:
+        kinds, sim = gate(question, self.names), self.similarity(question)
+        if not kinds and self.threshold is not None and sim is not None and sim >= self.threshold:
+            kinds = ["similar"]
+        return kinds, sim
+
+
+def _unit(m):
+    import numpy as np
+    m = np.asarray(m, dtype="float32")
+    n = np.linalg.norm(m, axis=1, keepdims=True)
+    return m / np.where(n == 0, 1, n)
 
 
 # ---------------------------------------------------------------------------------------------------- formatting
@@ -487,6 +533,7 @@ class SqlRunner:
 class SqlOutcome:
     question: str
     kinds: List[str] = field(default_factory=list)
+    similarity: Optional[float] = None                        # closeness to the tables' reference text (None: no embedder)
     status: str = "skipped"
     sql: str = ""
     tables: List[str] = field(default_factory=list)
@@ -544,7 +591,8 @@ class SqlOutcome:
             if isinstance(v, Decimal):
                 return int(v) if v == v.to_integral_value() else float(v)
             return v
-        return {"question": self.question, "kinds": self.kinds, "status": self.status, "sql": self.sql,
+        return {"question": self.question, "kinds": self.kinds, "similarity": self.similarity, "status": self.status,
+                "sql": self.sql,
                 "tables": self.tables, "columns": self.columns, "labels": self.labels,
                 "rows": [[plain(v) for v in r] for r in self.rows], "clarification": self.clarification,
                 "reason": self.reason, "linked_text": [l.get("label") for l in self.linked_text],
@@ -556,18 +604,21 @@ class SqlStep:
     """Gate, prompt, reply, checks, query, retries. ``answerer``: the pipeline's ``generation.Answerer`` (the answer
     model with its configured settings and cache). ``db``: a read-only ``Database`` as a login in group rag_sql."""
 
-    def __init__(self, cfg, answerer, db=None, card: Optional[SchemaCard] = None):
+    def __init__(self, cfg, answerer, db=None, card: Optional[SchemaCard] = None, embedder=None):
         if db is None:
             from .database import Database
             db = Database(cfg)
         self.cfg, self.answerer, self.db = cfg, answerer, db
         self.card = card if card is not None else SchemaCard.load(db, cfg.examples)
         self.card_text, self.names = self.card.text, self.card.names()
+        self.gate = SqlGate(self.names, embedder, table_profiles(self.card) if embedder is not None else (),
+                            getattr(cfg, "gate_similarity", None))
         self.validator = SqlValidator(list(self.card.tables), cfg.max_rows, text_columns=self.card.text_columns())
         self.runner = SqlRunner(db)
 
     def run(self, question: str) -> SqlOutcome:
-        out = SqlOutcome(question=question, kinds=gate(question, self.names))
+        kinds, sim = self.gate.check(question)
+        out = SqlOutcome(question=question, kinds=kinds, similarity=sim)
         if not out.kinds:
             return out
         failed: List[Tuple[str, str]] = []

@@ -7,8 +7,8 @@ import pytest
 
 from policy_rag.config import ConfigError, SqlConfig, load_config
 from policy_rag.prompts import build_sql_prompt
-from policy_rag.sql_step import (SchemaCard, SqlOutcome, SqlProblem, SqlStep, compact_values, gate, group_inr,
-                                 indian_amount, parse_action, with_lakh)
+from policy_rag.sql_step import (SchemaCard, SqlGate, SqlOutcome, SqlProblem, SqlStep, compact_values, gate, group_inr,
+                                 indian_amount, parse_action, table_profiles, with_lakh)
 
 sqlglot = pytest.importorskip("sqlglot")
 from policy_rag.sql_step import SqlValidator  # noqa: E402
@@ -30,9 +30,8 @@ TABLES = ["premium_table", "checkup_limit_table", "deductible_discount_table"]
     ("Is cataract surgery covered?", []),
     ("Is the cost of an ambulance covered?", []),                             # a money word, but no plan or age
     ("What would the plan cost per year for a 5-year-old?", ["premium"]),       # a money word with an age
-    ("How much does the policy pay for an annual health screening?", ["checkup"]),
-    ("Is a health check paid every year?", ["checkup"]),
-    ("If I pay the first Rs 50,000 of claims myself, what do I save?", ["deductible"]),
+    ("How much does the policy pay for an annual health screening?", []),     # other wordings: left to closeness
+    ("If I pay the first Rs 50,000 of claims myself, what do I save?", []),
 ])
 def test_gate(q, kinds):
     assert gate(q) == kinds
@@ -41,7 +40,7 @@ def test_gate(q, kinds):
 def test_gate_knows_the_names_in_the_tables():
     q = "How much more does Zenith Care Plus cost than Zenith Care?"
     assert gate(q) == [] and gate(q, names=["Zenith Care", "Zenith Care Plus"]) == ["premium"]
-    q = "How much would I shell out each year for Zenith Care?"                 # a money word with a plan name
+    q = "What does Zenith Care cost per year?"                                 # a money word with a plan name
     assert gate(q) == [] and gate(q, names=["Zenith Care"]) == ["premium"]
     assert SchemaCard(card_tables()).names() == ["Zenith Care", "Zenith Care Plus"]
 
@@ -362,5 +361,51 @@ def test_config():
                           "documents": [{"id": "x", "chunks": "x.json"}]})
     with pytest.raises(ConfigError, match="max_rows"):
         load_config(data={"sql": {"max_rows": 0}})
+    with pytest.raises(ConfigError, match="gate_similarity"):
+        load_config(data={"sql": {"gate_similarity": 1.5}})
     with pytest.raises(ConfigError, match="unknown setting"):
         load_config(data={"sql": {"max_row": 5}})
+
+
+# ---------------------------------------------------------------------------------------------------- the gate's closeness
+class WordVectors:
+    """A stand-in embedder: one dimension per word of a small vocabulary (so closeness = shared words)."""
+    name = "word-vectors"
+    VOCAB = ["premium", "annual", "price", "yearly", "age", "sum", "insured", "health", "exam", "limit", "discount",
+             "deductible", "cataract", "surgery", "covered", "zenith"]
+
+    def _vec(self, text):
+        words = text.lower().replace("?", " ").replace(",", " ").split()
+        return [float(sum(w.startswith(v) for w in words)) for v in self.VOCAB]
+
+    def encode_documents(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def encode_query(self, text):
+        return [self._vec(text)]
+
+
+def test_profiles_come_from_the_card():
+    prof = table_profiles(SchemaCard(card_tables()))
+    assert "Annexure Z: annual premium (Rs.) by age and Sum Insured." in prof and "Age" in prof
+    assert "Sum Insured 1,000,000 (premium in Rs.)" in prof and "Zenith Care (discount %)" in prof
+    assert "Refer Annexure Z for the premium." in prof and len(prof) == len(set(prof))
+
+
+def test_closeness_lets_other_wordings_through_only_with_a_threshold():
+    card = SchemaCard(card_tables())
+    loose = "What would Zenith set me back annually for a 25 lakh sum insured?"   # no gate word
+    off = SqlGate(card.names(), WordVectors(), table_profiles(card), threshold=None)
+    kinds, sim = off.check(loose)
+    assert kinds == [] and sim > 0.3                                  # recorded, not used
+    on = SqlGate(card.names(), WordVectors(), table_profiles(card), threshold=0.3)
+    assert on.check(loose)[0] == ["similar"]
+    assert on.check("Is cataract surgery covered?") == ([], 0.0)
+    assert SqlGate(card.names()).check("Is cataract surgery covered?") == ([], None)    # no embedder: words only
+
+
+def test_the_step_records_closeness():
+    s = SqlStep(SqlConfig(enabled=True, gate_similarity=0.3), ScriptedAnswerer([{"action": "text_only", "reason": "x"}]),
+                db=FakeDb(lambda q: ROWS), card=SchemaCard(card_tables()), embedder=WordVectors())
+    out = s.run("What would Zenith set me back annually for a 25 lakh sum insured?")
+    assert out.kinds == ["similar"] and out.similarity > 0.3 and out.to_dict()["similarity"] == out.similarity

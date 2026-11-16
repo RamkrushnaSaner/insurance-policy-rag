@@ -153,7 +153,8 @@ Rules for the SQL:
 QUESTION: {question}
 {attempts}JSON:""",
     # v2 (after the first dev run: results not computed, lakh read as the wrong column, ages compared as a text range,
-    # a general city classification used instead of the policy's tiers, an amount outside a column's printed amounts)
+    # a general city classification used instead of the policy's tiers, an amount outside a column's printed amounts).
+    # General rules with invented example values, so no rule is written for one question.
     "sql_v2": """You read an insurance policy's numeric tables with SQL (PostgreSQL). Each table is listed below with
 its printed titles, footnotes and columns: every column's type and printed heading, and the values the columns hold
 when they hold few, exactly as printed in the policy.
@@ -175,17 +176,18 @@ Decide how the QUESTION can be answered from these tables, and reply with ONE JS
     for an age, a Sum Insured, a deductible or a plan that is not listed).
 
 Rules for the SQL:
-- Amounts: 1 lakh = 100,000 and 1 crore = 100 lakh = 10,000,000. So 5 lakh = 500,000, 50 lakh = 5,000,000 and
-  2 crore = 20,000,000. Convert every amount in the question before choosing a column or a value, and check the
-  column's printed amount (shown with its lakh or crore value).
-- A column holds values only for the amounts its heading names. A heading that lists amounts ("20, 25 & 50 Lakhs")
-  covers exactly those amounts; a heading with a limit ("<= 20 lakhs", "> 20 lakhs") covers the amounts on that
-  side. If no column covers the asked amount, reply not_in_tables.
-- Text values: compare with = (or IN for several) to values written exactly as listed, mark included (an age
-  printed as '72*' is written '72*'). Never compare text with BETWEEN, <, >, <= or >=.
-- Places and tiers: the tiers are the policy's own. A place is in a tier only when that tier's listed places name
-  it or a region that contains it; every other place is in the tier listed for all other places, whatever its size
-  or its usual classification.
+- Amounts: 1 lakh = 100,000 and 1 crore = 100 lakh = 10,000,000. Convert every amount in the question to rupees
+  before choosing a column or a value, and check it against the column's printed amount (shown with its lakh or
+  crore value).
+- A column holds values only for the amounts its heading names. A heading that lists amounts (such as
+  "12, 18 & 40 Lakhs") covers exactly those amounts; a heading with a limit (such as "> 60 lakhs") covers only the
+  amounts on that side. If no column covers the asked amount, reply not_in_tables.
+- Text values: compare with = (or IN for several) to values written exactly as listed, any mark included (a value
+  printed as '5*' is written '5*'). Never compare text with BETWEEN, <, >, <= or >=.
+- Categories: use the categories exactly as the tables list them (plans, tiers and their places, policy types).
+  Something belongs to a category only when the category's listed values name it or something that contains it
+  (a town inside a listed region); never place it by a classification from outside the policy. A category listed
+  for all others covers everything not named elsewhere.
 - Calculations: when the question asks for a difference, a total, or an amount after a discount, compute the result
   in the SQL as its own column (for example (SELECT ...) - (SELECT ...) AS difference, or
   premium * (1 - discount / 100.0) AS after_discount), and select the values it is computed from too.
