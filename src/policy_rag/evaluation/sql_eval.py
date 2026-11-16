@@ -7,8 +7,8 @@ once, after both are frozen), a ``type`` and what is expected:
 - ``lookup``: values printed in one table (``facts``: value, table column, identifying columns). Pass: the query
   returns every expected value in a row whose identifying columns, when selected, match, in at most ``max_rows`` rows.
 - ``calc``: a difference, a sum or a premium after a discount (``calc``: the computed value and its inputs). Pass: the
-  computed value is in the rows (within Rs 1). Rows with the inputs only are not a pass (the answer would have to
-  calculate, and the figure check would not find the result in the rows).
+  computed value is in the rows, or among the calculations code made from them (``SqlOutcome.derived``), within
+  Rs 1. Rows with the inputs only and no such calculation are not a pass.
 - ``ask``: a detail with many choices is missing (an age). Pass: the model asks.
 - ``not_available``: the tables do not hold the value. Pass: not_in_tables, no rows, or a question back.
 - ``text_only``: table words, but the answer is in the wording. Pass: text_only, a query, or skipped by the gate.
@@ -119,6 +119,9 @@ def grade(question: dict, outcome: dict) -> dict:
     c = e["calc"]
     if fact_found({"value": c["computed"], "keys": {}}, columns, rows, tolerance=1):
         return {"verdict": "pass", "reason": "computed value found"}
+    derived = [d["value"] for d in outcome.get("derived") or []]
+    if fact_found({"value": c["computed"], "keys": {}}, ["derived"] * len(derived), [derived], tolerance=1):
+        return {"verdict": "pass", "reason": "computed by code from the rows"}
     if all(fact_found(f, columns, rows) for f in c["inputs"]):
         return {"verdict": "fail", "reason": "inputs only: the result was not computed in SQL"}
     return {"verdict": "critical", "reason": "neither the result nor its inputs in the rows"}
