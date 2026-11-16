@@ -6,7 +6,8 @@ import pytest
 
 from policy_rag.cli import build_parser
 from policy_rag.config import SqlConfig
-from policy_rag.evaluation.sql_eval import SqlEvaluation, fact_found, grade, load_sql_testset, summarize
+from policy_rag.evaluation.sql_eval import (SqlEvaluation, choose_gate_threshold, fact_found, gate_calibration_sets,
+                                            grade, load_sql_testset, summarize)
 
 pytest.importorskip("sqlglot")
 from test_sql_step import FakeDb, ScriptedAnswerer, card_tables  # noqa: E402
@@ -145,3 +146,24 @@ def test_the_command_line():
     assert args.splits == ["dev"] and args.func.__name__ == "cmd_evaluate_sql"
     with pytest.raises(SystemExit):
         build_parser().parse_args(["evaluate-sql", "--testset", "s.json", "--name", "x", "--splits", "test"])
+
+
+def test_the_gate_threshold_rule():
+    pos = [(0.9, False), (0.7, False), (0.5, False), (0.2, True)]
+    neg = [(0.1, False)] * 16 + [(0.55, False), (0.6, False), (0.8, False), (0.3, True)]
+    c = choose_gate_threshold(pos, neg, 0.10)                       # 20 negatives: at most 2 may pass
+    assert c["threshold"] == 0.7 and c["negatives_passed"] == 2 and c["positives_passed"] == 3   # 0.6 lets 3 through
+    assert c["positives_passed_by_words"] == 1 and c["negatives_passed_by_words"] == 1
+    assert choose_gate_threshold(pos, [(0.1, True)] * 3, 0.10)["threshold"] is None     # words alone exceed the limit
+
+
+def test_calibration_uses_dev_and_other_questions_never_the_held_out_half(tmp_path):
+    from test_sql_step import WordVectors
+    step = SqlStep(SqlConfig(enabled=True), ScriptedAnswerer([]), db=FakeDb(lambda s: None),
+                   card=SchemaCard(card_tables()), embedder=WordVectors())
+    data = load_sql_testset(write_set(tmp_path, QUESTIONS))
+    other = [{"question": "Is cataract surgery covered?", "sections": ["10.1"]},
+             {"question": "What is the premium tier?", "sections": ["Annexure-Z"]},         # a table's own section
+             {"question": "What does the Sum Insured section say?", "sections": ["2"]}]      # linked: Section 2
+    pos, neg = gate_calibration_sets(step, data, other)
+    assert len(pos) == 2 and len(neg) == 1                           # dev: S1, S2 | cataract only (S3 is held out)

@@ -1,8 +1,10 @@
 # v3.5 step 5: the SQL step on its own question set (premiums, check-up limits, deductible discounts).
 # Needs a database at migration 003 and a login in group rag_sql, its connection string in SQL_DATABASE_URL
 # (db/README.md), and pip install -e ".[models,db]". The SQL is written by the answer model of the default config
-# (Qwen3-8B, 4-bit, thinking on, same settings).
-#   policy-rag evaluate-sql --config configs/experiments/v35_sql_step.yaml --testset <private set> --name sql_dev
-extends: ../default.yaml
+# (Qwen3-8B, 4-bit, thinking on, same settings); the gate's closeness to the tables' reference text uses the v3.4
+# embedder (Qwen3-Embedding-0.6B), whose settings come from qwen3_text_faiss.yaml (its chunk file is not read here).
+#   policy-rag evaluate-sql --config configs/experiments/v35_sql_step.yaml --testset <private set> --name sql_dev \
+#       --calibrate-gate testsets/optima_secure_v3.json
+extends: qwen3_text_faiss.yaml
 sql:
   enabled: true

@@ -134,8 +134,10 @@ def test_the_card_is_read_from_the_database(login_url):
             "plan (text): Plan named in the printed title. Values: 'Zenith Care', 'Zenith Care Plus'",
             "tier (smallint): Premium tier named in the printed title (1 or 2). Values: 1, 2",
             "tier_cities (text): Places of the tier, as printed in the title. Values: 'Alpha City, Beta Town', 'Rest of Zland'",
-            "age (text): Printed heading: Age (as printed; * marks the printed footnote). Values: '30' to '31', '66*', '>=90*'",
-            "si_1000000 (integer): Printed heading: Sum Insured 1,000,000 (premium in Rs.)",
+            "age (text): Printed heading: Age (as printed; * marks the printed footnote). Values: '30', '31', '66*', '>=90*'",
+            "si_1000000 (integer): Printed heading: Sum Insured 1,000,000 (10 lakh) (premium in Rs.)",
+            "deductible_inr (integer): Printed heading: Deductible amount (INR). Values: 25000, 50000, 100000 (1 lakh)",
+            "limit_si_5_lakhs (integer): Printed heading: 5 Lakhs (Limit of Cover in Rs.). Values: 1500, 3000",
             "policy_sql.checkup_limit_table (2 rows)", "Printed table: 9. Health Check (invented) (Section 9, page 9)",
             "Printed table without a title (Section 10, page 9)",
             "pct_secure_global (numeric(5,2)): Printed heading: "]:

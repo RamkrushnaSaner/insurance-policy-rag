@@ -27,6 +27,7 @@ import csv
 import datetime
 import hashlib
 import json
+import re
 import statistics
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -180,6 +181,48 @@ def summary_markdown(name: str, split_summaries: Dict[str, dict], targets: dict)
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------------------------------- the gate threshold
+MAX_FALSE_ALARMS = 0.10       # share of questions not about the tables that may reach the SQL step (one extra call each)
+
+
+def choose_gate_threshold(positives: Sequence[tuple], negatives: Sequence[tuple],
+                          max_false_alarms: float = MAX_FALSE_ALARMS) -> dict:
+    """The closeness threshold for ``SqlGate``, by a rule fixed before any run: the lowest threshold at which at most
+    ``max_false_alarms`` of the negatives pass the whole gate (words or closeness). Lowest = the most table questions
+    let through. ``positives`` / ``negatives``: (similarity, passed by words) per question. Threshold None: closeness
+    is not used (the words alone already exceed the limit, or there is nothing to gain)."""
+    def passes(items, t):
+        return sum(1 for sim, words in items if words or (t is not None and sim is not None and sim >= t))
+    best = None
+    for t in sorted({sim for sim, _ in list(positives) + list(negatives) if sim is not None}):
+        if passes(negatives, t) <= max_false_alarms * len(negatives):
+            best = t
+            break
+    return {"threshold": best, "max_false_alarms": max_false_alarms,
+            "positives": len(positives), "positives_passed": passes(positives, best),
+            "positives_passed_by_words": passes(positives, None),
+            "negatives": len(negatives), "negatives_passed": passes(negatives, best),
+            "negatives_passed_by_words": passes(negatives, None)}
+
+
+def gate_calibration_sets(step, sql_testset: dict, other_questions: Sequence[dict]) -> tuple:
+    """Positives: the dev questions about the tables. Negatives: the dev gate controls and the other questions (a
+    general question set) except those from the sections the tables come from or link to (they may be about the
+    tables). Never the held-out half. Each item: (similarity, passed by words)."""
+    from ..sql_step import gate as word_gate
+    sections = {str(p.get("section_id")) for t in step.card.tables.values() for p in t["printed"]}
+    for link in step.card.linked_text(list(step.card.tables)):
+        sections.update(re.findall(r"^Section (\S+)", link.get("label") or ""))
+    dev = [q for q in sql_testset["questions"] if q["split"] == "dev"]
+
+    def score(text):
+        return step.gate.similarity(text), bool(word_gate(text, step.names))
+    pos = [score(q["question"]) for q in dev if q["type"] in TABLE_TYPES]
+    neg = [score(q["question"]) for q in dev if q["type"] == "gate_control"]
+    neg += [score(q["question"]) for q in other_questions if not {str(x) for x in q.get("sections", [])} & sections]
+    return pos, neg
+
+
 # ---------------------------------------------------------------------------------------------------- the run
 class SqlEvaluation:
     """Runs ``SqlStep.run`` on every question of the chosen splits, grades it, and writes ``<output_dir>/<name>/``:
@@ -205,6 +248,7 @@ class SqlEvaluation:
                             "question": q["question"], "expect": q["expect"], "gated": out["status"] != "skipped",
                             "status": out["status"], "verdict": g["verdict"], "reason": g["reason"],
                             "attempts": len(out["attempts"]), "seconds": round(sum(secs), 2) if secs else None,
+                            "similarity": out.get("similarity"),
                             "outcome": out})
             self.log(f"[{i}/{len(qs)}] {q['id']} {q['type']}: {out['status']} -> {g['verdict']} ({g['reason']})")
         targets = self.testset.get("targets") or {}
@@ -220,11 +264,12 @@ class SqlEvaluation:
                                                    encoding="utf-8")
         with open(self.out_dir / "per_question.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["id", "split", "type", "loose", "gated", "status", "verdict", "reason", "attempts", "seconds",
-                        "rows", "sql"])
+            w.writerow(["id", "split", "type", "loose", "gated", "similarity", "status", "verdict", "reason", "attempts",
+                        "seconds", "rows", "sql"])
             for r in records:
-                w.writerow([r["id"], r["split"], r["type"], int(r["loose"]), int(r["gated"]), r["status"], r["verdict"],
-                            r["reason"], r["attempts"], r["seconds"], len(r["outcome"]["rows"]), r["outcome"]["sql"]])
+                w.writerow([r["id"], r["split"], r["type"], int(r["loose"]), int(r["gated"]), r.get("similarity"),
+                            r["status"], r["verdict"], r["reason"], r["attempts"], r["seconds"], len(r["outcome"]["rows"]),
+                            r["outcome"]["sql"]])
         md = summary_markdown(self.name, summaries, targets)
         (self.out_dir / "summary.md").write_text(md, encoding="utf-8")
         self.log("\n" + md)

@@ -105,12 +105,24 @@ def cmd_evaluate_sql(args):
     from .evaluation.sql_eval import SqlEvaluation
     from .generation import Answerer, AnswerCache
     from .sql_step import SqlStep
+    from .evaluation.sql_eval import choose_gate_threshold, gate_calibration_sets, load_sql_testset
     cfg = _config(args)
     generator = registry.build("generator", cfg.generator)             # weights load on the first SQL reply
     answerer = Answerer(generator, AnswerCache(cfg.cache.path, cfg.cache.enabled))
-    step = SqlStep(cfg.sql, answerer)
+    embedder = (registry.build("embedder", cfg.embedder)
+                if args.calibrate_gate or cfg.sql.gate_similarity is not None else None)
+    step = SqlStep(cfg.sql, answerer, embedder=embedder)
     settings = {"config": cfg.source, "config_fingerprint": cfg.fingerprint(), "overrides": list(args.set or []),
-                "sql": dataclasses.asdict(cfg.sql), "generator": generator.signature()}
+                "sql": dataclasses.asdict(cfg.sql), "generator": generator.signature(),
+                "embedder": getattr(embedder, "name", None)}
+    if args.calibrate_gate:
+        other = json.loads(Path(args.calibrate_gate).read_text(encoding="utf-8"))
+        pos, neg = gate_calibration_sets(step, load_sql_testset(args.testset), other.get("items", other))
+        cal = choose_gate_threshold(pos, neg, args.max_false_alarms)
+        settings["gate_calibration"] = cal
+        step.gate.threshold = cal["threshold"]
+        print("Gate threshold (rule: lowest with at most "
+              f"{args.max_false_alarms:.0%} false alarms): {cal}")
     run = SqlEvaluation(step, args.testset, args.name, args.splits, cfg.evaluation.output_dir, settings).run()
     print(f"\nRun folder: {Path(cfg.evaluation.output_dir) / args.name} (holds the policy's figures: keep it private)")
     return run
@@ -222,6 +234,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name", required=True, help="results go to <output_dir>/<name>/")
     p.add_argument("--splits", nargs="+", default=["dev"], choices=["dev", "held_out"],
                    help="default dev; run held_out once, after the prompt and the gate are frozen")
+    p.add_argument("--calibrate-gate", metavar="QUESTION_SET",
+                   help="set sql.gate_similarity first, by the fixed rule, from the dev questions and this general "
+                        "question set (e.g. testsets/optima_secure_v3.json)")
+    p.add_argument("--max-false-alarms", type=float, default=0.10,
+                   help="the rule's limit: share of questions not about the tables that may pass the gate")
     p.set_defaults(func=cmd_evaluate_sql)
 
     p = common(sub.add_parser("compare", help="paired comparison of runs and the adopt/keep decision"))

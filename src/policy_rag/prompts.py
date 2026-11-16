@@ -152,10 +152,56 @@ Rules for the SQL:
 
 QUESTION: {question}
 {attempts}JSON:""",
+    # v2 (after the first dev run: results not computed, lakh read as the wrong column, ages compared as a text range,
+    # a general city classification used instead of the policy's tiers, an amount outside a column's printed amounts).
+    # General rules with invented example values, so no rule is written for one question.
+    "sql_v2": """You read an insurance policy's numeric tables with SQL (PostgreSQL). Each table is listed below with
+its printed titles, footnotes and columns: every column's type and printed heading, and the values the columns hold
+when they hold few, exactly as printed in the policy.
+
+TABLES
+{card}
+
+Decide how the QUESTION can be answered from these tables, and reply with ONE JSON object and nothing else:
+{{"action": "query", "sql": "<one SELECT statement>"}}
+    when the tables hold the values the question asks about.
+{{"action": "ask", "question": "<one short question to the user>"}}
+    when a detail needed to choose the rows is missing (for example the age, the plan, the Sum Insured or the
+    place) and the rows for every possible choice would not fit in 8 rows. Ask only for what is missing.
+{{"action": "text_only", "reason": "<why the tables are not needed>"}}
+    when the question is about how a benefit, rule or condition works (for example when it applies, whether it
+    carries forward, who can get it). The policy's text answers these, not the tables.
+{{"action": "not_in_tables", "reason": "<what the tables do not hold>"}}
+    only when the question asks for an amount, a limit or a percentage that these tables do not hold (for example
+    for an age, a Sum Insured, a deductible or a plan that is not listed).
+
+Rules for the SQL:
+- Amounts: 1 lakh = 100,000 and 1 crore = 100 lakh = 10,000,000. Convert every amount in the question to rupees
+  before choosing a column or a value, and check it against the column's printed amount (shown with its lakh or
+  crore value).
+- A column holds values only for the amounts its heading names. A heading that lists amounts (such as
+  "12, 18 & 40 Lakhs") covers exactly those amounts; a heading with a limit (such as "> 60 lakhs") covers only the
+  amounts on that side. If no column covers the asked amount, reply not_in_tables.
+- Text values: compare with = (or IN for several) to values written exactly as listed, any mark included (a value
+  printed as '5*' is written '5*'). Never compare text with BETWEEN, <, >, <= or >=.
+- Categories: use the categories exactly as the tables list them (plans, tiers and their places, policy types).
+  Something belongs to a category only when the category's listed values name it or something that contains it
+  (a town inside a listed region); never place it by a classification from outside the policy. A category listed
+  for all others covers everything not named elsewhere.
+- Calculations: when the question asks for a difference, a total, or an amount after a discount, compute the result
+  in the SQL as its own column (for example (SELECT ...) - (SELECT ...) AS difference, or
+  premium * (1 - discount / 100.0) AS after_discount), and select the values it is computed from too.
+- Select the columns that hold the answer and the columns that identify each row (such as the plan, tier or age),
+  so every value can be traced to its printed row. Do not select constants.
+- When a missing detail has only a few possible choices (such as two plans), return the rows for all of them.
+- Never guess a value, and never round or change one. Return at most {max_rows} rows.
+
+QUESTION: {question}
+{attempts}JSON:""",
 }
 
 
-def build_sql_prompt(question: str, card: str, max_rows: int = 50, template: str = "sql_v1", attempts=()) -> str:
+def build_sql_prompt(question: str, card: str, max_rows: int = 50, template: str = "sql_v2", attempts=()) -> str:
     """The SQL step's prompt. ``attempts``: [(earlier reply, why it could not be used), ...], oldest first."""
     try:
         text = SQL_TEMPLATES[template]

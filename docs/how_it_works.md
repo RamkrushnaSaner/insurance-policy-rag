@@ -147,8 +147,10 @@ deductible discounts, stored in their printed layout (one SQL row per printed ro
 the printed heading in each column's comment). Every other printed table becomes text chunks with vectors and is
 searched like the rest of the policy. Instead of fixed queries, the answer model writes the SQL:
 
-1. **Gate.** Patterns spot questions about a premium or cost, a check-up or a deductible; only those get the SQL
-   step (one more call of the answer model, with its configured settings, thinking included).
+1. **Gate.** Words spot questions about a premium or cost, a check-up or a deductible; other wordings pass when the
+   question's embedding is close enough to the tables' reference text (titles, headings, introducing sentences;
+   threshold `sql.gate_similarity`, set by a fixed rule on dev questions). Only those get the SQL step (one more
+   call of the answer model, with its configured settings, thinking included).
 2. **Schema card.** Read from the database at start-up (schema `policy_sql`): each table's description, printed
    titles, pages, introducing sentence and footnotes; each column's type and printed heading; the values its text
    columns hold (ages as `'0' to '65', '66*' to '89*', '>=90*'`); two example rows. Nothing is written by hand.

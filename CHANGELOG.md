@@ -29,6 +29,30 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   values, or for a value the tables do not hold, are critical. The held-out half is fingerprinted, and its
   targets are part of the question set, fixed before it runs. Saved rows keep numbers as numbers, and text
   cells (a printed age) never count as values. 28 tests.
+- **SQL step, revised after the first dev run** (dev half of the question set only; the held-out half was not run).
+  The first run (prompt `sql_v1`) passed 10/18 lookups and 0/7 calculations, with 6 critical rows. Causes and changes:
+  - results of calculations were not computed (6 of 7 returned only the inputs): prompt `sql_v2` asks for the result
+    as its own column, with its inputs;
+  - lakh read as the wrong column or amount (50 lakh as `si_500000`, 5 lakh as 50,000): the card writes amounts of a
+    lakh or more with their lakh/crore value (`Sum Insured 5,000,000 (50 lakh)`), lists the values of columns that
+    hold few (deductible amounts, limits, discounts), and the prompt gives the conversion;
+  - an age compared as a text range (`BETWEEN '66*' AND '89*'`, 26 rows): ages are listed as separate values
+    (`'66*', '67*', ... '89*'`), and the checks refuse BETWEEN, <, > on text columns;
+  - a general city classification instead of the policy's tiers, an amount outside a column's printed amounts
+    (30 lakh read as "20, 25 & 50 Lakhs"), a column split at 20 lakh read on the wrong side, a wording question
+    declined as not in the tables: one rule each in `sql_v2`;
+  - the gate missed all 4 loosely worded questions. No word list foresees every wording, so the gate gains a second
+    half instead of more words: closeness (cosine, with the v3.4 embedder) between the question and the tables'
+    reference text (descriptions, printed titles, introducing sentences, column headings), recorded for every
+    question. Its threshold (`sql.gate_similarity`) is set by a rule fixed before the run (`evaluate-sql
+    --calibrate-gate`): the lowest threshold at which at most 10% of the questions not about the tables pass, with
+    the dev questions about the tables as positives and, as negatives, the dev controls and the 113-question
+    development set without the sections the tables come from or link to. The held-out half is never used. The word
+    list keeps its words and one general rule: a common money word ("cost", "price", "pay") with a plan name or an
+    age.
+  - the prompt's rules use invented example values, so no rule is written for one question, and one rule covers
+    every category the tables list (plans, tiers and their places, policy types): never an outside classification.
+  - `sql_v1` is kept for the record; `sql.template` defaults to `sql_v2`.
 - **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
   `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
   database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived

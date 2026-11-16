@@ -200,8 +200,11 @@ class SqlConfig:
     max_rows: int = 50                   # a query may return at most this many rows
     max_retries: int = 2                 # corrected replies after one that could not be used (not JSON, refused SQL, ...)
     max_new_tokens: int = 400            # answer tokens of one SQL reply; the thinking settings are unchanged
-    template: str = "sql_v1"             # prompts.SQL_TEMPLATES
+    template: str = "sql_v2"             # prompts.SQL_TEMPLATES (sql_v1: the first dev run)
     examples: int = 2                    # example rows per table in the schema card
+    # closeness (cosine, with the configured embedder) to the tables' reference text that also passes the gate;
+    # None: words only. Set by a fixed rule on the dev questions (policy-rag evaluate-sql --calibrate-gate)
+    gate_similarity: Optional[float] = None
 
 
 @dataclass
@@ -358,6 +361,8 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
     if cfg.sql.enabled and cfg.tables.enabled:
         raise ConfigError("sql.enabled and tables.enabled cannot both be on: migration 003 replaced the typed tables "
                           "the table route reads (use the SQL step with a database at migration 003)")
+    if cfg.sql.gate_similarity is not None and not -1 <= cfg.sql.gate_similarity <= 1:
+        raise ConfigError("sql.gate_similarity: a cosine between -1 and 1, or null")
     if cfg.sql.max_rows < 1 or cfg.sql.max_retries < 0 or cfg.sql.statement_timeout_ms < 1 or cfg.sql.examples < 0:
         raise ConfigError("sql: max_rows and statement_timeout_ms must be at least 1, max_retries and examples at least 0")
     if cfg.embedder.padding_side not in (None, "left", "right"):

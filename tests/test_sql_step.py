@@ -7,8 +7,8 @@ import pytest
 
 from policy_rag.config import ConfigError, SqlConfig, load_config
 from policy_rag.prompts import build_sql_prompt
-from policy_rag.sql_step import (SchemaCard, SqlOutcome, SqlProblem, SqlStep, compact_values, gate, group_inr,
-                                 parse_action)
+from policy_rag.sql_step import (SchemaCard, SqlGate, SqlOutcome, SqlProblem, SqlStep, compact_values, gate, group_inr,
+                                 indian_amount, parse_action, table_profiles, with_lakh)
 
 sqlglot = pytest.importorskip("sqlglot")
 from policy_rag.sql_step import SqlValidator  # noqa: E402
@@ -28,6 +28,10 @@ TABLES = ["premium_table", "checkup_limit_table", "deductible_discount_table"]
     ("Is the premium refunded if I cancel the policy?", []),
     ("How much will the policy pay for an ambulance?", []),
     ("Is cataract surgery covered?", []),
+    ("Is the cost of an ambulance covered?", []),                             # a money word, but no plan or age
+    ("What would the plan cost per year for a 5-year-old?", ["premium"]),       # a money word with an age
+    ("How much does the policy pay for an annual health screening?", []),     # other wordings: left to closeness
+    ("If I pay the first Rs 50,000 of claims myself, what do I save?", []),
 ])
 def test_gate(q, kinds):
     assert gate(q) == kinds
@@ -36,19 +40,26 @@ def test_gate(q, kinds):
 def test_gate_knows_the_names_in_the_tables():
     q = "How much more does Zenith Care Plus cost than Zenith Care?"
     assert gate(q) == [] and gate(q, names=["Zenith Care", "Zenith Care Plus"]) == ["premium"]
+    q = "What does Zenith Care cost per year?"                                 # a money word with a plan name
+    assert gate(q) == [] and gate(q, names=["Zenith Care"]) == ["premium"]
     assert SchemaCard(card_tables()).names() == ["Zenith Care", "Zenith Care Plus"]
 
 
 # ---------------------------------------------------------------------------------------------------- formatting
 def test_values_are_shown_short():
     ages = [str(a) for a in range(0, 66)] + [f"{a}*" for a in range(66, 90)] + [">=90*"]
-    assert compact_values(sorted(ages)) == "'0' to '65', '66*' to '89*', '>=90*'"
+    assert compact_values(sorted(ages)) == "'0', '1', ... '65', '66*', '67*', ... '89*', '>=90*'"   # each a value
     assert compact_values(["Zenith Care", "Zenith Care Plus"]) == "'Zenith Care', 'Zenith Care Plus'"
     assert compact_values([1, 2]) == "1, 2"
     assert compact_values(["10", "12"]) == "'10', '12'"                 # no run: listed as they are
-    assert compact_values(["item 1", "item 2", "item 3"]) == "'item 1' to 'item 3'"
+    assert compact_values(["item 1", "item 2", "item 3"]) == "'item 1', 'item 2', 'item 3'"
+    assert compact_values([25000, 100000, 150000, 20000000]) == "25000, 100000 (1 lakh), 150000 (1.5 lakh), 20000000 (2 crore)"
     assert compact_values([c * 2 for c in "abcdefghij"], limit=3) == "'aa', 'bb', 'cc', ... (10 values)"
     assert group_inr(1000000) == "10,00,000" and group_inr(16100) == "16,100" and group_inr(999) == "999"
+    assert [indian_amount(n) for n in (99999, 100000, 500000, 5000000, 10000000, 25000000)] == [
+        "", "1 lakh", "5 lakh", "50 lakh", "1 crore", "2.5 crore"]
+    assert with_lakh("Sum Insured 500,000 (premium in Rs.)") == "Sum Insured 500,000 (5 lakh) (premium in Rs.)"
+    assert with_lakh("Base SI 5,00,000 or Rs. 1,500 or 20 lakhs") == "Base SI 5,00,000 (5 lakh) or Rs. 1,500 or 20 lakhs"
 
 
 # ---------------------------------------------------------------------------------------------------- the card
@@ -88,9 +99,9 @@ def test_card_text_shows_tables_columns_values_and_notes():
     for part in ["policy_sql.premium_table (8 rows): Annexure Z: annual premium",
                  "Printed table: Zenith Care Premium - Tier 1 (Annexure Z, pages 40-41)",
                  "Introduced by: Refer Annexure Z for the premium.", "Footnote: *Renewal only (invented)",
-                 "age (text): Printed heading: Age. Values: '30' to '31', '66*', '>=90*'",
+                 "age (text): Printed heading: Age. Values: '30', '31', '66*', '>=90*'",
                  "tier (smallint): Premium tier. Values: 1, 2",
-                 "si_1000000 (integer): Printed heading: Sum Insured 1,000,000 (premium in Rs.)",
+                 "si_1000000 (integer): Printed heading: Sum Insured 1,000,000 (10 lakh) (premium in Rs.)",
                  "plan='Zenith Care', tier=1, age='30', si_500000=7100",
                  "policy_sql.deductible_discount_table (2 rows)", "Printed table without a title (Section 9, page 9)"]:
         assert part in text, part
@@ -112,6 +123,8 @@ def test_reply_parsing():
 
 def test_prompt():
     p = build_sql_prompt("Premium for 30?", "CARD", 50)
+    assert "1 lakh = 100,000" in p and "AS difference" in p and "Never compare text with BETWEEN" in p   # sql_v2
+    assert "1 lakh" not in build_sql_prompt("Premium for 30?", "CARD", 50, template="sql_v1")
     assert "TABLES\nCARD\n" in p and "QUESTION: Premium for 30?\nJSON:" in p and "at most 50 rows" in p
     assert '{"action": "query", "sql": "<one SELECT statement>"}' in p and "EARLIER" not in p
     p2 = build_sql_prompt("Premium for 30?", "CARD", 50, attempts=[("SELECT 1", "not JSON")])
@@ -124,7 +137,7 @@ def test_prompt():
 # ---------------------------------------------------------------------------------------------------- the SQL checks
 @pytest.fixture
 def validator():
-    return SqlValidator(TABLES, max_rows=50)
+    return SqlValidator(TABLES, max_rows=50, text_columns=["plan", "age", "tier_cities", "policy_type"])
 
 
 def test_a_plain_query_is_qualified_and_limited(validator):
@@ -142,6 +155,7 @@ def test_limits(validator):
 
 def test_allowed_forms(validator):
     ok = [
+        "SELECT plan, si_500000 FROM premium_table WHERE tier_cities LIKE '%Alpha%' AND tier >= 1 AND si_500000 < 9000",
         "WITH a AS (SELECT * FROM policy_sql.premium_table WHERE tier = 1) SELECT plan, age, si_500000 FROM a",
         "SELECT a.si_1000000 - b.si_1000000 AS diff, a.age FROM premium_table a JOIN premium_table b ON a.age = b.age "
         "WHERE a.plan = 'Zenith Care Plus' AND b.plan = 'Zenith Care'",
@@ -178,6 +192,8 @@ def test_allowed_forms(validator):
     ("WITH d AS (DELETE FROM premium_table RETURNING *) SELECT plan FROM d", "DELETE"),
     ("SELECT 1", "constant|none of the policy tables"),
     ("SELECT plan FROM premium_table WHERE", "not valid SQL"),
+    ("SELECT age, si_500000 FROM premium_table WHERE age BETWEEN '66*' AND '89*'", "age is text"),
+    ("SELECT age, si_500000 FROM premium_table WHERE CAST(age AS int) > 60", "age is text"),
 ])
 def test_refused(validator, sql, msg):
     with pytest.raises(SqlProblem, match=msg):
@@ -345,5 +361,51 @@ def test_config():
                           "documents": [{"id": "x", "chunks": "x.json"}]})
     with pytest.raises(ConfigError, match="max_rows"):
         load_config(data={"sql": {"max_rows": 0}})
+    with pytest.raises(ConfigError, match="gate_similarity"):
+        load_config(data={"sql": {"gate_similarity": 1.5}})
     with pytest.raises(ConfigError, match="unknown setting"):
         load_config(data={"sql": {"max_row": 5}})
+
+
+# ---------------------------------------------------------------------------------------------------- the gate's closeness
+class WordVectors:
+    """A stand-in embedder: one dimension per word of a small vocabulary (so closeness = shared words)."""
+    name = "word-vectors"
+    VOCAB = ["premium", "annual", "price", "yearly", "age", "sum", "insured", "health", "exam", "limit", "discount",
+             "deductible", "cataract", "surgery", "covered", "zenith"]
+
+    def _vec(self, text):
+        words = text.lower().replace("?", " ").replace(",", " ").split()
+        return [float(sum(w.startswith(v) for w in words)) for v in self.VOCAB]
+
+    def encode_documents(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def encode_query(self, text):
+        return [self._vec(text)]
+
+
+def test_profiles_come_from_the_card():
+    prof = table_profiles(SchemaCard(card_tables()))
+    assert "Annexure Z: annual premium (Rs.) by age and Sum Insured." in prof and "Age" in prof
+    assert "Sum Insured 1,000,000 (premium in Rs.)" in prof and "Zenith Care (discount %)" in prof
+    assert "Refer Annexure Z for the premium." in prof and len(prof) == len(set(prof))
+
+
+def test_closeness_lets_other_wordings_through_only_with_a_threshold():
+    card = SchemaCard(card_tables())
+    loose = "What would Zenith set me back annually for a 25 lakh sum insured?"   # no gate word
+    off = SqlGate(card.names(), WordVectors(), table_profiles(card), threshold=None)
+    kinds, sim = off.check(loose)
+    assert kinds == [] and sim > 0.3                                  # recorded, not used
+    on = SqlGate(card.names(), WordVectors(), table_profiles(card), threshold=0.3)
+    assert on.check(loose)[0] == ["similar"]
+    assert on.check("Is cataract surgery covered?") == ([], 0.0)
+    assert SqlGate(card.names()).check("Is cataract surgery covered?") == ([], None)    # no embedder: words only
+
+
+def test_the_step_records_closeness():
+    s = SqlStep(SqlConfig(enabled=True, gate_similarity=0.3), ScriptedAnswerer([{"action": "text_only", "reason": "x"}]),
+                db=FakeDb(lambda q: ROWS), card=SchemaCard(card_tables()), embedder=WordVectors())
+    out = s.run("What would Zenith set me back annually for a 25 lakh sum insured?")
+    assert out.kinds == ["similar"] and out.similarity > 0.3 and out.to_dict()["similarity"] == out.similarity
