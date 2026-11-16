@@ -14,10 +14,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,db]"
       - run: pytest -q
 
-  # The SQL of the pgvector search and of the table route against a real Postgres with the repo's migrations.
+  # The SQL of the pgvector search, of the table route (v3.4: migrations 001 + 002) and of the SQL step (v3.5:
+  # migrations 001 to 003, in a second database) against a real Postgres.
   database:
     runs-on: ubuntu-latest
     services:
@@ -30,6 +31,7 @@ jobs:
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       POLICY_RAG_TEST_DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/postgres
+      POLICY_RAG_TEST_DATABASE_URL_V35: postgresql://postgres:ci-only-password@localhost:5432/policy_rag_v35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,7 +40,13 @@ jobs:
       - run: pip install -e ".[dev,db]"
       - name: Apply the migrations
         run: |
-          for f in db/migrations/*.sql; do
+          for f in db/migrations/001_*.sql db/migrations/002_*.sql; do
             psql "$POLICY_RAG_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
           done
-      - run: pytest -q tests/test_database_integration.py tests/test_tables_integration.py -rs
+          psql "$POLICY_RAG_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "CREATE DATABASE policy_rag_v35"
+          for f in db/migrations/*.sql; do
+            psql "$POLICY_RAG_TEST_DATABASE_URL_V35" -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
+          done
+      - run: >-
+          pytest -q tests/test_database_integration.py tests/test_tables_integration.py
+          tests/test_sql_step_integration.py -rs
