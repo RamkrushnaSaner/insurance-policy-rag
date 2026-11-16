@@ -205,6 +205,13 @@ class SqlConfig:
     # closeness (cosine, with the configured embedder) to the tables' reference text that also passes the gate;
     # None: words only. Set by a fixed rule on the dev questions (policy-rag evaluate-sql --calibrate-gate)
     gate_similarity: Optional[float] = None
+    # in the pipeline (policy_rag/pipeline.py)
+    max_tokens: int = 1200               # longest SQL passage in the context (longer results lose rows, and say so)
+    pin_linked_chunks: bool = True       # the text linked to the tables used goes into the context, whatever its score
+    max_linked_tokens: int = 600         # ... at most this many tokens of it
+    # an answer with a figure that is in neither the context nor the question, when the SQL step answered:
+    # "rows" replaces it with the rows written out plainly; "keep" keeps it (the check is recorded either way)
+    on_unsupported_figures: str = "rows"
 
 
 @dataclass
@@ -361,6 +368,8 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
     if cfg.sql.enabled and cfg.tables.enabled:
         raise ConfigError("sql.enabled and tables.enabled cannot both be on: migration 003 replaced the typed tables "
                           "the table route reads (use the SQL step with a database at migration 003)")
+    if cfg.sql.on_unsupported_figures not in ("rows", "keep"):
+        raise ConfigError(f"sql.on_unsupported_figures: expected rows or keep, got {cfg.sql.on_unsupported_figures!r}")
     if cfg.sql.gate_similarity is not None and not -1 <= cfg.sql.gate_similarity <= 1:
         raise ConfigError("sql.gate_similarity: a cosine between -1 and 1, or null")
     if cfg.sql.max_rows < 1 or cfg.sql.max_retries < 0 or cfg.sql.statement_timeout_ms < 1 or cfg.sql.examples < 0:

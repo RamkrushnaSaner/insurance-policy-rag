@@ -1,11 +1,14 @@
 """The RAG pipeline as a LangGraph state graph:
-condense -> retrieve -> tables -> rerank -> gate -> answer | no_answer.
+condense -> retrieve -> tables -> sql -> (ask) | rerank -> gate -> answer | no_answer.
 
 ``condense`` acts only when earlier turns of a conversation are passed (see memory.py); otherwise the question goes
-straight to retrieval. ``tables`` acts only with ``tables.enabled``: a question about the policy's printed tables
-gets the exact values from the database (tables.py) as the first context passage, and the text chunks linked to
-those tables become search candidates. ``RAGSystem`` builds every component from a config and is the main entry
-point::
+straight to retrieval. ``tables`` acts only with ``tables.enabled`` (v3.4): a question about the policy's printed
+tables gets the exact values from the database (tables.py) as the first context passage, and the text chunks linked
+to those tables become search candidates. ``sql`` acts only with ``sql.enabled`` (v3.5): a question about the
+numeric tables gets the rows of the SQL the answer model wrote (sql_step.py) as the first passage, with the text
+linked to those tables; when a detail is missing, the step's question for the user is the reply (``ask``); when
+the tables hold no value, a short note says so and the text passages answer. ``RAGSystem`` builds every component
+from a config and is the main entry point::
 
     from policy_rag import RAGSystem
     rag = RAGSystem.from_config("configs/default.yaml")
@@ -55,6 +58,11 @@ class RAGState(TypedDict, total=False):
     table_pinned: List[int]     # linked chunk ids placed in the context whatever their score
     table_check: dict           # the answer's figures checked against the context, and the fallback if one was used
     table_error: str
+    sql: object                 # the SQL step's outcome (sql_step.SqlOutcome), with sql.enabled
+    sql_linked: List[int]       # chunk ids added as candidates because they are linked to the tables the SQL read
+    sql_pinned: List[int]       # linked chunk ids placed in the context whatever their score
+    sql_check: dict             # the answer's figures checked against the context, and the fallback if one was used
+    sql_error: str
 
 
 @dataclass
@@ -74,10 +82,14 @@ class Answer:
 
 class RAGPipeline:
     def __init__(self, corpus: Corpus, retriever: HybridRetriever, reranker, context: ContextBuilder, answerer,
-                 cfg: Config, log=print, rewriter: Optional[QuestionRewriter] = None, tables=None):
-        """``tables``: a ``tables.TableRoute`` (None = no table route)."""
+                 cfg: Config, log=print, rewriter: Optional[QuestionRewriter] = None, tables=None, sql=None):
+        """``tables``: a ``tables.TableRoute`` (None = no table route). ``sql``: a ``sql_step.SqlStep`` (None = no
+        SQL step); its tables belong to the first configured document."""
         self.corpus, self.retriever, self.reranker, self.context = corpus, retriever, reranker, context
         self.answerer, self.cfg, self.log, self.rewriter, self.tables = answerer, cfg, log, rewriter, tables
+        self.sql = sql
+        self.sql_doc = cfg.documents[0].id if cfg.documents else None
+        self._label_text_pos = {(c.label, c.text): i for i, c in enumerate(corpus.chunks)}
         self._uid_pos = {}
         if tables is not None:
             from .database import chunk_uid
@@ -119,6 +131,39 @@ class RAGPipeline:
             text = short(body)
         return f"{label}\n{text}"
 
+    NO_TABLE_VALUE = ("[Policy tables]\nThe policy's numeric tables were checked with SQL: they hold no value for this "
+                      "question.")
+
+    def sql_passage(self, out) -> str:
+        """The context passage for the SQL step's outcome: the rows (``SqlOutcome.block``) under a label naming
+        where they are printed, cut to ``sql.max_tokens`` (a shortened passage says so); for "not in the tables" or
+        no rows, a short note (the text passages may still answer: a question about how a rule works can be
+        mistaken for one about a value)."""
+        if out is None:
+            return ""
+        if out.status in ("not_in_tables", "no_rows"):
+            return self.NO_TABLE_VALUE
+        if not out.answered:
+            return ""
+        label = "[Policy tables" + (f" → {out.sources_line()}" if out.sources_line() else "") + "]"
+        text, count = out.block(), self.context.count_tokens
+        if count(text) > self.cfg.sql.max_tokens:
+            lines = text.split("\n")
+            calc = "Calculated by code from these rows (exact):"
+            stop = lines.index(calc) if calc in lines else len(lines)
+            row_idx = [i for i, ln in enumerate(lines[:stop]) if ln.startswith("- ")]
+
+            def first(k):
+                drop = set(row_idx[k:])
+                kept = [ln for i, ln in enumerate(lines) if i not in drop]
+                return "\n".join(kept + ([f"(Shortened: {len(row_idx) - k} more rows of this result are not shown.)"]
+                                         if k < len(row_idx) else []))
+            k = len(row_idx)
+            while k > 1 and count(first(k)) > self.cfg.sql.max_tokens:
+                k -= 1
+            text = first(k)
+        return f"{label}\n{text}"
+
     def retrieve(self, query: str, doc_ids=None):
         query = query.strip()
         allowed = self.corpus.doc_chunk_ids(doc_ids)
@@ -138,7 +183,13 @@ class RAGPipeline:
 
     def gate(self, state) -> str:
         """Answer when the best text passage is relevant enough, or when the tables answered the question (items
-        found on a list do not count: they only add to the text, which must be relevant on its own)."""
+        found on a list do not count: they only add to the text, which must be relevant on its own), or when the SQL
+        step returned rows. "ask" when the SQL step asks the user for a missing detail."""
+        sql = state.get("sql")
+        if sql is not None and sql.status == "ask":
+            return "ask"
+        if sql is not None and sql.answered and state.get("facts"):
+            return "answer"
         table = state.get("table")
         if table is not None and table.answered and state.get("facts") and table.fields.get("mode") != "items":
             return "answer"
@@ -158,6 +209,20 @@ class RAGPipeline:
             why = "refused" if refused else "has figures not in the context (" + ", ".join(unsupported) + ")"
             self.log(f"the answer to {query[:50]!r} {why}: replaced by the answer written from the tables")
             check.update(fallback=True, model_answer=answer, answer=table.text)
+        return check
+
+    def check_sql_answer(self, query: str, answer: str, out, context: str) -> dict:
+        """Figures of an answer that are in neither the context (which holds the rows and the code's calculations)
+        nor the question. With ``sql.on_unsupported_figures: rows``, such an answer is replaced by the rows written
+        out plainly. A refusal is kept: the rows may not be what the question needed."""
+        from .evaluation.checks import unsupported_figures
+        refused = is_no_answer(answer)
+        unsupported = [] if refused else unsupported_figures(answer, context, query)
+        check = {"unsupported_figures": unsupported, "refused": refused, "fallback": False}
+        if unsupported and self.cfg.sql.on_unsupported_figures == "rows":
+            self.log(f"the answer to {query[:50]!r} has figures not in the context ({', '.join(unsupported)}): "
+                     "replaced by the rows written out plainly")
+            check.update(fallback=True, model_answer=answer, answer=out.plain_text())
         return check
 
     # ------------------------------------------------------------------ graph nodes
@@ -219,6 +284,48 @@ class RAGPipeline:
                     out["table_pinned"] = pinned
         return out
 
+    def _sql_node(self, state: RAGState):
+        """The SQL step (v3.5). A failure here is logged and the question is answered from the text passages alone."""
+        doc_ids = state.get("doc_ids")
+        if self.sql is None or (doc_ids and self.sql_doc not in set(doc_ids)):
+            return {}
+        try:
+            out = self.sql.run(state["query"].strip())
+        except Exception as e:
+            if is_oom(e):
+                free_gpu()
+            traceback.print_exc()
+            self.log(f"SQL step failed ({type(e).__name__}): answering from the text passages only")
+            return {"sql_error": f"sql: {type(e).__name__}: {e}"}
+        res = {"sql": out}
+        passage = self.sql_passage(out)
+        if passage:
+            res["facts"] = passage
+        if out.answered and out.linked_text:
+            allowed = self.corpus.doc_chunk_ids(doc_ids)
+            linked = [i for i in dict.fromkeys(self._label_text_pos.get((l.get("label"), l.get("text")))
+                                               for l in out.linked_text)
+                      if i is not None and (allowed is None or i in allowed)]
+            cands = list(state.get("candidates") or [])
+            have = set(cands)
+            added = [i for i in linked if i not in have]
+            if added:
+                res.update(candidates=cands + added, sql_linked=added)
+            if self.cfg.sql.pin_linked_chunks:              # the text a table belongs to goes with its rows
+                pinned, used = [], 0
+                for i in linked:
+                    cost = self.context.block_tokens(i)
+                    if used + cost <= self.cfg.sql.max_linked_tokens:
+                        pinned.append(i)
+                        used += cost
+                if pinned:
+                    res["sql_pinned"] = pinned
+        return res
+
+    def _ask_node(self, state: RAGState):
+        """The SQL step's question for the user (a detail needed to choose the rows is missing)."""
+        return {"answer": state["sql"].clarification, "route": "ask"}
+
     def _rerank_node(self, state: RAGState):
         empty = {"scores": [], "groups": [], "top_score": float("-inf")}
         try:
@@ -227,7 +334,8 @@ class RAGPipeline:
                 return empty
             scores = self.reranker.score(state["query"], [self.rerank_text(i) for i in cands])
             docs = set(state["doc_ids"]) if state.get("doc_ids") else None
-            groups = self.context.build(state["query"], cands, scores, docs, state.get("table_pinned") or ())
+            pinned = list(dict.fromkeys(list(state.get("table_pinned") or ()) + list(state.get("sql_pinned") or ())))
+            groups = self.context.build(state["query"], cands, scores, docs, pinned)
             return {"scores": [float(s) for s in scores], "groups": groups, "top_score": float(max(scores))}
         except Exception as e:
             traceback.print_exc()
@@ -253,6 +361,12 @@ class RAGPipeline:
                 out["table_check"] = check
                 if check["fallback"]:
                     out["answer"] = check["answer"]
+            sql = state.get("sql")
+            if facts and sql is not None and sql.answered:
+                check = self.check_sql_answer(state["query"], gen["answer"], sql, self.context_text(groups, facts))
+                out["sql_check"] = check
+                if check["fallback"]:
+                    out["answer"] = check["answer"]
             return out
         except Exception as e:
             traceback.print_exc()
@@ -269,13 +383,18 @@ class RAGPipeline:
         g.add_node("condense", self._condense_node)
         g.add_node("retrieve", self._retrieve_node)
         g.add_node("tables", self._tables_node)
+        g.add_node("sql", self._sql_node)
+        g.add_node("ask", self._ask_node)
         g.add_node("rerank", self._rerank_node)
         g.add_node("answer", self._answer_node)
         g.add_node("no_answer", self._no_answer_node)
         g.set_entry_point("condense")
         g.add_edge("condense", "retrieve")
         g.add_edge("retrieve", "tables")
-        g.add_edge("tables", "rerank")
+        g.add_edge("tables", "sql")
+        g.add_conditional_edges("sql", lambda st: "ask" if st.get("sql") is not None and st["sql"].status == "ask"
+                                else "rerank", {"ask": "ask", "rerank": "rerank"})
+        g.add_edge("ask", END)
         g.add_conditional_edges("rerank", self.gate, {"answer": "answer", "no_answer": "no_answer"})
         g.add_edge("answer", END)
         g.add_edge("no_answer", END)
@@ -283,12 +402,14 @@ class RAGPipeline:
 
     # ------------------------------------------------------------------ running
     def search(self, query: str, doc_ids=None) -> dict:
-        """Retrieve, look up the tables, rerank and build the context; no answer model (what retrieval-only
-        evaluation runs)."""
+        """Retrieve, look up the tables, rerank and build the context (what the evaluation's retrieval pass runs). No
+        answer is generated; the SQL step, when on, does call the answer model to write its SQL."""
         st: dict = {"query": query, "doc_ids": doc_ids}
         st.update(self._retrieve_node(st))
         st.update(self._tables_node(st))
-        st.update(self._rerank_node(st))
+        st.update(self._sql_node(st))
+        if st.get("sql") is None or st["sql"].status != "ask":
+            st.update(self._rerank_node(st))
         st["route"] = self.gate(st)
         return st
 
@@ -304,8 +425,9 @@ class RAGSystem:
     """All components built from one config."""
 
     def __init__(self, cfg: Config, corpus: Corpus, embedder, reranker, generator, cache: AnswerCache, log=print,
-                 tables=None):
-        """``tables``: a ``tables.TableRoute`` to use instead of the one ``tables.enabled`` builds over the database."""
+                 tables=None, sql=None):
+        """``tables``: a ``tables.TableRoute`` to use instead of the one ``tables.enabled`` builds over the database;
+        ``sql``: a ``sql_step.SqlStep`` to use instead of the one ``sql.enabled`` builds."""
         self.cfg, self.corpus, self.embedder, self.reranker, self.generator, self.cache = \
             cfg, corpus, embedder, reranker, generator, cache
         self.log = log
@@ -314,8 +436,17 @@ class RAGSystem:
         self.answerer = Answerer(generator, cache)
         self.rewriter = QuestionRewriter(self.answerer, cfg.memory) if cfg.memory.enabled else None
         self.tables = tables if tables is not None else self._table_route(cfg)
+        self.sql = sql if sql is not None else self._sql_step(cfg)
         self.pipeline = RAGPipeline(corpus, self.retriever, reranker, self.context, self.answerer, cfg, log,
-                                    self.rewriter, self.tables)
+                                    self.rewriter, self.tables, self.sql)
+
+    def _sql_step(self, cfg: Config):
+        """The SQL step over schema policy_sql, as a login that reads it and nothing else (``sql.url_env``); the
+        gate's closeness uses the dense search's embedder."""
+        if not cfg.sql.enabled:
+            return None
+        from .sql_step import SqlStep
+        return SqlStep(cfg.sql, self.answerer, embedder=self.embedder)
 
     def _table_route(self, cfg: Config):
         """The table route over the database (sharing the pgvector connection when there is one)."""
@@ -329,7 +460,7 @@ class RAGSystem:
 
     @classmethod
     def from_config(cls, config="configs/default.yaml", overrides=None, corpus: Optional[Corpus] = None,
-                    log=print, tables=None) -> "RAGSystem":
+                    log=print, tables=None, sql=None) -> "RAGSystem":
         """Build everything: load the chunk files, the embedder and reranker, index all chunks, and (with
         ``tables.enabled``) open the table route. The answer model loads on the first answer that is not in the
         cache. ``tables``: a ``TableRoute`` to use instead of one over the database."""
@@ -341,11 +472,14 @@ class RAGSystem:
         reranker = registry.build("reranker", cfg.reranker)
         generator = registry.build("generator", cfg.generator)          # weights load on first use
         cache = AnswerCache(cfg.cache.path, cfg.cache.enabled)
-        system = cls(cfg, corpus, embedder, reranker, generator, cache, log, tables)
+        system = cls(cfg, corpus, embedder, reranker, generator, cache, log, tables, sql)
         routed = ", ".join(system.retriever.routed) or "none"
         dense = "dense" if cfg.retrieval.dense_backend == "faiss" else f"dense from {cfg.retrieval.dense_backend}"
         tables = "" if system.tables is None else (f"; tables of {system.tables.data.doc!r} from the database "
                                                    f"(version {system.tables.cat['version_label']})")
+        if system.sql is not None:
+            tables += (f"; SQL step over {len(system.sql.card.tables)} tables (prompt {cfg.sql.template}, gate closeness "
+                       f"{cfg.sql.gate_similarity if cfg.sql.gate_similarity is not None else 'off'})")
         log(f"Ready: {len(corpus.chunks)} chunks indexed ({dense} + {'BM25' if cfg.retrieval.use_bm25 else 'no BM25'}); "
             f"routed indexes: {routed}; answer cache: {len(cache)} answers{tables}")
         return system
@@ -357,17 +491,23 @@ class RAGSystem:
         With ``conversation``, earlier turns are used to rewrite a follow-up into a standalone question (one more
         model call), the conversation's document filter applies unless ``documents`` is given, and the turn is added
         to the conversation."""
-        history = None
+        history, asked = None, question
         if conversation is not None:
-            history = conversation.recent(self.cfg.memory.max_turns, self.cfg.memory.answer_chars)
+            if conversation.pending:                    # the reply to the SQL step's question completes that question
+                asked = f"{conversation.pending.rstrip()} {question.strip()}"
+            else:
+                history = conversation.recent(self.cfg.memory.max_turns, self.cfg.memory.answer_chars)
             if documents is None:
                 documents = conversation.documents
-        st = self.pipeline.run(question, documents, history)
+        st = self.pipeline.run(asked, documents, history)
         sources = [self.context.group_label(g) for g in st.get("groups", [])]
-        if st.get("facts"):
+        sql = st.get("sql")
+        if sql is not None and sql.answered and st.get("facts"):
+            sources.insert(0, "[Policy tables] " + (sql.sources_line() or ", ".join(sql.tables)))
+        elif st.get("facts") and st.get("table") is not None:
             sources.insert(0, "[Policy tables] " + "; ".join(st["table"].sources))
         rw = st.get("rewrite") or {}
-        standalone = st["query"] if rw.get("rewritten") else None
+        standalone = st["query"] if rw.get("rewritten") or asked != question else None
         if show_sources:
             if standalone:
                 print("  searched as:", standalone)
@@ -377,6 +517,7 @@ class RAGSystem:
         route = st.get("route") or self.pipeline.gate(st)
         if conversation is not None:
             conversation.add(question, st["query"], st["answer"], sources, route)
+            conversation.pending = asked if route == "ask" else None
         top = st.get("top_score")
         return Answer(question, st["answer"], sources, route,
                       top if top is not None and top != float("-inf") else None, st, standalone)

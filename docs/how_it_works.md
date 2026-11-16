@@ -139,8 +139,9 @@ A failure of the route (the database unreachable) is logged and the question is 
 
 ## 3c. The SQL step (v3.5, in progress)
 
-[`sql_step.py`](../src/policy_rag/sql_step.py) · **Off by default** (`sql.enabled`; not yet wired into the pipeline).
-Needs a database at migration 003 ([`db/README.md`](../db/README.md)).
+[`sql_step.py`](../src/policy_rag/sql_step.py) · **Off by default** (`sql.enabled`; the experiment config
+[`v35.yaml`](../configs/experiments/v35.yaml) turns it on). Needs a database at migration 003
+([`db/README.md`](../db/README.md)).
 
 In v3.5 only the three numeric tables stay tables: premiums, preventive health check-up limits and aggregate
 deductible discounts, stored in their printed layout (one SQL row per printed row, one column per printed column,
@@ -177,6 +178,23 @@ a dev half shapes the prompt and the gate, and a held-out half is run once again
 
 The model never states a value the database did not return: a missing detail is asked for, a value the tables do not
 hold is reported as such, and the figure check catches anything else.
+
+**In the pipeline** (a graph node after the search, before reranking):
+
+- **Rows returned:** the result block is the first context passage, labelled with where the rows are printed
+  (`[Policy tables → Annexure C, pages 19-20]`), cut to `sql.max_tokens`. The text linked to the tables read
+  becomes a search candidate and is placed in the context whatever its score (up to `sql.max_linked_tokens`), and
+  the rows open the gate.
+- **A detail is missing:** the step's question is the reply (route `ask`). In a conversation the user's next message
+  completes the question, which is run again. In an evaluation run it counts as not answered (or as declined, for a
+  question the policy does not answer).
+- **No value in the tables** (`not_in_tables`, or no rows): a one-line note says so, and the text passages answer as
+  usual. A question about how a rule works can be mistaken for one about a value, so the answer is never forced to
+  decline.
+- **Anything else** (skipped by the gate, text only, failed, database down): the text passages alone.
+- **Figure check:** after the answer, figures that are in neither the context (rows, calculations, passages) nor the
+  question are listed. With `sql.on_unsupported_figures: rows` such an answer is replaced by the rows written out
+  plainly. A refusal is kept.
 
 ## 4. The gate: refuse without guessing
 
