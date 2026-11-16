@@ -70,6 +70,18 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     unchanged: one difference with the opposite sign (S045) and one amount outside a column's printed amounts
     (S075, the coverage check, planned for later).
   - The change will be judged on new questions (the table questions of the fresh set in step 7).
+- **Differences by size** (after the held-out run of step 5):
+  - Grading: a calculated difference counts by its size, whichever way round it was subtracted. The test set's
+    order of subtraction was arbitrary, and two held-out answers had the right amount with the opposite sign
+    (S044, S045). The owner accepted this correction after the run: step 5's held-out
+    result is calculations 5/7 with 1 critical row (S075), and every target is met (as run: 3/7 with 2 critical
+    rows). No dev result changes.
+  - The SQL step: when the query subtracts by itself (`a - b AS difference`), code adds the size of the result and
+    which side is larger, each side described by its printed heading and the condition that picks its row
+    (`difference = Rs -1,300 is (Sum Insured 500,000 ... where ... tier = 2 ...) minus (... tier = 1 ...): the
+    second is larger, by Rs 1,300`). The answer no longer has to read a sign, and the figure check accepts the size.
+    Replayed with arithmetic in code (not a test): held-out calculations 7/7, 1 critical row (S075). Judged with
+    arithmetic in code on the fresh set's table questions in step 7.
 - **The SQL step in the pipeline** (step 6; [`configs/experiments/v35.yaml`](configs/experiments/v35.yaml)): a graph
   node after the search.
   - When rows come back, the result block is the first context passage, the text linked to the tables read is pinned

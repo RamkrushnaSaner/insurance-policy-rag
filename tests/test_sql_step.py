@@ -421,7 +421,7 @@ def test_column_kinds_and_money():
     assert column_kind(PREM) == "amount" and column_kind("Deductible amount (INR)") == "amount"
     assert column_kind("Zenith Care (discount %)") == "percent" and column_kind("Age") is None and column_kind("plan") is None
     assert money(Decimal("2025")) == "Rs 2,025" and money(Decimal("17212.50")) == "Rs 17,212.5"
-    assert money(Decimal("-859")) == "Rs -859" and money(Decimal("1000000")) == "Rs 10,00,000"
+    assert money(Decimal("-640")) == "Rs -640" and money(Decimal("1000000")) == "Rs 10,00,000"
 
 
 def test_two_rows_give_a_difference_and_a_total():
@@ -446,7 +446,7 @@ def test_no_arithmetic_on_keys_same_table_percentages_computed_columns_or_long_l
     assert derive(["deductible_inr", "pct_zenith"], ["Deductible amount (INR)", "Zenith Care (discount %)"],
                   ["deductible_discount_table"] * 2, [(25000, Decimal("25")), (50000, Decimal("40"))],
                   keys=["deductible_inr"]) == []                      # a key and a percentage of the same table
-    assert derive(["difference"], ["difference"], [None], [(-859,)]) == []                     # computed by the model
+    assert derive(["difference"], ["difference"], [None], [(-640,)]) == []                     # computed by the model
     assert derive(["age", "si_1000000"], ["Age", PREM], ["premium_table"] * 2,
                   [(str(a), 9000 + a) for a in range(9)], keys=["age"]) == []                  # 9 rows: a listing
 
@@ -474,3 +474,45 @@ def test_aliases_made_in_subqueries_keep_their_printed_heading(validator):
                         "WHERE plan = 'Zenith Care') a, (SELECT si_500000 AS zcp FROM premium_table "
                         "WHERE plan = 'Zenith Care Plus') b")
     assert c.aliases == {"zc": "si_500000", "zcp": "si_500000"}
+
+
+# ---------------------------------------------------------------------------------------------------- the query's own subtractions
+from policy_rag.sql_step import explain_differences  # noqa: E402
+
+SUB = ("SELECT (SELECT si_500000 FROM premium_table WHERE plan = 'Zenith Care' AND tier = 2 AND age = '30') - "
+       "(SELECT si_500000 FROM premium_table WHERE plan = 'Zenith Care' AND tier = 1 AND age = '30') AS difference")
+
+
+def test_the_checks_record_the_querys_own_subtractions(validator):
+    c = validator.check(SUB)
+    assert c.subtractions == {"difference": (("si_500000", "plan = 'Zenith Care' AND tier = 2 AND age = '30'"),
+                                             ("si_500000", "plan = 'Zenith Care' AND tier = 1 AND age = '30'"))}
+    c = validator.check("SELECT a.zc - b.zcp AS diff, a.zc FROM (SELECT si_500000 AS zc FROM premium_table WHERE "
+                        "plan = 'Zenith Care') a, (SELECT si_500000 AS zcp FROM premium_table WHERE plan = 'Zenith Care Plus') b")
+    assert c.subtractions == {"diff": (("zc", ""), ("zcp", ""))}
+    c = validator.check("SELECT si_1000000 - si_500000 * 2 AS d, si_1000000 + si_500000 AS s FROM premium_table")
+    assert c.subtractions == {"d": (("si_1000000", ""), (None, "si_500000 * 2"))}            # a sum is not one
+
+
+def test_a_signed_difference_gets_its_size_and_which_side_is_larger():
+    subs = {"difference": ("A where tier = 2", "A where tier = 1", True)}
+    d = explain_differences(["difference"], [(-640,)], subs)
+    assert d == [{"kind": "difference_by_query", "value": 640,
+                  "text": "difference = Rs -640 is (A where tier = 2) minus (A where tier = 1): the second is larger, by Rs 640"}]
+    assert explain_differences(["difference"], [(Decimal("2.50"),)], {"difference": ("a", "b", False)})[0]["text"] \
+        .endswith(": the first is larger, by 2.5")
+    two = explain_differences(["plan", "difference"], [("x", 0), ("y", -10)], {"difference": ("a", "b", True)})
+    assert two[0]["text"].endswith("minus (b): the two are equal") and two[1]["text"].endswith("the second is larger, by Rs 10")
+    assert "(row 2)" in two[1]["text"] and [x["value"] for x in two] == [0, 10]
+    assert explain_differences(["difference"], [(-1,)] * 9, subs) == []                      # a listing
+    assert explain_differences(["difference"], [(None,)], subs) == []
+
+
+def test_the_block_says_which_side_is_larger_when_the_query_subtracts():
+    s = step([{"action": "query", "sql": SUB}], lambda q: (["difference"], [(-1300,)]))
+    out = s.run("How much cheaper is Zenith Care in Tier 2 than in Tier 1 for a 30-year-old with 5 lakh?")
+    assert [(d["kind"], d["value"]) for d in out.derived] == [("difference_by_query", 1300)]
+    assert ("- difference = Rs -1,300 is (Sum Insured 500,000 (premium in Rs.) where plan = 'Zenith Care' AND "
+            "tier = 2 AND age = '30') minus (Sum Insured 500,000 (premium in Rs.) where plan = 'Zenith Care' "
+            "AND tier = 1 AND age = '30'): the second is larger, by Rs 1,300") in out.block()
+    assert out.verify("Tier 2 is Rs 1,300 cheaper than Tier 1.") == []

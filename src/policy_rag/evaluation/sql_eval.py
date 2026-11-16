@@ -117,10 +117,12 @@ def grade(question: dict, outcome: dict) -> dict:
             return {"verdict": "fail", "reason": f"right values, but {len(rows)} rows"}
         return {"verdict": "pass", "reason": "all values found"}
     c = e["calc"]
-    if fact_found({"value": c["computed"], "keys": {}}, columns, rows, tolerance=1):
+    # a difference is right whichever way round it was subtracted (the test set's order is arbitrary): its size counts
+    wanted = [c["computed"]] + ([-c["computed"]] if c.get("how") == "a - b" and c["computed"] else [])
+    if any(fact_found({"value": w, "keys": {}}, columns, rows, tolerance=1) for w in wanted):
         return {"verdict": "pass", "reason": "computed value found"}
     derived = [d["value"] for d in outcome.get("derived") or []]
-    if fact_found({"value": c["computed"], "keys": {}}, ["derived"] * len(derived), [derived], tolerance=1):
+    if any(fact_found({"value": w, "keys": {}}, ["derived"] * len(derived), [derived], tolerance=1) for w in wanted):
         return {"verdict": "pass", "reason": "computed by code from the rows"}
     if all(fact_found(f, columns, rows) for f in c["inputs"]):
         return {"verdict": "fail", "reason": "inputs only: the result was not computed in SQL"}

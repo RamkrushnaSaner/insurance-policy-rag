@@ -20,7 +20,8 @@ other printed table is text chunks, searched like the rest of the policy.
 6. A reply that cannot be used (not JSON, refused SQL, a database error, no rows, too many rows) is shown to the
    model with the reason, and a corrected reply asked for, up to ``max_retries`` times.
 7. ``derive``: differences, totals and amounts after a discount, computed by code in Decimal from the returned
-   rows, so the model never has to do the arithmetic.
+   rows, so the model never has to do the arithmetic; ``explain_differences``: when the query subtracts itself, the
+   size of the result and which side is larger, so no answer depends on the sign.
 8. ``SqlOutcome.block()``: the rows for the answer model's context, each value under its printed heading, with the
    query, the calculations and the tables' printed titles, pages, introducing sentences and footnotes;
    ``linked_text``: the text chunks to read with the tables; ``verify(answer)``: figures in an answer that are in
@@ -417,6 +418,9 @@ class CheckedSql:
     fetch_limit: Optional[int]            # the LIMIT added or lowered here (max_rows + 1: more rows = too many)
     aliases: Dict[str, str] = field(default_factory=dict)   # output name -> table column it shows unchanged
     keys: List[str] = field(default_factory=list)           # columns that choose rows (= or IN against values)
+    # output name -> its two operands when the query itself subtracts (``a - b AS name``): (column or None, the
+    # operand's WHERE condition or its SQL text) for each side
+    subtractions: Dict[str, Tuple[Tuple[Optional[str], str], Tuple[Optional[str], str]]] = field(default_factory=dict)
 
 
 class SqlValidator:
@@ -499,9 +503,34 @@ class SqlValidator:
         aliases = {alias: next(iter(cols)) for alias, cols in named.items() if len(cols) == 1}
         keys = sorted({c.name for cmp in tree.find_all(exp.EQ, exp.In) for c in [cmp.this]
                        if isinstance(c, exp.Column) and (isinstance(cmp, exp.In) or isinstance(cmp.expression, exp.Literal))})
+        subtractions = {}
+        for sel in _output_selects(tree)[:1]:
+            for proj in sel.expressions:
+                expr = proj.this if isinstance(proj, exp.Alias) else proj
+                while isinstance(expr, exp.Paren):
+                    expr = expr.this
+                if isinstance(expr, exp.Sub) and proj.alias_or_name:
+                    subtractions[proj.alias_or_name] = (_operand(expr.this), _operand(expr.expression))
         if fetch is not None:
             tree = tree.limit(fetch)
-        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys)
+        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys, subtractions)
+
+
+def _operand(node) -> Tuple[Optional[str], str]:
+    """One side of a subtraction the query does: (the column it reads, the WHERE condition that picks its row) for a
+    column or a one-value subquery; (None, its SQL text) for anything else."""
+    from sqlglot import exp
+    while isinstance(node, (exp.Paren, exp.Subquery)):
+        node = node.this
+    if isinstance(node, exp.Column):
+        return node.name, ""
+    if isinstance(node, exp.Select) and len(node.expressions) == 1:
+        value = node.expressions[0]
+        value = value.this if isinstance(value, exp.Alias) else value
+        where = node.args.get("where")
+        if isinstance(value, exp.Column):
+            return value.name, where.this.sql(dialect="postgres") if where is not None else ""
+    return None, node.sql(dialect="postgres")
 
 
 def _output_selects(node) -> list:
@@ -599,6 +628,33 @@ def derive(columns: Sequence[str], labels: Sequence[str], sources: Sequence[Opti
                             "text": f"{labels[a]} {money(amount)} less {_plain(pct)}% ({labels[p]}): "
                                     f"{money(amount)} x (1 - {_plain(pct)}/100) = {money(amount - off)} "
                                     f"(taken off: {money(off)})" + (f" [{ident(r)}]" if len(rows) > 1 else "")})
+    return out
+
+
+def explain_differences(columns: Sequence[str], rows: Sequence[Sequence], subtractions: Dict[str, tuple]) -> List[dict]:
+    """A subtraction the query did itself (``a - b AS difference``) gives a signed result whose sign depends only on
+    the order the model wrote: -1300 can mean "1300 cheaper". For each such column, code states the size and which
+    side is larger, so the answer never has to read the sign. ``subtractions``: column -> (first, second, amounts),
+    the two sides described in words and whether both are amounts (Rs)."""
+    out = []
+    if not rows or len(rows) > DERIVE_MAX_ROWS:
+        return out
+    for i, c in enumerate(columns):
+        if c not in subtractions:
+            continue
+        first, second, amounts = subtractions[c]
+        show = money if amounts else _plain
+        for r, row in enumerate(rows):
+            v = row[i]
+            if not isinstance(v, (int, float, Decimal)) or isinstance(v, bool):
+                continue
+            v = Decimal(str(v))
+            size = abs(v)
+            larger = ("the first is larger" if v > 0 else "the second is larger") + f", by {show(size)}" if v else \
+                "the two are equal"
+            row_no = f" (row {r + 1})" if len(rows) > 1 else ""
+            out.append({"kind": "difference_by_query", "value": size,
+                        "text": f"{c} = {show(v)}{row_no} is ({first}) minus ({second}): {larger}"})
     return out
 
 
@@ -792,11 +848,29 @@ class SqlStep:
             out.labels = [self._label(checked, c) for c in columns]
             out.sources = [self.card.table_of(checked.aliases.get(c, c), checked.tables) for c in columns]
             out.derived = derive(out.columns, out.labels, out.sources, out.rows, checked.keys)
+            out.derived += explain_differences(out.columns, out.rows, self._subtractions(checked))
             out.printed = self.card.printed(checked.tables)
             out.linked_text = self.card.linked_text(checked.tables)
             return out
         out.status = "no_rows" if last is not None and last.no_rows else "failed"
         out.reason = str(last) if last is not None else ""
+        return out
+
+    def _subtractions(self, checked: CheckedSql) -> Dict[str, tuple]:
+        """The query's own subtractions, each side in words: its printed heading and the condition that picks its
+        row ('Sum Insured 5,000,000 (premium in Rs.) where plan = ... AND tier = 2'), or its SQL text."""
+        out = {}
+        for name, sides in checked.subtractions.items():
+            words, kinds = [], []
+            for column, where_ in sides:
+                if column is None:
+                    words.append(where_)
+                    kinds.append(None)
+                    continue
+                label = self._label(checked, column)
+                words.append(label + (f" where {where_}" if where_ else ""))
+                kinds.append(column_kind(label))
+            out[name] = (words[0], words[1], kinds == ["amount", "amount"])
         return out
 
     def _label(self, checked: CheckedSql, name: str) -> str:
