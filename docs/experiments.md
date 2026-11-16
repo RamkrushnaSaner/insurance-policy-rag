@@ -210,7 +210,7 @@ this large between two systems if they were really equally good, counting only t
   grids in their own index), searched for every question with its own quota; each table's role (rule or worked
   example) and the scope of each footnote are fixed when the cards are built; the table route's answer goes to the
   model as evidence instead of replacing its answer (`configs/experiments/r1_cards.yaml`, branch `r1-candidate`). The
-  checks were repaired first (amounts such as "30 L", ages without a unit, hedged openings; branch `grader-repair`).
+  checks were repaired first (amounts such as "30 L", ages without a unit, hedged openings; released in 3.4.1).
   Decision set: fresh v3, 107 new questions (29 answered only by a table, 71 by the text, 7 not answerable), written
   before R1 was built. Rules D1–D7 were fixed and fingerprinted before any answer: overall not worse; table questions
   significantly better; text questions at most 3 worse; clearly wrong answers at most 2 more; declines not fewer;

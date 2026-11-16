@@ -103,10 +103,11 @@ is filled in this order:
 Premium-table chunks are self-contained and get no neighbours. Neighbours never cross from one document into
 another.
 
-## 3b. Tables from the database (optional)
+## 3b. Tables from the database (optional, v3.4)
 
 [`tables.py`](../src/policy_rag/tables.py) · **Off by default** (`tables.enabled`; the experiment config
-[`qwen3_text_tables.yaml`](../configs/experiments/qwen3_text_tables.yaml) turns it on).
+[`qwen3_text_tables.yaml`](../configs/experiments/qwen3_text_tables.yaml) turns it on). Needs a database at migration
+002 with v3.4's data; v3.5 replaces it with the SQL step (3c).
 
 With the text-only chunk file, the printed tables are not embedded: they are stored as typed tables in Postgres
 (premium rates, claim-limit illustration, grace periods, check-up limits, deductible discounts, city tiers, the lists

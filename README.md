@@ -17,6 +17,13 @@ There are two configurations:
 - **The baseline:** [`configs/default.yaml`](configs/default.yaml), which needs no database. It was the first published
   system and is still the package default.
 
+**In progress: v3.5.** The numeric tables (premiums, check-up limits, deductible discounts) become SQL tables in their
+printed layout, queried with SQL that the answer model writes and code checks before a read-only login runs it; every
+other printed table becomes text chunks searched like the rest of the policy. It is being built step by step and is
+not evaluated or adopted yet ([how it works](docs/how_it_works.md#3c-the-sql-step-v35-in-progress),
+[CHANGELOG](CHANGELOG.md)). The project's own Neon database moved to v3.5's data on 16 November 2026; v3.4 needs a
+database with v3.4's data (migrations 001 and 002), which is kept on a snapshot branch of that database.
+
 > The answers come from a language model. They can be incomplete or wrong, so check them against the policy wording.
 > This project does not give insurance advice.
 
@@ -157,6 +164,7 @@ Both can rewrite a follow-up question from the conversation (memory, off by defa
 | Memory (off by default) | In a conversation, rewrites a follow-up into a complete question from the last 3 turns (one extra model call, thinking on). The answer prompt never contains the conversation. Evaluated three times and not adopted ([evaluation](docs/evaluation.md#conversation-memory)) | [`memory.py`](src/policy_rag/memory.py) |
 | Search | Dense and BM25 legs, fused by reciprocal rank. Dense: [Qwen3-Embedding-0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) vectors read from Postgres (v3.4) or [BGE-small](https://huggingface.co/BAAI/bge-small-en-v1.5) with FAISS (baseline) | [`retrieval.py`](src/policy_rag/retrieval.py), [`database.py`](src/policy_rag/database.py) |
 | Table route (v3.4) | Patterns pick the kind of table question, fields are checked against the tables, and parameterised SQL returns values traced to their printed cells | [`tables.py`](src/policy_rag/tables.py) |
+| SQL step (v3.5, in progress, off) | For premium, check-up and deductible questions the answer model writes one SELECT over the numeric tables; it is checked (tables, functions, no constants, row limit) and run read-only, and the rows reach the answer under their printed headings | [`sql_step.py`](src/policy_rag/sql_step.py) |
 | Reranking | A cross-encoder ([bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3)) scores every candidate | [`reranking.py`](src/policy_rag/reranking.py) |
 | Context | Pins sections whose heading the question names, adds dependent neighbours ("the list below"), keeps a token budget | [`context.py`](src/policy_rag/context.py) |
 | Gate | Refuses without calling the model when nothing relevant was found | [`pipeline.py`](src/policy_rag/pipeline.py) |
@@ -262,7 +270,8 @@ insurance-policy-rag/
 │   ├── chat.py            the interactive chat loop
 │   ├── pipeline.py        LangGraph pipeline and the RAGSystem entry point
 │   ├── database.py        read-only Postgres session, stored-vector (pgvector) search
-│   ├── tables.py          the table route: typed tables, fixed SQL, checks, traced values
+│   ├── tables.py          the table route (v3.4): typed tables, fixed SQL, checks, traced values
+│   ├── sql_step.py        the SQL step (v3.5, in progress): schema card, model-written SQL, checks, read-only runs
 │   ├── registry.py        component types selected by name in the config
 │   ├── cli.py             the policy-rag command
 │   ├── ingest/            PDF -> chunk file for the my:Optima Secure layout
@@ -271,11 +280,11 @@ insurance-policy-rag/
 ├── testsets/              the 113-question development set, follow-up dialogues (44, plus 2 practice sets), 15 hard questions
 ├── results/               published evidence, scores only: final_evaluation/ (v3.4 on every question set), and one
 │                          folder per earlier experiment (see results/README.md)
-├── db/                    the Postgres + pgvector schema (migrations; no policy text)
+├── db/                    the Postgres + pgvector schema (migrations 001-003; no policy text)
 ├── scripts/               export_results.py and export_final_evaluation.py: rebuild results/ from private run files
-├── notebooks/             Colab quick start; archive/ = the single-notebook version (v3.2)
-├── tests/                 241 tests with stand-in components and the published results (no GPU, no downloads;
-│                          41 of them need a Postgres, run in CI)
+├── notebooks/             Colab quick start
+├── tests/                 296 tests with stand-in components and the published results (no GPU, no downloads;
+│                          45 of them need a Postgres, run in CI on one database at migration 002 and one at 003)
 ├── docs/                  final evaluation, how it works, evaluation method, experiments, adding a policy, extending
 └── data/                  your chunk file goes here (not in git; see data/README.md)
 ```
@@ -306,7 +315,7 @@ What is **not** there yet:
 | Same answers again | Sampling is seeded from each prompt, so a prompt gives the same answer on the same hardware and software. Every v3.4 run repeated its search for every question with identical results (442/442) and regenerated one answer identically (5/5 runs). Three T4 sessions rebuilt the baseline's 113 contexts and prompts exactly ([results/reproduction/](results/reproduction/)). Other GPUs or library versions may change answers. |
 | Versions | [`requirements-lock.txt`](requirements-lock.txt) lists the exact versions of the baseline's published run. v3.4 runs record their packages and pinned model revisions in `run.json`; the model revisions are copied into the result folders' `source.json`. |
 | Fingerprints | Every run records the chunk file's sha256, the test-set version and the config. The baseline used chunk file `74aa551c…`; v3.4 uses the 109-chunk text-only file `f92b0ea2…`. |
-| What cannot be rebuilt from this repository | v3.4's text-only chunk file and the database load (chunk vectors, typed tables) were made by a separate, private ingestion bundle. This repository has the schema ([`db/`](db/)) and the code that reads them, not the loader. The fresh question sets and every run file are private too, because they quote the policy. |
+| What cannot be rebuilt from this repository | v3.4's text-only chunk file and the database load (chunk vectors, typed tables) were made by a separate, private ingestion bundle, and so were v3.5's chunk file (187 chunks: the text plus the converted tables) and its load. This repository has the schema ([`db/`](db/)) and the code that reads them, not the loader. The fresh question sets and every run file are private too, because they quote the policy. |
 
 ## Limitations
 
@@ -315,7 +324,8 @@ What is **not** there yet:
 - **Table questions.** In v3.4, questions about the printed tables are answered by hand-written patterns (the table
   route). On the 329 fresh questions, 58% of table questions are fully correct, against 82% of text questions. All 26
   search failures are facts printed only in a table that the patterns did not reach. R1's table cards fixed that in
-  search but were not adopted (above).
+  search but were not adopted (above). v3.5, in progress, takes this on: every non-numeric table becomes searched
+  text, and the numeric tables are read with model-written SQL.
 - **Answers that disown what they found.** In 17% of answerable fresh questions the answer opens by saying the policy
   does not give the answer. In some of them the evidence was missing. In others the model applied the right rule
   further down, or missed a qualifier ([details](docs/final_evaluation.md#5-failure-analysis)).
@@ -351,8 +361,8 @@ These ideas came out of the evaluations and were deliberately not built. Each wo
 set and rules fixed before running it.
 
 - **Table lookup by form:** the model fills a small form (plan, age, Sum Insured, tier) whose fields must be values
-  that exist in the database, and fixed, tested queries return the numbers. It would replace the hand-written
-  patterns for numeric tables; search cards would stay for lists such as Annexure B.
+  that exist in the database, and fixed, tested queries return the numbers. v3.5 is building a different answer to
+  the same problem: the model writes the SQL, and code checks it before it runs.
 - **The answer instruction:** apply a general rule that covers the asked case, never open with the refusal sentence
   and then answer, and correct a false premise outright.
 - **Context selection:** the reading budget, the reranker floor and the pinning tie-break above.
@@ -371,7 +381,10 @@ sentence. Several rules were written by hand for this document and are applied w
 
 ## History
 
-- **v3.4.1 (this version):**
+- **v3.5 (in progress, not released):** the numeric tables as SQL tables with model-written, checked SQL (the SQL
+  step, off by default and not yet in the pipeline), every other table as embedded text chunks, migration 003, and
+  CI on a database at each schema. See [CHANGELOG.md](CHANGELOG.md).
+- **v3.4.1 (latest release):**
   - **Evaluation only; no change to the system.** The checks were repaired (amount abbreviations, unit-less ages,
     word forms, hedged openings).
   - **Final round:** R1 was judged on two fresh question sets and not adopted.
@@ -387,7 +400,8 @@ sentence. Several rules were written by hand for this document and are applied w
   follow-up dialogue test sets and `evaluate-dialogues`, and not adopted, so it is off by default; resuming from a
   saved run. Single questions are handled exactly as in v3.2 (confirmed on a T4).
 - **v3.2:** the system as a Python package with configs, a command line, tests and docs. Its answers
-  are the same as the v3.1 notebook's. The single-notebook version is kept in [`notebooks/archive/`](notebooks/archive/).
+  are the same as the v3.1 notebook's. The single-notebook version is in the git history
+  ([`insurance_policy_rag_v3_2.ipynb`](https://github.com/RamkrushnaSaner/insurance-policy-rag/blob/e8d1a6136e110ec1b848055882fe16837594b73e/notebooks/archive/insurance_policy_rag_v3_2.ipynb)).
 - **v3.1 / v3.2 notebooks:** chunk file from the PDF, the bge-reranker-v2-m3 reranker, Qwen3-8B with budgeted
   thinking, a separate premium index, the 113-question test set with dev/test splits, and HHEM.
 - **v2.x:** an earlier text-file pipeline with Mistral-7B, not part of this repository (compared in [docs/evaluation.md](docs/evaluation.md#compared-with-the-v26-baseline)).

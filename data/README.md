@@ -38,6 +38,10 @@ different file, `data/policy_text_chunks.json`: 109 text-only chunks, sha256
 into Postgres as typed tables. That file, the chunk vectors and the typed tables were made by a separate, private
 ingestion bundle that is not in this repository. `chunk-pdf` makes the baseline's file, not this one.
 
+**v3.5 (in progress)** reads a third file from the same private bundle: 187 chunks, the 109 text chunks plus 68
+table-row chunks and 10 list chunks made from the printed tables that are not numeric. The numeric tables
+(premiums, check-up limits, deductible discounts) are not in it: they are SQL tables in the database (migration 003).
+
 ## What else stays out of git
 
 Results folders (`runs/`), answer caches and results zips contain answers and passages from the policy: they are

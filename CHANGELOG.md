@@ -20,6 +20,12 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   connection (e.g. cancelled at the timeout) is no longer run a second time on a new connection.
 - `sql.enabled` and `tables.enabled` cannot both be on (after 003 the table route has nothing to read).
 - `sqlglot>=27,<31` joins the `db` extra (tested with 27.29 and 30.31).
+- **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
+  `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
+  database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived
+  single-notebook version (v3.2; still in the git history, linked from the README) and `requirements.txt` (the
+  same as `pip install -e ".[models,ingest]"`; `requirements-lock.txt` stays). References to merged branches now
+  name the release instead.
 - Tests: 51 without a database (gate, card, reply parsing, SQL checks, retries, result block, config), 4 opt-in tests
   on a Postgres at migration 003 (`POLICY_RAG_TEST_DATABASE_URL_V35`: card, answers, the `rag_sql` login's
   permissions, the timeout). CI keeps a database at 002 for v3.4 and one at 003 for v3.5, and installs the `db`
