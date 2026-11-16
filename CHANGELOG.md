@@ -20,10 +20,76 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   connection (e.g. cancelled at the timeout) is no longer run a second time on a new connection.
 - `sql.enabled` and `tables.enabled` cannot both be on (after 003 the table route has nothing to read).
 - `sqlglot>=27,<31` joins the `db` extra (tested with 27.29 and 30.31).
+- **Repository brought up to date:** README, `data/README.md`, `db/README.md`, the v3.4 database configs and
+  `docs/how_it_works.md` say what v3.5 changes and that v3.4 needs a database with v3.4's data (the project's Neon
+  database moved to v3.5 on 16 November 2026; v3.4's data stays on a snapshot branch). Removed: the archived
+  single-notebook version (v3.2; still in the git history, linked from the README) and `requirements.txt` (the
+  same as `pip install -e ".[models,ingest]"`; `requirements-lock.txt` stays). References to merged branches now
+  name the release instead.
 - Tests: 51 without a database (gate, card, reply parsing, SQL checks, retries, result block, config), 4 opt-in tests
   on a Postgres at migration 003 (`POLICY_RAG_TEST_DATABASE_URL_V35`: card, answers, the `rag_sql` login's
   permissions, the timeout). CI keeps a database at 002 for v3.4 and one at 003 for v3.5, and installs the `db`
   extra in the unit-test job.
+
+## 3.4.1 (15 November 2026)
+
+**No change to the system.** Retrieval, prompts, models and the system's configs are unchanged. This release
+contains the repaired checks, the last decision, the evaluation of v3.4 on every question set, and a cleaned-up
+repository.
+
+### Evaluation
+
+- **Final round: R1 not adopted, v3.4 stays.** The last candidate, R1 (a search card for every printed table row;
+  branch `r1-candidate`), was judged on two new question sets under rules fixed before any answer:
+  - on fresh v3, the checks failed their check against a person (kappa 0.52);
+  - on fresh v4, the gain on table questions, judged by a person, was not significant (6 fixed, 2 broken,
+    p = 0.29).
+
+  R1 did remove every search failure of a fact printed only in a table (13 of 13). Details:
+  [docs/experiments.md](docs/experiments.md) (10 and 11).
+- **Evaluation of v3.4 on every question set** ([docs/final_evaluation.md](docs/final_evaluation.md),
+  [`results/final_evaluation/`](results/final_evaluation/)).
+  - **Accuracy:** 255/329 = 77.5% fully correct on new questions (95% CI 73–82%), against 101/113 on the
+    development set it was tuned on.
+  - **By question kind:** table questions 49/84, text questions 177/216.
+  - **Where the 76 failures counted by the checks started:** search 26 (all facts printed only in a table), context
+    15, gate 1, the answer 34.
+  - **The 34 answer-stage failures, read one by one:** 17 clear model errors.
+
+### Checks
+
+**Grader repairs** (evaluation only; no change to retrieval, prompts or models). Reading the answers behind the
+experiment's verdicts showed the deterministic checks failing correct answers and passing hedges; each repair is a
+general rule, applied alike to every run, and is to be validated against new human labels.
+
+- **Amount abbreviations:** "5 L" (lakh) and "25k" are read as amounts, as the tables print them. The same figure
+  check decides when the table route replaces an answer (`tables.on_unsupported_figures`), so an answer that says
+  "Rs. 5 lakh" where the table prints "5 L" is no longer replaced.
+- **Ages without their unit:** "N years" is supported when N is an age said in the question ("I'm 35") or printed in
+  a table line about age ("Age ... (in Years): 75").
+- **Plan-table checker:** bold marks and "Rs." no longer break a statement, so "**Rs. 20 lakh** (Year 1)" is read as
+  Year 1; "20 L" is read as 20 lakh. Base Sum Insured and Restore amounts are no longer checked against the
+  illustration's assumed 10 lakh (the plans offer 5 lakh to 2 crore).
+- **Word forms in key facts:** phrases without digits also match other word forms with the small words (a, the, of,
+  on, for, ...) left out. "not" and "no" are always kept; figures and regular expressions still match exactly.
+- **Hedges:** an answerable question's answer that opens by saying the policy text does not give the answer ("Not
+  specified in the provided policy text.", "The policy text does not explicitly list ...") is not fully correct,
+  whatever follows (new issue kind `hedge`), except where the reference answer itself says so.
+
+### Repository
+
+- **README:** the headline is now v3.4's accuracy on new questions. The 113-question results are labelled as
+  development-set results, the diagram shows v3.4, and the limitations follow the final evaluation.
+- **New:** [`scripts/export_final_evaluation.py`](scripts/export_final_evaluation.py) rebuilds
+  `results/final_evaluation/` from the private run files with this repository's checks, and three tests recompute its
+  numbers.
+- **Updated:**
+  - [`results/README.md`](results/README.md) lists every results folder and private run file;
+  - [docs/experiments.md](docs/experiments.md) adds experiment 12, the decision records' fingerprints, and what was
+    not run;
+  - [docs/evaluation.md](docs/evaluation.md) says what "held out" meant for the development set.
+- **Removed:** `configs/experiments/larger_context.yaml` and `configs/experiments/dense_only.yaml`. Neither was ever
+  run, and nothing referred to them.
 
 ## 3.4.0 (3 November 2026)
 

@@ -9,7 +9,8 @@ pgvector`, `tables.enabled`, `sql.enabled`). The files hold the schema only: no 
 | [`migrations/002_typed_tables.sql`](migrations/002_typed_tables.sql) | `545c9abe…6b15` | A typed table for every other printed table: the lists (with keyword indexes), claim deadlines, grievance contacts, the worked examples |
 | [`migrations/003_numeric_tables_sql.sql`](migrations/003_numeric_tables_sql.sql) | `33189305…d3e5` | v3.5: drops the typed tables of 001 and 002; the three numeric tables (premiums, check-up limits, deductible discounts) as SQL tables in their printed layout; schema `policy_sql` (views of the active version, with the reference text and the printed column headings) and the group `rag_sql`, which reads `policy_sql` and nothing else; the link `read_with` |
 
-Each migration runs once, in one transaction, as the database owner, and must match its checksum. The development
+Each migration runs once, in one transaction, as the database owner, and must match its checksum. The project's
+Neon database is at 003 with v3.5's data since 16 November 2026; v3.4's data (at 002) is kept on a snapshot branch. The development
 database on Neon was migrated with the checked runner of the private ingestion bundle, which rehearses a migration,
 records its checksum in `rag.schema_migrations` and verifies the permissions. For a fresh test database, `psql` is
 enough (this is what CI does):

@@ -1,0 +1,176 @@
+{
+ "sets": {
+  "dev_v3": {
+   "run": {
+    "file": "E0_v3_113/run.json",
+    "sha256": "4e3ea3d9eb6903b6adfc90150b6f9a669d6f1c4ee6c59cc427e0e42ea4dab08d",
+    "name": "E0_v3_113",
+    "started": "2026-11-09T03:22:10",
+    "gpu": "Tesla T4"
+   },
+   "testset": {
+    "file": "optima_secure_v3.json",
+    "version": "7313dd7571",
+    "sha256": "2bb511349180aa16809a22e46ffc4547bb19aa188c093274dd6abab771627cae",
+    "in_repository": true
+   }
+  },
+  "fresh_v1": {
+   "run": {
+    "file": "E0_fresh_v1/run.json",
+    "sha256": "d9c83088ebe82ce3e57847967e54d39ff2656c982271bf705960d608a74186fc",
+    "name": "E0_fresh_v1",
+    "started": "2026-11-09T03:32:50",
+    "gpu": "Tesla T4"
+   },
+   "testset": {
+    "file": "optima_secure_fresh_v1.json",
+    "version": "7b7349d018",
+    "sha256": "d8e5013ba6ff9f52fb6533d8c1f01f5d1acb1e448d3de440618655299d42c33f",
+    "in_repository": false
+   }
+  },
+  "fresh_v2": {
+   "run": {
+    "file": "E0_fresh_v2/run.json",
+    "sha256": "ba01f04ce96c27b4f68dad96342bbf0a89f5135a22cbacbc58743697d5c765a0",
+    "name": "E0_fresh_v2",
+    "started": "2026-11-09T03:36:49",
+    "gpu": "Tesla T4"
+   },
+   "testset": {
+    "file": "optima_secure_fresh_v2.json",
+    "version": "714b38da62",
+    "sha256": "2d0098753477b11df27ffc0b6af53bccba5979d572eb5ac3afd1082dcb2a8d1c",
+    "in_repository": false
+   }
+  },
+  "fresh_v3": {
+   "run": {
+    "file": "E0_fresh_v3/run.json",
+    "sha256": "f9c1e8544c6fa7abbfc325dcc6393f4c7fe4cf32d5b954524fa540ce63461e26",
+    "name": "E0_fresh_v3",
+    "started": "2026-11-13T04:31:36",
+    "gpu": "Tesla T4"
+   },
+   "testset": {
+    "file": "optima_secure_fresh_v3.json",
+    "version": "3a07bd658a",
+    "sha256": "fc7c4ab84d510395e8a279009e919366d47da072dc29bd9eb2e70613927039f3",
+    "in_repository": false
+   },
+   "table_questions": {
+    "file": "release_rules_r1.json",
+    "sha256": "b239e76613d97693c6aff2388c29453244f6662813c4473ee16becebb6027012",
+    "key": "data_roles.decision_set.table_questions",
+    "n": 29
+   }
+  },
+  "fresh_v4": {
+   "run": {
+    "file": "E0_fresh_v4/run.json",
+    "sha256": "1c34503b0fcd4e19567c1d4fac6747e5d6fff7faca3824cf668234f0dd4ee536",
+    "name": "E0_fresh_v4",
+    "started": "2026-11-14T04:47:25",
+    "gpu": "Tesla T4"
+   },
+   "testset": {
+    "file": "optima_secure_fresh_v4.json",
+    "version": "43ccec55ad",
+    "sha256": "23b6f7f790771875ebd90cda8ab9d9131397fa183588bf874d912cd7ef9a4ad0",
+    "in_repository": false
+   },
+   "table_questions": {
+    "file": "release_rules_final.json",
+    "sha256": "9282e14a8a4ce3e166f4fe7078b5ef4cc7d6520b8061cb74debc94a017db172a",
+    "key": "decision_set.table_questions",
+    "n": 30
+   },
+   "labels": {
+    "file": "final_decision_record.json",
+    "sha256": "65c40c37584ee5e0276705c1cceff47294430899f52b5aeaf4b9e9a462d7d3ca",
+    "system": "E0",
+    "n": 33
+   }
+  }
+ },
+ "inputs": [
+  {
+   "file": "E0_v3_113/run.json",
+   "sha256": "4e3ea3d9eb6903b6adfc90150b6f9a669d6f1c4ee6c59cc427e0e42ea4dab08d"
+  },
+  {
+   "file": "optima_secure_v3.json",
+   "sha256": "2bb511349180aa16809a22e46ffc4547bb19aa188c093274dd6abab771627cae"
+  },
+  {
+   "file": "E0_fresh_v1/run.json",
+   "sha256": "d9c83088ebe82ce3e57847967e54d39ff2656c982271bf705960d608a74186fc"
+  },
+  {
+   "file": "optima_secure_fresh_v1.json",
+   "sha256": "d8e5013ba6ff9f52fb6533d8c1f01f5d1acb1e448d3de440618655299d42c33f"
+  },
+  {
+   "file": "E0_fresh_v2/run.json",
+   "sha256": "ba01f04ce96c27b4f68dad96342bbf0a89f5135a22cbacbc58743697d5c765a0"
+  },
+  {
+   "file": "optima_secure_fresh_v2.json",
+   "sha256": "2d0098753477b11df27ffc0b6af53bccba5979d572eb5ac3afd1082dcb2a8d1c"
+  },
+  {
+   "file": "E0_fresh_v3/run.json",
+   "sha256": "f9c1e8544c6fa7abbfc325dcc6393f4c7fe4cf32d5b954524fa540ce63461e26"
+  },
+  {
+   "file": "optima_secure_fresh_v3.json",
+   "sha256": "fc7c4ab84d510395e8a279009e919366d47da072dc29bd9eb2e70613927039f3"
+  },
+  {
+   "file": "release_rules_r1.json",
+   "sha256": "b239e76613d97693c6aff2388c29453244f6662813c4473ee16becebb6027012"
+  },
+  {
+   "file": "E0_fresh_v4/run.json",
+   "sha256": "1c34503b0fcd4e19567c1d4fac6747e5d6fff7faca3824cf668234f0dd4ee536"
+  },
+  {
+   "file": "optima_secure_fresh_v4.json",
+   "sha256": "23b6f7f790771875ebd90cda8ab9d9131397fa183588bf874d912cd7ef9a4ad0"
+  },
+  {
+   "file": "release_rules_final.json",
+   "sha256": "9282e14a8a4ce3e166f4fe7078b5ef4cc7d6520b8061cb74debc94a017db172a"
+  },
+  {
+   "file": "final_decision_record.json",
+   "sha256": "65c40c37584ee5e0276705c1cceff47294430899f52b5aeaf4b9e9a462d7d3ca"
+  }
+ ],
+ "exported_with": "scripts/export_final_evaluation.py",
+ "config": "configs/experiments/qwen3_text_tables.yaml",
+ "chunk_sha256": "f92b0ea20d480edb24e254584975d6009c7126a370b3e49d4a17be5de1675a8b",
+ "models": {
+  "embed": "Qwen/Qwen3-Embedding-0.6B",
+  "reranker": "BAAI/bge-reranker-v2-m3",
+  "llm": "Qwen/Qwen3-8B",
+  "llm_precision": "4-bit NF4",
+  "enable_thinking": true,
+  "decoding": {
+   "do_sample": true,
+   "temperature": 0.6,
+   "top_p": 0.95,
+   "top_k": 20
+  },
+  "embed_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "reranker_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "llm_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "tables": {
+   "doc_id": "optima-secure",
+   "version_id": 3,
+   "version_label": "chunks v4 (2026-11-01)"
+  }
+ },
+ "checks": "src/policy_rag/evaluation of this repository (unchanged since commit 93b5f9d)"
+}

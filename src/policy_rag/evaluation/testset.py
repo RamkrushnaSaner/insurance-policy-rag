@@ -17,6 +17,7 @@ The version is a hash of the items: changing anything makes a new version, and b
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
@@ -84,8 +85,58 @@ def _alt_re(alt: str) -> str:
     return r"(?<![0-9a-z.,])" + re.escape(a) + (r"(?![0-9]|[.,][0-9])" if a[-1:].isdigit() else "")
 
 
+# Word-level matching for plain phrases without digits: "pre-authorized" also matches "pre-authorization", and
+# "not available on reimbursement" also matches "not available for reimbursement". Numbers keep the exact rules above,
+# and so do "re:" patterns; negations ("not", "no") are never dropped.
+_FUNCTION_WORDS = frozenset("a an the of on for in at to by with from".split())
+_SUFFIXES = ("ization", "ation", "izing", "ized", "ize", "ing", "ed")
+
+
+def stem(w: str) -> str:
+    """A light suffix stripper, applied alike to the key phrase and the text: plurals, -ed/-ing, -ize/-ization and a
+    final -e ("excludes", "excluded" and "exclude" all give "exclud"; "admitted" gives "admit")."""
+    if len(w) > 4 and w.endswith("ies"):
+        w = w[:-3] + "y"
+    elif len(w) > 3 and w.endswith("s") and not w.endswith(("ss", "us", "is")):
+        w = w[:-1]
+    for suf in _SUFFIXES:
+        if w.endswith(suf) and len(w) - len(suf) >= 3:
+            w = w[:-len(suf)]
+            if w[-1] == w[-2] and w[-1] not in "lsz":            # admitt -> admit, plann -> plan
+                w = w[:-1]
+            break
+    return w[:-1] if len(w) > 3 and w.endswith("e") else w
+
+
+def _content_stems(text_norm: str):
+    """(stems, start offsets) of the content words of a normalised text."""
+    out = [(stem(m.group(0)), m.start()) for m in re.finditer(r"[a-z0-9]+", text_norm)
+           if m.group(0) not in _FUNCTION_WORDS]
+    return [s for s, _ in out], [p for _, p in out]
+
+
+@functools.lru_cache(maxsize=256)
+def _stem_index(text_norm: str):
+    stems, starts = _content_stems(text_norm)
+    return " " + " ".join(stems) + " ", starts
+
+
+def _loose_pos(alt: str, text_norm: str):
+    if alt.startswith("re:") or re.search(r"\d", alt):
+        return None
+    key, _ = _content_stems(norm_text(alt))
+    if not key:
+        return None
+    joined, starts = _stem_index(text_norm)
+    i = joined.find(" " + " ".join(key) + " ")
+    return None if i < 0 else starts[joined.count(" ", 0, i)]
+
+
 def fact_pos(alternatives, text_norm: str):
+    """Where a key fact first occurs: exact phrase rules first, then word-level matching for plain phrases."""
     hits = [m.start() for m in (re.search(_alt_re(a), text_norm) for a in alternatives) if m]
+    if not hits:
+        hits = [p for p in (_loose_pos(a, text_norm) for a in alternatives) if p is not None]
     return min(hits) if hits else None
 
 

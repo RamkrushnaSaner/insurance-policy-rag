@@ -32,6 +32,16 @@ this README is ignored by git, so the policy text is not committed by accident.
 `configs/default.yaml` expects the file at `data/policy_chunks.json`. To use another path, change
 `chunks:` under `documents` in the config.
 
+**The v3.4 configuration** ([`qwen3_text_tables.yaml`](../configs/experiments/qwen3_text_tables.yaml)) reads a
+different file, `data/policy_text_chunks.json`: 109 text-only chunks, sha256
+`f92b0ea20d480edb24e254584975d6009c7126a370b3e49d4a17be5de1675a8b`. The printed tables are not in it; they are loaded
+into Postgres as typed tables. That file, the chunk vectors and the typed tables were made by a separate, private
+ingestion bundle that is not in this repository. `chunk-pdf` makes the baseline's file, not this one.
+
+**v3.5 (in progress)** reads a third file from the same private bundle: 187 chunks, the 109 text chunks plus 68
+table-row chunks and 10 list chunks made from the printed tables that are not numeric. The numeric tables
+(premiums, check-up limits, deductible discounts) are not in it: they are SQL tables in the database (migration 003).
+
 ## What else stays out of git
 
 Results folders (`runs/`), answer caches and results zips contain answers and passages from the policy: they are

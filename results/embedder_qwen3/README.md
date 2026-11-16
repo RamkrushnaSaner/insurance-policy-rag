@@ -4,7 +4,7 @@
 Qwen3-Embedding-0.6B, with its vectors read from Neon (pgvector), find the evidence at least as well as bge-small-en-v1.5
 on the same 109 text chunks?
 
-**Method.** Two retrieval-only runs on a Colab T4 (2 November 2026, branch `feature/neon-pgvector`): `bge_text`
+**Method.** Two retrieval-only runs on a Colab T4 (2 November 2026, the code released in 3.4.0): `bge_text`
 ([`configs/default.yaml`](../../configs/default.yaml) with only the chunk file changed, FAISS) and `qwen3_text_pgvector`
 ([`configs/experiments/qwen3_text_pgvector.yaml`](../../configs/experiments/qwen3_text_pgvector.yaml)). Everything else
 is the same: BM25, the reranker (bge-reranker-v2-m3), context building, gate, test set. The rule was fixed before the

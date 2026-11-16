@@ -1,7 +1,8 @@
 """Deterministic answer checks (no LLM judge) and retrieval metrics.
 
 Per question, **fully correct** (the primary metric) = every key fact, no critical error, nothing missing or cut
-off; for a not-answerable question: says so at the start, with no critical error.
+off, and no opening hedge ("the policy text does not say ..."); for a not-answerable question: says so at the start,
+with no critical error.
 
 Critical errors: wrong plan-table value, known false statement, another cover's rule, wrong yes/no, wrong order,
 a figure that is not in the context, answering a not-answerable question.
@@ -25,17 +26,24 @@ _WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "se
 _UNIT = {"day": "days", "month": "months", "year": "years", "hour": "hours"}
 
 
+_SCALE = r"lakhs?|lacs?|l|crores?|cr|k"                     # "5 L" = 5 lakh, "25k" = 25,000 (as the tables print them)
+
+
+def _scale(unit: str) -> float:
+    return 1e5 if unit.startswith("la") or unit == "l" else 1e3 if unit == "k" else 1e7
+
+
 def figures(text: str) -> set:
-    """Amounts (lakh/crore, rupee and comma-grouped forms unified), percentages and durations."""
+    """Amounts (lakh/crore, "L"/"k" abbreviations, rupee and comma-grouped forms unified), percentages and durations."""
     t = (text or "").lower().replace("₹", " ₹ ").replace("-", " ")
     for w, n in sorted(_WORD_NUM.items(), key=lambda x: -len(x[0])):
         t = re.sub(rf"\b{w}\b", str(n), t)
     out = set()
-    for m in re.finditer(r"(?:₹|\brs\.?|\binr)?\s*(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr)\b", t):
-        out.add(("inr", int(round(float(m.group(1)) * (1e5 if m.group(2).startswith("la") else 1e7)))))
-    for m in re.finditer(r"(?:₹|\brs\.?|\binr)\s*(\d[\d,]*(?:\.\d+)?)(?!\d|[.,]\d)(?!\s*(?:lakhs?|lacs?|crores?|cr)\b)", t):
+    for m in re.finditer(rf"(?:₹|\brs\.?|\binr)?\s*(\d+(?:\.\d+)?)\s*({_SCALE})\b", t):
+        out.add(("inr", int(round(float(m.group(1)) * _scale(m.group(2))))))
+    for m in re.finditer(rf"(?:₹|\brs\.?|\binr)\s*(\d[\d,]*(?:\.\d+)?)(?!\d|[.,]\d)(?!\s*(?:{_SCALE})\b)", t):
         out.add(("inr", int(round(float(m.group(1).replace(",", ""))))))
-    for m in re.finditer(r"(?<![\d.,])(\d{1,3}(?:,\d{2,3})+)(?![\d,])(?!\s*(?:lakhs?|lacs?|crores?|cr)\b)", t):
+    for m in re.finditer(rf"(?<![\d.,])(\d{{1,3}}(?:,\d{{2,3}})+)(?![\d,])(?!\s*(?:{_SCALE})\b)", t):
         out.add(("inr", int(m.group(1).replace(",", ""))))           # premium tables: "Age 40: 10,300 / 13,300"
     for m in re.finditer(r"(\d+(?:\.\d+)?)\s*%", t):
         out.add(("pct", float(m.group(1))))
@@ -48,12 +56,34 @@ def _plain_numbers(text: str) -> set:
     return {float(x.replace(",", "")) for x in re.findall(r"(?<![\d.])\d[\d,]*(?:\.\d+)?", text or "")}
 
 
+_NO_UNIT = rf"(?![\d]|[.,]\d)(?!\s*%)(?!\s*(?:percent|{_SCALE}|rs|days?|months?|years?|hours?)\b)"
+_AGE_LINE = re.compile(r"\bage[sd]?\b|\byears? old\b|\(in years\)", re.I)
+_AGE_SAID = re.compile(rf"\b(?:i['’]?m|i am|(?:he|she)['’]?s|is|are|was|aged|age(?: of)?|turning|turned)\s+(\d{{1,3}})\b{_NO_UNIT}")
+
+
+def _unit_free_numbers(text: str) -> set:
+    """Whole numbers written without a unit or currency mark ("Age: 75", "75 | 16,500")."""
+    t = re.sub(r"(?:₹|\brs\.?|\binr)\s*\d[\d,]*(?:\.\d+)?", " ", (text or "").lower())
+    return {int(x) for x in re.findall(rf"(?<![\d.,])(\d{{1,3}}){_NO_UNIT}", t)}
+
+
+def stated_ages(context: str, question: str = "") -> set:
+    """Ages given without the word "years": said in the question ("I'm 35") or printed in a table line that is
+    about age ("Age of the members insured (in Years): 75")."""
+    said = {int(x) for x in _AGE_SAID.findall((question or "").lower())}
+    return said | {n for line in (context or "").splitlines() if _AGE_LINE.search(line) for n in _unit_free_numbers(line)}
+
+
 def unsupported_figures(answer: str, context: str, question: str = "", derived=()) -> list:
     """Figures in the answer that are not in the context or the question. An amount also counts as supported when
-    the context has the same number without a currency mark (tables write "max upto 6000")."""
+    the context has the same number without a currency mark (tables write "max upto 6000"); "N years" counts as
+    supported when N is an age given without its unit (``stated_ages``: "I'm 35", an age column of a table)."""
     extra, plain = {tuple(d) for d in derived}, _plain_numbers(context) | _plain_numbers(question)
     left = {(k, v) for k, v in figures(answer) - figures(context) - figures(question) - extra
             if not (k == "inr" and float(v) in plain)}
+    if any(k == "years" for k, _ in left):
+        ages = stated_ages(context, question)
+        left = {(k, v) for k, v in left if not (k == "years" and v in ages)}
     return sorted(f"Rs {v:,.0f}" if k == "inr" else f"{v:g}%" if k == "pct" else f"{v:g} {k}" for k, v in left)
 
 
@@ -95,6 +125,28 @@ def declines_at_start(answer: str) -> bool:
 def admits_gap(answer: str) -> bool:
     return bool(_DECLINE.search(answer or "")) or bool(re.search(
         r"\bno\b[^.;:\n]{0,60}\b(mention|mentioned|information|specified|stated|provided|details|listed)\b", answer or "", re.I))
+
+
+# Says the policy text does not give the answer (not "the policy does not cover X", which is an answer)
+_TEXT = r"(?:text|context|document|wording|information|excerpts?|sections?|clauses?|schedule|policy)"
+_HEDGE = re.compile(
+    rf"not specified in the provided policy text|"
+    rf"\b{_TEXT}\b[^.;:\n]{{0,60}}?\b(?:does|do|did)(?: not|n[’']t) (?:explicitly |specifically |directly |clearly )?"
+    rf"(?:specify|mention|state|say|clarify|detail|address|indicate|confirm)\b|"
+    rf"\b(?:does|do|did)(?: not|n[’']t) (?:explicitly|clearly)\b|"
+    rf"\bnot (?:explicitly |specifically |clearly )?(?:specified|mentioned|stated|clarified|detailed|addressed|indicated) "
+    rf"(?:in|by|within) (?:the )?(?:provided |given |available )?{_TEXT}\b|"
+    rf"\b(?:not possible|impossible|unable|cannot|can ?not) (?:to )?(?:confirm|determine|say|verify|ascertain|tell)\b|"
+    rf"\bcannot be (?:confirmed|determined|ascertained|verified)\b|"
+    rf"\bno (?:information|mention|details?|data|reference)\b", re.I)
+
+
+def opens_with_hedge(answer: str) -> bool:
+    """The answer opens by saying the policy text does not give the answer ("Not specified in the provided policy
+    text.", "The policy text does not explicitly list ...", "It is not possible to confirm ..."): its first sentence
+    hedges and it does not open with a yes or no."""
+    first = next(iter(sentences_of(answer)), "")
+    return bool(_HEDGE.search(re.sub(r"^[\W_]+", "", first))) and answer_polarity(answer) is None
 
 
 def answer_polarity(answer: str):
@@ -150,7 +202,7 @@ def cut_off(answer: str, gen):
 # ---------------------------------------------------------------------------------------------------- verdict
 STAGES = ["reliability", "corpus", "retrieval", "context", "gate", "generation"]
 CRITICAL = {"table_wrong", "known_false", "off_scope", "polarity", "wrong_order", "unsupported_figures", "not_declined"}
-INCOMPLETE = {"missing_fact", "table_missing", "refused", "no_admit", "cut_off"}
+INCOMPLETE = {"missing_fact", "table_missing", "refused", "hedge", "no_admit", "cut_off"}
 
 
 def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=None, gate_route="answer", error=None,
@@ -181,10 +233,16 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
                 add("context", "missing_fact", f"not in the context: {fact_label(f)}")
             elif not v["refused"] and gate_route == "answer":
                 add("generation", "missing_fact", f"in the context, not in the answer: {fact_label(f)}")
+        # a hedge: opens with "the policy text does not say", whatever follows (not when the right answer itself
+        # says that part is not shown)
+        gap_expected = item.get("expect_admit") or opens_with_hedge(item.get("reference", ""))
+        v["hedged"] = bool(a) and not v["refused"] and not gap_expected and opens_with_hedge(a)
         if gate_route == "no_answer":
             add("gate", "refused", "refused by the relevance gate")
         elif v["false_refusal"]:
             add("generation", "refused", "model refused")
+        elif v["hedged"]:
+            add("generation", "hedge", "opens by saying the policy text does not give the answer")
         if not v["refused"] and a:
             if item.get("table_cells") and table_checker is not None:
                 v["table"] = tc = table_checker(a, item["table_cells"], item["question"])

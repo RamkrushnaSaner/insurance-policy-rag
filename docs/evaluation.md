@@ -1,6 +1,8 @@
 # Evaluation
 
-How the system is measured, what the baseline scored, every failure, and how far the numbers can be trusted.
+How the system is measured, what the baseline scored on the 113-question development set, every failure, and how
+far the numbers can be trusted. The evaluation of the adopted system (v3.4) on 329 new questions is in
+[final_evaluation.md](final_evaluation.md); that is where its accuracy on unseen questions is measured.
 
 ## Approach
 
@@ -33,12 +35,17 @@ by hand from the policy wording.
 
 32 questions are in everyday wording: the 17 of type "paraphrase" and 15 of other types (6 conditional, 4 out of
 scope, 2 multi-section, 1 each false premise, partial and comparison). 19 cannot be answered from the policy
-(15 out of scope, 4 false premises). **dev** (25) is for debugging; **test** (88) is held out and is the
-only split on which a change is adopted or rejected.
+(15 out of scope, 4 false premises). **dev** (25) is for debugging; **test** (88) is the only split on which
+a change was adopted or rejected. "Held out" means held out from debugging, not unseen: every answer of the set was
+read during development and the table route's patterns were written with it in view, so its scores are optimistic.
+New questions are measured in [final_evaluation.md](final_evaluation.md).
 
 Each question has:
 
-- **key facts**, each with alternative phrasings or a regular expression ("24 months", "two years");
+- **key facts**, each with alternative phrasings or a regular expression ("24 months", "two years"). A phrase
+  without digits also matches other word forms with the small words left out ("pre-authorized" matches
+  "pre-authorization", "not available on reimbursement" matches "not available for reimbursement"); figures and
+  regular expressions match exactly;
 - **evidence anchors**: short phrases that identify the passage holding the answer, matched on words. Retrieval is
   scored for any chunk file of the same PDF, without depending on chunk ids;
 - **extra checks** where they apply: plan-table values (3 questions), the expected yes/no (18), the order of steps
@@ -51,11 +58,11 @@ Changing any question changes the version hash; runs on different versions are n
 
 | Group | Metric | Definition |
 |---|---|---|
-| **Primary** | fully correct | All key facts present, no critical error, nothing missing or cut off. For a not-answerable question: says so within the first two sentences, with no critical error |
+| **Primary** | fully correct | All key facts present, no critical error, nothing missing or cut off, and the answer does not open by saying the policy text does not give the answer (a *hedge*; allowed where the right answer itself says a part is not shown). For a not-answerable question: says so within the first two sentences, with no critical error |
 | Correctness | key-fact recall | Share of key facts found in the answer |
 | | critical error rate | Answers with a wrong table value, a known false statement, another cover's section used, a wrong yes/no, a wrong order, a figure that is not in the context, or an answer to a not-answerable question |
 | | list completeness | Key-fact recall on list questions |
-| Faithfulness | figures not in the context | Amounts, percentages and durations in the answer that appear in neither the context nor the question |
+| Faithfulness | figures not in the context | Amounts, percentages and durations in the answer that appear in neither the context nor the question ("5 L" and "25k" read as amounts; "N years" accepted when N is an age given without its unit, in the question or in an age column) |
 | | citations not in the context | Section numbers cited that the context does not contain |
 | | groundedness (HHEM) | Share of answer sentences that [HHEM-2.1-Open](https://huggingface.co/vectara/hallucination_evaluation_model) scores as supported by the context (at 0.5 or above) |
 | Retrieval | search recall | Share of evidence passages among the search candidates |
@@ -107,7 +114,11 @@ person marks each one as fully correct (1) or not (0); then `policy-rag agreemen
 prints Cohen's kappa (target ≥ 0.7) and every disagreement. A check that disagrees for a clear reason gets fixed,
 which makes a new checks version, and runs are re-scored.
 
-**Status:** this has **not yet been done with independent labels**. What has been done:
+**Status:** for the 113-question set, this has **not been done with independent labels**. Blind labels by a person
+were collected later on the fresh question sets: 30 answers in fresh v3 (kappa 0.52) and 66 in fresh v4 (kappa 0.63;
+0.75 on v3.4's 33 answers). See [experiments.md](experiments.md) (10 and 11) and
+[final_evaluation.md](final_evaluation.md#9-how-reliable-these-measurements-are). What was done for the 113-question
+set:
 
 - During development, all 113 baseline answers were read and judged by hand, not blind. That reading is by the AI
   assistant that wrote the checks, not by an independent person.
