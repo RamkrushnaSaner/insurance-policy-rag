@@ -200,7 +200,7 @@ class SqlConfig:
     max_rows: int = 50                   # a query may return at most this many rows
     max_retries: int = 2                 # corrected replies after one that could not be used (not JSON, refused SQL, ...)
     max_new_tokens: int = 400            # answer tokens of one SQL reply; the thinking settings are unchanged
-    template: str = "sql_v1"             # prompts.SQL_TEMPLATES
+    template: str = "sql_v2"             # prompts.SQL_TEMPLATES (sql_v1: the first dev run)
     examples: int = 2                    # example rows per table in the schema card
 
 

@@ -53,18 +53,25 @@ _INSURANCE = re.compile(r"\b(policy|plan|cover|insurance|premium)\b", re.I)
 _AGE = re.compile(r"\b\d{1,3}\s*-?\s*(years?|yrs?)\b|\baged?\s*\d", re.I)
 _PREMIUM_NOT = re.compile(r"instal+ment|grace period|refund|deduction|income tax|\bgst\b|\btax\b|discount|loading"
                           r"|cash ?back|\bmonthly\b", re.I)
-_CHECKUP = re.compile(r"\bcheck[\s-]?ups?\b", re.I)
-_DEDUCTIBLE = re.compile(r"\bdeductibles?\b", re.I)
+# money words that count when the question also names a plan the tables hold, or an age ("What would X cost ...")
+_MONEY = re.compile(r"\b(costs?|costing|prices?|priced|pricing|charges?|rates?|spend|shell(?:ing)? out|fork(?:ing)? out)\b",
+                    re.I)
+_CHECKUP = re.compile(r"\bcheck[\s-]?ups?\b|\bhealth[\s-]+checks?\b|\bscreenings?\b", re.I)
+# an aggregate deductible described in words: "the first Rs 3 lakh of claims"
+_DEDUCTIBLE = re.compile(r"\bdeductibles?\b|\bfirst\b[^?]{0,40}?\bof\s+(?:the\s+|each\s+|every\s+|my\s+|our\s+)?claims?\b",
+                         re.I)
 
 
 def gate(question: str, names: Sequence[str] = ()) -> List[str]:
     """What the question is about, among premium, checkup and deductible ([] = no SQL step). ``names``: names the
-    tables hold (plans, ...); a cost question counts when it names one, a policy word or an age."""
+    tables hold (plans, ...); a cost question counts when it names one, a policy word or an age, and a money word
+    ("cost", "price", "shell out") when it names one or an age."""
     q = question or ""
     kinds = []
     named = any(re.search(r"\b" + re.escape(n) + r"\b", q, re.I) for n in names)
     cost = _COST.search(q) and (_INSURANCE.search(q) or _AGE.search(q) or named)
-    if (_PREMIUM.search(q) or cost) and not _PREMIUM_NOT.search(q):
+    money = _MONEY.search(q) and (named or _AGE.search(q))
+    if (_PREMIUM.search(q) or cost or money) and not _PREMIUM_NOT.search(q):
         kinds.append("premium")
     if _CHECKUP.search(q):
         kinds.append("checkup")
@@ -124,10 +131,37 @@ def _plain(d: Decimal) -> str:
 
 
 _PRINTED_VALUE = re.compile(r"^(\D*?)(\d+)(\D*)$")
+_GROUPED = re.compile(r"(?<![\d,])\d{1,3}(?:,\d{2,3})+(?![\d,])")
+
+
+def indian_amount(n) -> str:
+    """500000 -> '5 lakh', 5000000 -> '50 lakh', 10000000 -> '1 crore', 150000 -> '1.5 lakh'; '' below 1 lakh."""
+    d = Decimal(str(n))
+    if d >= 10_000_000:
+        return f"{_plain(d / 10_000_000)} crore"
+    if d >= 100_000:
+        return f"{_plain(d / 100_000)} lakh"
+    return ""
+
+
+def with_lakh(text: str) -> str:
+    """Amounts of a lakh or more written with their lakh/crore value: 'Sum Insured 5,000,000' -> '... 5,000,000 (50 lakh)'."""
+    def add(m):
+        words = indian_amount(m.group(0).replace(",", ""))
+        return f"{m.group(0)} ({words})" if words else m.group(0)
+    return _GROUPED.sub(add, text or "")
+
+
+def value_text(v) -> str:
+    """A listed value: text quoted, numbers plain, amounts of a lakh or more with their lakh/crore value."""
+    if isinstance(v, (int, Decimal)) and not isinstance(v, bool) and indian_amount(v):
+        return f"{literal(v)} ({indian_amount(v)})"
+    return literal(v)
 
 
 def compact_values(values: Sequence, limit: int = 40) -> str:
-    """The values a column holds, short: runs of printed numbers are joined ('0' to '65', '66*' to '89*', '>=90*')."""
+    """The values a column holds, short. Runs of printed numbers are shortened but stay separate values:
+    "'0', '1', ... '65', '66*', '67*', ... '89*', '>=90*'"."""
     vals = list(values)
     if vals and all(isinstance(v, str) and _PRINTED_VALUE.match(v) for v in vals):
         parsed = sorted((int(m.group(2)), m.group(1), m.group(3), v) for v in vals for m in [_PRINTED_VALUE.match(v)])
@@ -139,9 +173,9 @@ def compact_values(values: Sequence, limit: int = 40) -> str:
             else:
                 runs.append([p])
         if len(runs) < len(vals):
-            return ", ".join(literal(r[0][3]) if len(r) == 1 else f"{literal(r[0][3])} to {literal(r[-1][3])}"
-                             for r in runs)
-    shown = ", ".join(literal(v) for v in vals[:limit])
+            return ", ".join(", ".join(literal(x[3]) for x in r) if len(r) <= 3 else
+                             f"{literal(r[0][3])}, {literal(r[1][3])}, ... {literal(r[-1][3])}" for r in runs)
+    shown = ", ".join(value_text(v) for v in vals[:limit])
     return shown + (f", ... ({len(vals)} values)" if len(vals) > limit else "")
 
 
@@ -152,7 +186,8 @@ def _short(v, n: int = 60):
 
 
 # ---------------------------------------------------------------------------------------------------- 2. schema card
-LISTED_TYPES = ("text", "smallint", "character varying", "boolean")   # columns whose values are shown
+LISTED_TYPES = ("text", "smallint", "character varying", "boolean")   # columns whose values are always shown
+FEW_VALUES = 12                                                       # other columns: shown when they hold this few
 _NAME = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
@@ -189,7 +224,9 @@ class SchemaCard:
                 raise ValueError(f"unexpected table or column name in {SCHEMA}.{table}")
             t["rows"] = int(db.query(f'SELECT count(*) FROM {SCHEMA}."{table}"')[0][0])
             for c in t["columns"]:
-                if c["type"] in LISTED_TYPES:
+                few = c["type"] not in LISTED_TYPES and db.query(
+                    f'SELECT count(DISTINCT "{c["name"]}") FROM {SCHEMA}."{table}"')[0][0] <= FEW_VALUES
+                if c["type"] in LISTED_TYPES or few:
                     c["values"] = [r[0] for r in db.query(
                         f'SELECT DISTINCT "{c["name"]}" FROM {SCHEMA}."{table}" ORDER BY 1')]
             if examples:
@@ -215,6 +252,11 @@ class SchemaCard:
             if h:
                 return h
         return column
+
+    def text_columns(self) -> List[str]:
+        """Columns of text type (compared only with = or IN to listed values)."""
+        return sorted({c["name"] for t in self.tables.values() for c in t["columns"]
+                       if c["type"] in ("text", "character varying")})
 
     def names(self) -> List[str]:
         """Short text values the tables hold (plan names, ...): a question naming one is about the tables."""
@@ -253,7 +295,7 @@ class SchemaCard:
                 out.append(f"  Footnote: {note}")
             out.append("  Columns:")
             for c in t["columns"]:
-                line = f"    {c['name']} ({c['type']})" + (f": {c['comment']}" if c["comment"] else "")
+                line = f"    {c['name']} ({c['type']})" + (f": {with_lakh(c['comment'])}" if c["comment"] else "")
                 if c["values"] is not None:
                     line += f". Values: {compact_values(c['values'])}"
                 out.append(line)
@@ -322,12 +364,14 @@ class CheckedSql:
 
 
 class SqlValidator:
-    def __init__(self, tables: Sequence[str], max_rows: int = 50, schema: str = SCHEMA):
+    def __init__(self, tables: Sequence[str], max_rows: int = 50, schema: str = SCHEMA,
+                 text_columns: Sequence[str] = ()):
         try:
             import sqlglot  # noqa: F401
         except ImportError as e:
             raise ImportError('the SQL step needs sqlglot: pip install "policy-rag[db]"') from e
         self.allowed, self.max_rows, self.schema = set(tables), max_rows, schema
+        self.text_columns = set(text_columns)
 
     def check(self, sql: str) -> CheckedSql:
         import sqlglot
@@ -372,6 +416,11 @@ class SqlValidator:
             name = (f.name if isinstance(f, exp.Anonymous) else f.sql_name()).lower()
             if name not in FUNCTIONS:
                 raise SqlProblem(f"function {name}() is not allowed; allowed: " + ", ".join(sorted(FUNCTIONS)))
+        for cmp in tree.find_all(exp.Between, exp.GT, exp.GTE, exp.LT, exp.LTE):
+            text = sorted({c.name for c in cmp.find_all(exp.Column) if c.name in self.text_columns})
+            if text:
+                raise SqlProblem(f"{', '.join(text)} is text: compare it with = or IN to values written exactly as "
+                                 "listed, not with BETWEEN, <, >, <= or >=")
         aliases = {}
         for sel in _output_selects(tree):
             for proj in sel.expressions:
@@ -514,7 +563,7 @@ class SqlStep:
         self.cfg, self.answerer, self.db = cfg, answerer, db
         self.card = card if card is not None else SchemaCard.load(db, cfg.examples)
         self.card_text, self.names = self.card.text, self.card.names()
-        self.validator = SqlValidator(list(self.card.tables), cfg.max_rows)
+        self.validator = SqlValidator(list(self.card.tables), cfg.max_rows, text_columns=self.card.text_columns())
         self.runner = SqlRunner(db)
 
     def run(self, question: str) -> SqlOutcome:
