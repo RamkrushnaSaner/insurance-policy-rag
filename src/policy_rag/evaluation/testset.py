@@ -74,14 +74,47 @@ def norm_text(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+_IN_WORDS = re.compile(r"(\d+(?:\.\d+)?) (lakhs?|lacs?|crores?)")
+
+
+def _grouped(n: int, indian: bool) -> str:
+    """12345678 -> '1,23,45,678' (Indian grouping) or '12,345,678'."""
+    if not indian:
+        return f"{n:,}"
+    s = str(n)
+    head, groups = s[:-3], [s[-3:]]
+    while len(head) > 2:
+        groups.insert(0, head[-2:])
+        head = head[:-2]
+    return ",".join(([head] if head else []) + groups)
+
+
+def amount_in_digits(phrase: str) -> List[str]:
+    """The digit forms of an amount written in lakh or crore ("45 lakh" -> 45,00,000 / 4,500,000 / 4500000): the
+    same amount, written the way tables and chunk files print it. Empty for anything else."""
+    m = _IN_WORDS.fullmatch(phrase)
+    if not m:
+        return []
+    value = float(m.group(1)) * (1e5 if m.group(2).startswith("la") else 1e7)
+    if abs(value - round(value)) > 1e-6:
+        return []
+    n = int(round(value))
+    return list(dict.fromkeys([_grouped(n, True), _grouped(n, False), str(n)]))
+
+
 def _alt_re(alt: str) -> str:
     """A phrase matches at a word start ("5 years" is not found inside "65 years"); a phrase ending in a digit must
-    also end there ("10,000" is not found inside "10,000,000"); "N days/months/years" also matches the singular."""
+    also end there ("10,000" is not found inside "10,000,000"); "N days/months/years" also matches the singular; an
+    amount in lakh or crore also matches its digit forms ("45 lakh" = "45,00,000")."""
     if alt.startswith("re:"):
         return alt[3:]
     a = norm_text(alt)
     if re.search(r"\d (day|week|month|year|hour)s$", a):
         return r"(?<![0-9a-z.,])" + re.escape(a[:-1]) + r"s?(?![a-z])"
+    digits = amount_in_digits(a)
+    if digits:
+        return (r"(?<![0-9a-z.,])(?:" + re.escape(a) + "|(?:" + "|".join(re.escape(d) for d in digits)
+                + r")(?:\.0+)?(?![0-9]|[.,][0-9]))")
     return r"(?<![0-9a-z.,])" + re.escape(a) + (r"(?![0-9]|[.,][0-9])" if a[-1:].isdigit() else "")
 
 

@@ -93,6 +93,16 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   on a Postgres at migration 003 (`POLICY_RAG_TEST_DATABASE_URL_V35`: card, answers, the `rag_sql` login's
   permissions, the timeout). CI keeps a database at 002 for v3.4 and one at 003 for v3.5, and installs the `db`
   extra in the unit-test job.
+- **Measurement corrections** (Critical 1 of the v3.5 correction plan; nothing changes in how questions are answered):
+  - Checks: a known-false pattern inside a denied clause does not count ("does not apply to ..."); a section named
+    in a clause that excludes it is not off scope (copying its text still is); an amount in lakh or crore also
+    matches its digit forms. Re-scored without new answers: the v3.5 development run 91 → 94/113 (G05, X01, T01),
+    v3.4 on the development set 101 → 102/113 (L04), v3.4 on the four fresh sets unchanged
+    ([evaluation.md](docs/evaluation.md#check-corrections-november-2026)).
+  - The thinking text is saved for every answer. Before, it was erased whenever the model ended its thinking by itself,
+    so only the 7 to 8 traces per run that hit the budget survived.
+  - Comparing a change with its baseline loads the baseline's answer cache (`--resume-from`), so answers the change
+    did not touch stay identical; between sessions, 10 of 31 identical prompts had given different answers.
 
 ## 3.4.1 (15 November 2026)
 
