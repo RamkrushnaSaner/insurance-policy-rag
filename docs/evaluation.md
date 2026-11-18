@@ -127,6 +127,32 @@ set:
   v3.1 checks gave 93/113 (75/88 on test); the corrected checks give 97/113 (79/88).
 - The checks were corrected (v3.2) and now agree with that reading on all 113.
 
+### Check corrections (November 2026)
+
+The v3.5 root-cause analysis found three correct answers marked wrong by rules that were too literal. The rules were
+corrected for every question of every test set, not for those three:
+
+- **A denied statement is not a stated one.** A known-false pattern does not count when a negation word stands among
+  the three words before it in the same clause ("the exclusion does not apply to claims arising from an accident").
+  Found by X01.
+- **Naming a section to exclude it is not using it.** A citation of another cover's section does not count when its
+  clause contains a negation ("does not include the cashless steps (Section 11.2)"). Copying that section's text
+  still counts. Found by G05.
+- **An amount in lakh or crore matches its digits.** "45 lakh" also matches 45,00,000, 4,500,000 and 4500000, the
+  way the v3.5 chunk file prints amounts. Found by T01.
+
+Every saved run was re-scored with the old and the new checks, without generating an answer:
+
+| Run | Fully correct, old checks | New checks | Verdicts changed |
+|---|---|---|---|
+| v3.5 development run (16 Nov) | 91/113 | 94/113 | G05, X01, T01 |
+| v3.4 on the development set | 101/113 | 102/113 | L04: a complete answer that names Section 4.9 only to say its exclusions do not apply |
+| v3.4 on fresh v1, v2, v3, v4 | 55, 44, 88, 66 | 55, 44, 88, 66 | none |
+
+Published v3.4 figures are not rewritten: they were measured with the checks of their time (the published fresh v4
+figure, 68/88, includes two answers relabelled by a person). Two other v3.5 answers, D03 and X14, state the key fact
+in other words; a person's label decides them, not a wider key.
+
 ## Baseline results
 
 **System:** [`configs/default.yaml`](../configs/default.yaml): bge-small-en-v1.5 + BM25, bge-reranker-v2-m3,
@@ -420,6 +446,10 @@ Still open:
 
 - **Re-score saved answers** (minutes, CPU): `policy-rag evaluate --name rescored --mode rescore --rescore-from
   <run.json or results zip>`. This needs the run's saved answers, which contain policy text and are not published.
-- **Regenerate** (about 2 hours on a T4): `policy-rag evaluate --name baseline`. With the same software and GPU type,
-  seeded sampling should give the same answers. Other versions may differ slightly; use `compare` to see whether the
-  difference matters.
+- **Regenerate** (about 2 hours on a T4): `policy-rag evaluate --name baseline`. Within one session, seeded sampling
+  gives the same answers. Between sessions it may not: with the same model revision, libraries and GPU type, 10 of 31
+  identical prompts got different answers in the v3.4 and v3.5 runs, and 2 changed verdict.
+- **Compare a change with its baseline:** load the baseline run's answer cache, `policy-rag evaluate --name candidate
+  --resume-from <baseline answer_cache.jsonl>`. A question whose prompt the change did not touch then keeps the
+  baseline's answer (and the SQL step its reply), so a verdict can change only where the change reached. Without it,
+  a comparison mixes the change with the session-to-session variation.

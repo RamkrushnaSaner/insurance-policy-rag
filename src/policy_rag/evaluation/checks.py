@@ -113,6 +113,32 @@ def sentences_of(text: str):
     return [s.strip() for s in re.split(r"\n+|(?<=[.!?])\s+", text or "") if s.strip()]
 
 
+# ---------------------------------------------------------------------------------------------------- negation
+# A statement the answer denies is not a statement it makes: "the exclusion does not apply to claims arising from an
+# accident" does not say that it applies to them, and "does not include the cashless steps (Section 11.2)" does not
+# use Section 11.2.
+_NEGATION = re.compile(r"^(?:not|no|never|neither|nor|cannot|without|except|excluding)$|n[’']t$")
+_CLAUSE_BREAK = re.compile(r"[.;:!?\n]|\b(?:but|however|whereas|although)\b")
+
+
+def _negation_words(text: str) -> list:
+    return [w for w in re.findall(r"[a-z’']+", text.lower()) if _NEGATION.search(w)]
+
+
+def negated_before(text: str, start: int, window: int = 3) -> bool:
+    """A negation word among the last ``window`` words before ``start``, in the same clause: the words at ``start``
+    are then denied, not stated ("does not apply to ...", "shall not be applicable for ...")."""
+    head = text[:start]
+    cut = max((m.end() for m in _CLAUSE_BREAK.finditer(head)), default=0)
+    return bool(_negation_words(" ".join(re.findall(r"[a-z’']+", head[cut:].lower())[-window:])))
+
+
+def clauses_of(text: str) -> list:
+    """Sentences split further at ";", ":" and "but", "however", "whereas", "although"."""
+    return [c.strip() for s in sentences_of(text) for c in re.split(r"[;:]|\b(?:but|however|whereas|although)\b", s)
+            if c.strip()]
+
+
 def declines_at_start(answer: str) -> bool:
     """A refusal or "the policy does not say" within the first two sentences (an answer that invents first and
     hedges at the end does not count)."""
@@ -175,10 +201,13 @@ def _in_sections(sid: str, prefixes) -> bool:
 
 
 def off_scope_hits(answer: str, context: str, prefixes):
-    """Sections of another cover or procedure that the answer cites, or copies a sentence from."""
+    """Sections of another cover or procedure that the answer cites, or copies a sentence from. A citation in a
+    clause that denies it ("does not include the cashless steps (Section 11.2)", "the exclusions of Section 4.9 do
+    not apply here") does not count; copying that section's text always does."""
     if not prefixes or not answer or is_no_answer(answer):
         return []
-    hits = [f"cites Section {s}" for s in sorted(cited_sections(answer)) if _in_sections(s, prefixes)]
+    used = {s for c in clauses_of(answer) if not _negation_words(c) for s in cited_sections(c)}
+    hits = [f"cites Section {s}" for s in sorted(used) if _in_sections(s, prefixes)]
     blocks = [(ids, _bigrams(body)) for ids, body in context_blocks(context)]
     for s in sentences_of(answer):
         sb = _bigrams(s)
@@ -271,7 +300,7 @@ def score_answer(item: dict, answer: str, context: str, corpus_norm: str, gen=No
         add("generation", "not_declined", "answered instead of saying the policy does not cover it")
     if a and not is_no_answer(a):
         for p in item.get("must_not", []):
-            m = re.search(p, a_norm)
+            m = next((m for m in re.finditer(p, a_norm) if not negated_before(a_norm, m.start())), None)
             if m:
                 add("generation", "known_false", f"known false or wrong-row statement: \"{m.group(0)[:60]}\"")
         off = off_scope_hits(a, context, item.get("off_scope"))

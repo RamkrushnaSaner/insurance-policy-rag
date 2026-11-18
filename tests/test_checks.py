@@ -99,6 +99,56 @@ def test_score_answer_verdicts():
     assert "not_declined" in score_answer(neg, "Yes, pets are covered.", "", "")["critical"]
 
 
+ACCIDENT = r"\b(?:applies|apply|applicable) (?:even )?(?:to|for|in case of) (?:claims (?:arising )?(?:due to|from) )?(?:an )?accidents?"
+
+
+def test_a_denied_statement_is_not_a_known_false_one():
+    item = dict(ITEM, must_not=[ACCIDENT, "not specified in the provided policy text"])
+    ctx = "[Section 10.1 - Excl02]\nKidney stones: 24 months. This exclusion shall not be applicable for claims arising due to an Accident."
+    kinds = lambda a: {i["kind"] for i in score_answer(item, a, ctx, norm_text(ctx))["issues"]}
+    assert "known_false" not in kinds("24 months. The exclusion does not apply to claims arising from an accident.")
+    assert "known_false" not in kinds("24 months; it shall not be applicable for claims arising due to an accident.")
+    assert "known_false" not in kinds("24 months. It doesn’t apply to claims from an accident.")
+    # stated, not denied: still known false
+    assert "known_false" in kinds("24 months, and it applies even to claims arising from an accident.")
+    assert "known_false" in kinds("24 months. No break is allowed. It applies to claims arising from an accident.")
+    assert "known_false" in kinds("It does not apply to day care. But it applies to claims arising from an accident.")
+    # the refusal sentence as a known-false statement is not denied by a negation in the sentence before it
+    assert "known_false" in kinds("No. Not specified in the provided policy text, but 24 months is usual.")
+
+
+def test_a_section_named_to_exclude_it_is_not_used():
+    item = {"id": "G", "answerable": True, "question": "How do I file a reimbursement claim?", "type": "procedure",
+            "facts": [["30 days"]], "off_scope": ["11.2", "11.3"]}
+    ctx = ("[Section 11.6 - Reimbursement]\nSubmit the documents within 30 days of discharge.\n\n"
+           "[Section 11.2 - Cashless]\nThe network hospital sends the pre-authorization request to the Company.")
+    hits = lambda a: [i["issue"] for i in score_answer(item, a, ctx, norm_text(ctx))["issues"] if i["kind"] == "off_scope"]
+    assert hits("Submit within 30 days (Section 11.6). This does not include the cashless steps (Section 11.2/11.3).") == []
+    assert hits("Submit within 30 days (Section 11.6). The rules of Section 11.2 do not apply here.") == []
+    assert hits("Submit within 30 days. For cashless, Section 11.2 asks the hospital for pre-authorization.")
+    # copying the other section's text counts, even in a sentence with a negation
+    assert hits("Submit within 30 days. The network hospital sends the pre-authorization request to the Company, not you.")
+
+
+def test_an_amount_in_lakh_matches_its_digits():
+    from policy_rag.evaluation.testset import amount_in_digits
+    assert amount_in_digits("45 lakh") == ["45,00,000", "4,500,000", "4500000"]
+    assert amount_in_digits("1 crore") == ["1,00,00,000", "10,000,000", "10000000"]
+    assert amount_in_digits("2.5 lakh") == ["2,50,000", "250,000", "250000"] and amount_in_digits("24 months") == []
+    for text in ("is ₹45,00,000 a year", "Rs. 4,500,000", "4500000", "Rs 45,00,000.00", "45 lakhs", "Rs. 45 lakh"):
+        assert fact_found(["45 lakh"], norm_text(text)), text
+    for text in ("₹4,50,000", "₹1,45,00,000", "45,00,0000", "₹40,00,000"):
+        assert not fact_found(["45 lakh"], norm_text(text)), text
+    assert fact_found(["1 crore"], norm_text("up to ₹1,00,00,000")) and fact_found(["2.5 lakh"], norm_text("2,50,000"))
+
+
+def test_the_thinking_keeps_its_words():
+    from policy_rag.generation import strip_thinking, thinking_text
+    assert thinking_text("<think>\nWeighing Section 3.5.\n</think>") == "Weighing Section 3.5."
+    assert thinking_text("<think>\nCut off at the budget") == "Cut off at the budget"
+    assert strip_thinking("<think>\nWeighing.\n</think>\n\nThe answer.") == "The answer."     # answers unchanged
+
+
 def test_optima_secure_table_checker():
     check = get_table_checker("optima_secure")
     res = check("For Optima Secure, a single claim in Year 2 can be paid up to Rs. 25 lakh.", [["secure", "single", 2]], "")

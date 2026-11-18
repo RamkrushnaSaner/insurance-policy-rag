@@ -31,7 +31,14 @@ FORCE_ANSWER = ("\n\nConsidering the limited time by the user, I have to give th
 
 
 def strip_thinking(text: str) -> str:
+    """An answer without any thinking block in it."""
     return re.sub(r"<think>.*?</think>|</?think>", "", text, flags=re.S).strip()
+
+
+def thinking_text(text: str) -> str:
+    """The thinking phase's own words: its <think> tags removed, its content kept. (``strip_thinking`` removes the
+    whole block, which is right for an answer: applied to the thinking it erased every trace that ended by itself.)"""
+    return re.sub(r"</?think>", "", text).strip()
 
 
 @register("generator", "hf_causal_lm")
@@ -168,7 +175,7 @@ class HFCausalLMGenerator:
                 cut, forced = len(new1), True
                 force = tok(FORCE_ANSWER, add_special_tokens=False, return_tensors="pt")["input_ids"][0].to(ids.device)
                 prefix = torch.cat([ids[0], new1, force])
-            thinking = strip_thinking(tok.decode(new1[:cut], skip_special_tokens=True))
+            thinking = thinking_text(tok.decode(new1[:cut], skip_special_tokens=True))
             n_think, ids = cut, prefix.unsqueeze(0)
         new2 = self._generate(ids, limit, self._eos, seed + 1)
         return {"answer": strip_thinking(tok.decode(new2, skip_special_tokens=True)), "thinking": thinking,
