@@ -167,14 +167,18 @@ searched like the rest of the policy. Instead of fixed queries, the answer model
    rows) is shown to the model with the reason, and a corrected reply asked for, up to two times.
 7. **Arithmetic in code.** The model only fetches numbers. Differences (two rows, or two amounts of one row),
    totals and amounts after a discount (an amount and a percentage from another table) are computed by code in
-   Decimal from the returned rows, never by the model.
+   Decimal from the returned rows, never by the model. A difference is always the higher amount minus the lower,
+   naming both. When the query subtracts by itself (`a - b AS difference`), its sign depends only on the order the
+   model wrote (-1,300 can mean "1,300 cheaper"), so code adds its size and which side is larger, each side described
+   by its printed heading and the condition that picks its row.
 8. **Result block.** The rows for the answer model's context, each value under its printed heading (amounts with
    Indian digit grouping, discounts with `%`), with the query, the printed titles, pages, introducing sentences and
    footnotes, and the calculations. The text chunks linked to the tables (`read_with`, `introduced_by`, …) come with it, and
    `verify(answer)` lists figures in an answer that are in neither the rows, the passages nor the question.
 
 Measured on its own question set with `policy-rag evaluate-sql` ([`sql_eval.py`](../src/policy_rag/evaluation/sql_eval.py)):
-a dev half shapes the prompt and the gate, and a held-out half is run once against targets fixed before it.
+a dev half shapes the prompt and the gate, and a held-out half is run once against targets fixed before it. A
+difference counts by its size, whichever way round it was subtracted.
 
 The model never states a value the database did not return: a missing detail is asked for, a value the tables do not
 hold is reported as such, and the figure check catches anything else.

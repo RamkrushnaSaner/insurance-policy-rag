@@ -57,6 +57,12 @@ def test_a_fact_needs_its_value_in_a_row_with_matching_keys():
     ("calc", {"calc": {"computed": 1300, "inputs": [prem("30", "si_1000000", 9100), prem("30", "si_1000000", 10400, "Zenith Care Plus")]}},
      {**out("answered", COLS, [["Zenith Care", 1, "30", 9100], ["Zenith Care Plus", 1, "30", 10400]]),
       "derived": [{"kind": "difference", "value": 1300}, {"kind": "total", "value": 19500}]}, "pass"),
+    ("calc", {"calc": {"computed": 1300, "how": "a - b", "inputs": [prem("30", "si_1000000", 10400)]}},
+     out("answered", ["difference"], [[-1300]]), "pass"),                     # a difference: its size counts
+    ("calc", {"calc": {"computed": 1300, "how": "a - b", "inputs": [prem("30", "si_1000000", 10400)]}},
+     {**out("answered", ["difference"], [[-1300]]), "derived": [{"kind": "difference_by_query", "value": 1300}]}, "pass"),
+    ("calc", {"calc": {"computed": 1300, "how": "a + b", "inputs": [prem("30", "si_1000000", 10400)]}},
+     out("answered", ["total"], [[-1300]]), "critical"),                       # not for a total
     ("ask", {}, out("ask"), "pass"),
     ("ask", {}, out("answered", COLS, [["Zenith Care", 1, "30", 9100]]), "critical"),
     ("ask", {}, out("answered", ["age"], [[str(a)] for a in range(20)]), "fail"),
