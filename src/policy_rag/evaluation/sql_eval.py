@@ -249,10 +249,12 @@ class SqlEvaluation:
             out = self.step.run(q["question"]).to_dict()
             g = grade(q, out)
             secs = [a.get("seconds") for a in out["attempts"] if a.get("seconds") is not None]
+            replies = [a for a in out["attempts"] if not a.get("confirm")]     # the check before asking is no reply
             records.append({"id": q["id"], "split": q["split"], "type": q["type"], "loose": bool(q["expect"].get("loose")),
                             "question": q["question"], "expect": q["expect"], "gated": out["status"] != "skipped",
                             "status": out["status"], "verdict": g["verdict"], "reason": g["reason"],
-                            "attempts": len(out["attempts"]), "seconds": round(sum(secs), 2) if secs else None,
+                            "attempts": len(replies), "confirmed": [a.get("yes") for a in out["attempts"] if a.get("confirm")],
+                            "seconds": round(sum(secs), 2) if secs else None,
                             "similarity": out.get("similarity"),
                             "outcome": out})
             self.log(f"[{i}/{len(qs)}] {q['id']} {q['type']}: {out['status']} -> {g['verdict']} ({g['reason']})")

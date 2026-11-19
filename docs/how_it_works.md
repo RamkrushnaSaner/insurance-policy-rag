@@ -176,6 +176,43 @@ searched like the rest of the policy. Instead of fixed queries, the answer model
    footnotes, and the calculations. The text chunks linked to the tables (`read_with`, `introduced_by`, …) come with it, and
    `verify(answer)` lists figures in an answer that are in neither the rows, the passages nor the question.
 
+**Request mode** (`sql.mode: request`, [`table_requests.py`](../src/policy_rag/table_requests.py), config
+[`v35_requests.yaml`](../configs/experiments/v35_requests.yaml); Critical 3 of the v3.5 correction plan). Every error
+of the SQL path in four runs was a wrong choice of key, column or action, never invalid SQL that ran: a place put in
+the wrong tier, an amount no column prints read from the nearest column, the wrong side of a column split at
+20 lakh, a query unrelated to the question. Free SQL cannot be checked against the question, so in request mode the
+model no longer writes it. The rule is: the model judges meaning, code checks what can be checked exactly, and the
+answer shows any assumption.
+
+1. **The request.** The model replies with the table, the words of the question that ask for the value (`asks`), and
+   for each field the question states, the words it uses (`stated`) and what they mean (`value`): a listed plan or
+   policy type, an age, an amount, or the listed place the question's place lies in ("none" when it lies in none).
+   It can ask for two lookups and their `difference`, `sum` or an amount `after_discount`, or `list` a column. Or it
+   replies `text_only`. The fields of each table are read from the schema card: listed values, the printed age
+   rows, the places of each tier, and what each value column's printed heading selects (the amounts it names, a
+   condition such as "<= 20 lakhs", the plans it names). No word list: people word a quantity or name a place in any
+   way.
+2. **Code checks every value.** Each quoted phrase must be in the question, and every value code can see in the
+   question (a plan name the card knows, a place the policy lists, an amount written with lakh, crore or a rupee
+   mark) must be in the request: one left out would read rows for a case the question did not ask about. A plan, a policy type, an age, a
+   deductible or a Sum Insured must resolve to a printed row or column; one the tables do not hold gives "not in the
+   tables", decided by code, with no second try. A place the policy lists (also inside a longer name: "New Delhi") is
+   resolved by code whatever the model said; any other place takes the model's choice among the listed places, and
+   the answer ends with a line written by code saying which tier was used and why ("Pune is not one of the places
+   the policy lists for Tier 1, so Tier 2 (Rest of India) premiums apply."). A plan name the card knows elsewhere is
+   never taken for a shorter one ("Optima Secure Global" is not "Optima Secure").
+3. **Open fields.** Rows for the fields the question leaves open are counted: up to `sql.ask_rows` (8) are returned;
+   more make the step ask for the open field with the most choices, with a question written by code ("How old is the
+   person to be insured?"). Before asking, one short call asks the model whether the question really asks for a
+   value of that table (`sql.confirm_ask`); on "no" the text passages answer. A wrong "ask" is the costly mistake:
+   it replaces the answer with an unrelated question.
+4. **Code builds the query.** Every value in it is one of the card's own values, never words from the question. The
+   SQL checks above still check it, and it runs read-only as before. Only the arithmetic the request asks for is
+   done, in Decimal.
+
+A request that fails a check is shown to the model with the reason and corrected once (`sql.request_retries`); after
+that the step reports "failed" and the text passages answer alone.
+
 Measured on its own question set with `policy-rag evaluate-sql` ([`sql_eval.py`](../src/policy_rag/evaluation/sql_eval.py)):
 a dev half shapes the prompt and the gate, and a held-out half is run once against targets fixed before it. A
 difference counts by its size, whichever way round it was subtracted.

@@ -83,9 +83,12 @@ def sql_summary(st: dict) -> Optional[dict]:
     secs = [a.get("seconds") for a in out.attempts if a.get("seconds") is not None]
     return {"status": out.status, "kinds": out.kinds, "similarity": out.similarity, "sql": out.sql, "tables": out.tables,
             "rows": len(out.rows), "derived": len(out.derived), "clarification": out.clarification, "reason": out.reason,
-            "attempts": len(out.attempts), "seconds": round(sum(secs), 2) if secs else None,
+            "attempts": len([a for a in out.attempts if not a.get("confirm")]),
+            "confirmed": [a.get("yes") for a in out.attempts if a.get("confirm")],
+            "seconds": round(sum(secs), 2) if secs else None,
             "linked_added": [int(i) for i in st.get("sql_linked") or []],
-            "pinned": [int(i) for i in st.get("sql_pinned") or []], "in_context": bool(st.get("facts"))}
+            "pinned": [int(i) for i in st.get("sql_pinned") or []], "in_context": bool(st.get("facts")),
+            "request": getattr(out, "request", None) or None, "notes": list(getattr(out, "notes", None) or [])}
 
 
 def build_record(item: dict, st: dict, context, gate) -> dict:
