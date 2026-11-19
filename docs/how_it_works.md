@@ -180,8 +180,8 @@ Measured on its own question set with `policy-rag evaluate-sql` ([`sql_eval.py`]
 a dev half shapes the prompt and the gate, and a held-out half is run once against targets fixed before it. A
 difference counts by its size, whichever way round it was subtracted.
 
-The model never states a value the database did not return: a missing detail is asked for (after the text's answer),
-a value the tables do not hold is reported as such, and the figure check catches anything else.
+The model never states a value the database did not return: a missing detail is asked for, a value the tables do not
+hold is reported as such, and the figure check catches anything else.
 
 **In the pipeline** (a graph node after the search, before reranking):
 
@@ -189,11 +189,9 @@ a value the tables do not hold is reported as such, and the figure check catches
   (`[Policy tables → Annexure C, pages 19-20]`), cut to `sql.max_tokens`. The text linked to the tables read
   becomes a search candidate and is placed in the context whatever its score (up to `sql.max_linked_tokens`), and
   the rows open the gate.
-- **A detail is missing:** the text passages still answer, and the SQL step never ends the run. A note in the
-  context names the missing detail and tells the model not to give a table figure, or an illustration's figure, for
-  a case the question does not state. The step's question closes the reply ("For an exact figure from the policy's
-  tables: How old is the person to be insured?"). In a conversation the next message completes the question when it
-  supplies the detail ("35"); a message that is a question of its own ("Is cataract covered?") starts afresh.
+- **A detail is missing:** the step's question is the reply (route `ask`). In a conversation the user's next message
+  completes the question, which is run again. In an evaluation run it counts as not answered (or as declined, for a
+  question the policy does not answer).
 - **No value in the tables** (`not_in_tables`, or no rows): a one-line note says so, and the text passages answer as
   usual. A question about how a rule works can be mistaken for one about a value, so the answer is never forced to
   decline.

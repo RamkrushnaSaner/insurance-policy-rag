@@ -1,14 +1,13 @@
 """The RAG pipeline as a LangGraph state graph:
-condense -> retrieve -> tables -> sql -> rerank -> gate -> answer | no_answer.
+condense -> retrieve -> tables -> sql -> (ask) | rerank -> gate -> answer | no_answer.
 
 ``condense`` acts only when earlier turns of a conversation are passed (see memory.py); otherwise the question goes
 straight to retrieval. ``tables`` acts only with ``tables.enabled`` (v3.4): a question about the policy's printed
 tables gets the exact values from the database (tables.py) as the first context passage, and the text chunks linked
 to those tables become search candidates. ``sql`` acts only with ``sql.enabled`` (v3.5): a question about the
 numeric tables gets the rows of the SQL the answer model wrote (sql_step.py) as the first passage, with the text
-linked to those tables. The SQL step adds evidence and never ends the pipeline: when a detail is missing, a note
-says so and the step's question for the user closes the answer the text passages give; when the tables hold no
-value, a short note says so and the text passages answer. ``RAGSystem`` builds every component
+linked to those tables; when a detail is missing, the step's question for the user is the reply (``ask``); when
+the tables hold no value, a short note says so and the text passages answer. ``RAGSystem`` builds every component
 from a config and is the main entry point::
 
     from policy_rag import RAGSystem
@@ -32,7 +31,7 @@ from .context import ContextBuilder
 from .corpus import Corpus, load_corpus
 from .device import free_gpu, is_oom
 from .generation import Answerer, AnswerCache
-from .memory import Conversation, QuestionRewriter, replies_to_pending
+from .memory import Conversation, QuestionRewriter
 from .prompts import NO_ANSWER_TEXT, build_prompt, is_no_answer
 from .retrieval import HybridRetriever
 
@@ -134,31 +133,16 @@ class RAGPipeline:
 
     NO_TABLE_VALUE = ("[Policy tables]\nThe policy's numeric tables were checked with SQL: they hold no value for this "
                       "question.")
-    MISSING_DETAIL = ("[Policy tables]\nThe policy's numeric tables were checked with SQL. They give an exact figure for "
-                      "this question only with one more detail, which the user will be asked for: \"{question}\" Answer "
-                      "from the policy text. Do not give a figure from the tables or from an illustration as the answer "
-                      "for a case the question does not state.")
-    CLOSING_QUESTION = "For an exact figure from the policy's tables: {question}"
-
-    @classmethod
-    def with_closing_question(cls, answer: str, sql) -> str:
-        """The answer, closed by the SQL step's question when it asked the user for a missing detail."""
-        if sql is None or getattr(sql, "status", None) != "ask" or not getattr(sql, "clarification", ""):
-            return answer
-        return f"{(answer or '').rstrip()}\n\n{cls.CLOSING_QUESTION.format(question=sql.clarification.strip())}"
 
     def sql_passage(self, out) -> str:
         """The context passage for the SQL step's outcome: the rows (``SqlOutcome.block``) under a label naming
         where they are printed, cut to ``sql.max_tokens`` (a shortened passage says so); for "not in the tables" or
         no rows, a short note (the text passages may still answer: a question about how a rule works can be
-        mistaken for one about a value); for a missing detail, a note naming it (the text answers, the step's
-        question closes the answer)."""
+        mistaken for one about a value)."""
         if out is None:
             return ""
         if out.status in ("not_in_tables", "no_rows"):
             return self.NO_TABLE_VALUE
-        if out.status == "ask":
-            return self.MISSING_DETAIL.format(question=out.clarification.strip())
         if not out.answered:
             return ""
         label = "[Policy tables" + (f" → {out.sources_line()}" if out.sources_line() else "") + "]"
@@ -200,8 +184,10 @@ class RAGPipeline:
     def gate(self, state) -> str:
         """Answer when the best text passage is relevant enough, or when the tables answered the question (items
         found on a list do not count: they only add to the text, which must be relevant on its own), or when the SQL
-        step returned rows. The SQL step never decides alone: a missing detail leaves the decision to the text."""
+        step returned rows. "ask" when the SQL step asks the user for a missing detail."""
         sql = state.get("sql")
+        if sql is not None and sql.status == "ask":
+            return "ask"
         if sql is not None and sql.answered and state.get("facts"):
             return "answer"
         table = state.get("table")
@@ -336,6 +322,10 @@ class RAGPipeline:
                     res["sql_pinned"] = pinned
         return res
 
+    def _ask_node(self, state: RAGState):
+        """The SQL step's question for the user (a detail needed to choose the rows is missing)."""
+        return {"answer": state["sql"].clarification, "route": "ask"}
+
     def _rerank_node(self, state: RAGState):
         empty = {"scores": [], "groups": [], "top_score": float("-inf")}
         try:
@@ -377,7 +367,6 @@ class RAGPipeline:
                 out["sql_check"] = check
                 if check["fallback"]:
                     out["answer"] = check["answer"]
-            out["answer"] = self.with_closing_question(out["answer"], sql)
             return out
         except Exception as e:
             traceback.print_exc()
@@ -386,7 +375,7 @@ class RAGPipeline:
             free_gpu()
 
     def _no_answer_node(self, state: RAGState):
-        return {"answer": self.with_closing_question(NO_ANSWER_TEXT, state.get("sql")), "route": "no_answer"}
+        return {"answer": NO_ANSWER_TEXT, "route": "no_answer"}
 
     def _build_graph(self):
         from langgraph.graph import END, StateGraph
@@ -395,6 +384,7 @@ class RAGPipeline:
         g.add_node("retrieve", self._retrieve_node)
         g.add_node("tables", self._tables_node)
         g.add_node("sql", self._sql_node)
+        g.add_node("ask", self._ask_node)
         g.add_node("rerank", self._rerank_node)
         g.add_node("answer", self._answer_node)
         g.add_node("no_answer", self._no_answer_node)
@@ -402,7 +392,9 @@ class RAGPipeline:
         g.add_edge("condense", "retrieve")
         g.add_edge("retrieve", "tables")
         g.add_edge("tables", "sql")
-        g.add_edge("sql", "rerank")
+        g.add_conditional_edges("sql", lambda st: "ask" if st.get("sql") is not None and st["sql"].status == "ask"
+                                else "rerank", {"ask": "ask", "rerank": "rerank"})
+        g.add_edge("ask", END)
         g.add_conditional_edges("rerank", self.gate, {"answer": "answer", "no_answer": "no_answer"})
         g.add_edge("answer", END)
         g.add_edge("no_answer", END)
@@ -416,7 +408,8 @@ class RAGPipeline:
         st.update(self._retrieve_node(st))
         st.update(self._tables_node(st))
         st.update(self._sql_node(st))
-        st.update(self._rerank_node(st))
+        if st.get("sql") is None or st["sql"].status != "ask":
+            st.update(self._rerank_node(st))
         st["route"] = self.gate(st)
         return st
 
@@ -500,7 +493,7 @@ class RAGSystem:
         to the conversation."""
         history, asked = None, question
         if conversation is not None:
-            if conversation.pending and replies_to_pending(question):     # the detail the SQL step asked for
+            if conversation.pending:                    # the reply to the SQL step's question completes that question
                 asked = f"{conversation.pending.rstrip()} {question.strip()}"
             else:
                 history = conversation.recent(self.cfg.memory.max_turns, self.cfg.memory.answer_chars)
@@ -524,7 +517,7 @@ class RAGSystem:
         route = st.get("route") or self.pipeline.gate(st)
         if conversation is not None:
             conversation.add(question, st["query"], st["answer"], sources, route)
-            conversation.pending = asked if sql is not None and sql.status == "ask" else None
+            conversation.pending = asked if route == "ask" else None
         top = st.get("top_score")
         return Answer(question, st["answer"], sources, route,
                       top if top is not None and top != float("-inf") else None, st, standalone)
