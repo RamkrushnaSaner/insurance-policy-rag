@@ -131,6 +131,14 @@ class RAGPipeline:
             text = short(body)
         return f"{label}\n{text}"
 
+    @staticmethod
+    def with_table_notes(answer: str, sql) -> str:
+        """What code assumed to read the tables (the tier used for a place, and why), written by code under an answer
+        that used their rows, so the reader can see it and correct it."""
+        if sql is None or not sql.answered or not getattr(sql, "notes", None) or not sql.notes:
+            return answer
+        return (answer or "").rstrip() + "\n\n" + " ".join(sql.notes)
+
     NO_TABLE_VALUE = ("[Policy tables]\nThe policy's numeric tables were checked with SQL: they hold no value for this "
                       "question.")
 
@@ -367,6 +375,7 @@ class RAGPipeline:
                 out["sql_check"] = check
                 if check["fallback"]:
                     out["answer"] = check["answer"]
+            out["answer"] = self.with_table_notes(out["answer"], sql)
             return out
         except Exception as e:
             traceback.print_exc()

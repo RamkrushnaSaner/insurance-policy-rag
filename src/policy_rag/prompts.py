@@ -213,3 +213,58 @@ def build_sql_prompt(question: str, card: str, max_rows: int = 50, template: str
             f"Reply {n}: {reply.strip()}\nProblem: {problem}\n" for n, (reply, problem) in enumerate(attempts, 1)
         ) + "Write a corrected reply.\n\n"
     return text.format(card=card.strip(), question=question.strip(), max_rows=max_rows, attempts=earlier)
+
+
+# The table request (v3.5 Critical 3, sql.mode: request): the model states what the question asks of the tables and
+# the values the question states; code checks every value, finds the rows and does the arithmetic. Examples use
+# invented values, so no rule is written for one question.
+REQUEST_TEMPLATES = {
+    "request_v1": """You read questions about an insurance policy's numeric tables. You never write SQL: you state
+what the question asks for, and code checks your request against the question and the tables, finds the rows and
+does any arithmetic.
+
+TABLES
+{tables}
+
+Reply with ONE JSON object and nothing else, in one of two forms.
+
+1. The question asks for a value these tables hold (an amount, a limit or a percentage):
+{{"action": "lookup",
+  "asks": "<the words of the question that ask for the value, copied exactly>",
+  "lookups": [{{"table": "<table>", "values": {{"<field>": {{"stated": "<the question's words for it, copied exactly>",
+                                                     "value": <what they mean>}}}}}}],
+  "combine": null}}
+- Give a field only when the question states it. Leave out every field the question does not state: never guess
+  one and never ask the user; code decides what a missing detail needs.
+- "value": one of the field's listed values (a plan, a policy type); an age in whole years; an amount in rupees
+  (1 lakh = 100000, 1 crore = 10000000); for place, the listed place the question's place lies in, or "none" when it
+  lies in none of them. For an amount range ("from 3 lakh to 9 lakh", "6 lakh upwards"): "value": [from, to], with
+  null for an open end.
+- One lookup per value asked for: for example one per plan or per age being compared. "combine": "difference" or
+  "sum" of exactly two lookups that each give one value; "after_discount" for an amount from one lookup less the
+  percentage from the other.
+- To list a column instead of reading a value (for example the places of a tier), add "list": "<column>" to the
+  lookup.
+
+2. The question does not ask for a value these tables hold: for example how a benefit, rule or condition works,
+when or to whom it applies, which covers something applies to, or an amount the tables do not show:
+{{"action": "text_only", "reason": "<one sentence>"}}
+
+QUESTION: {question}
+{attempts}JSON:""",
+}
+
+
+def build_request_prompt(question: str, tables: str, template: str = "request_v1", attempts=()) -> str:
+    """The table request prompt. ``tables``: ``table_requests.tables_text``; ``attempts``: [(earlier reply, why it
+    could not be used), ...], oldest first."""
+    try:
+        text = REQUEST_TEMPLATES[template]
+    except KeyError:
+        raise KeyError(f"unknown request template {template!r}; available: {sorted(REQUEST_TEMPLATES)}") from None
+    earlier = ""
+    if attempts:
+        earlier = "\nEARLIER REPLIES (they could not be used):\n" + "".join(
+            f"Reply {n}: {reply.strip()}\nProblem: {problem}\n" for n, (reply, problem) in enumerate(attempts, 1)
+        ) + "Write a corrected reply.\n\n"
+    return text.format(tables=tables.strip(), question=question.strip(), attempts=earlier)

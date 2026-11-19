@@ -127,6 +127,20 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   - The model's choice to ask cannot tell a figure question missing a detail from a benefit question. Critical 3 (code
     checks on each table request) is to make that distinction before the reply to a missing detail is changed again.
 
+- **Table requests** (Critical 3 of the correction plan; `sql.mode: request`, off unless a config asks for it,
+  [`table_requests.py`](src/policy_rag/table_requests.py), [`v35_requests.yaml`](configs/experiments/v35_requests.yaml)):
+  the model no longer writes SQL. It states the table, the words that ask for the value, and for each field the
+  question states its words and meaning; code checks every quoted phrase against the question, resolves every value
+  against the schema card (printed rows and columns, the places of each tier, the conditions and plans in printed
+  headings), decides "not in the tables" and "ask", builds the query from the card's own values and does only the
+  arithmetic the request asks for. A place the policy lists is resolved by code; any other place takes the model's
+  choice among the listed places, and the answer says which tier was used and why. Before asking for a missing
+  detail, one short call checks that the question asks for a value of that table. Prompt `request_v1`; settings
+  `sql.mode`, `request_template`, `request_retries`, `ask_rows`, `confirm_ask`, `confirm_max_new_tokens`. Every value
+  code can see in the question (a plan name the card knows, a listed place, an amount with lakh, crore or a rupee
+  mark) must be in the request. Run records keep the request, its notes and the checks before asking. 33 tests (an
+  invented card on SQLite, and one on Postgres at migration 003).
+
 ## 3.4.1 (15 November 2026)
 
 **No change to the system.** Retrieval, prompts, models and the system's configs are unchanged. This release

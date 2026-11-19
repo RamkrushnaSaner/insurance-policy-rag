@@ -201,6 +201,15 @@ class SqlConfig:
     max_retries: int = 2                 # corrected replies after one that could not be used (not JSON, refused SQL, ...)
     max_new_tokens: int = 400            # answer tokens of one SQL reply; the thinking settings are unchanged
     template: str = "sql_v2"             # prompts.SQL_TEMPLATES (sql_v1: the first dev run)
+    # "sql": the model writes the SQL; "request": it states a request (table, the values the question states) and
+    # code checks every value against the question and the card, builds the query and does the arithmetic
+    # (policy_rag/table_requests.py, v3.5 Critical 3)
+    mode: str = "sql"
+    request_template: str = "request_v1"   # prompts.REQUEST_TEMPLATES
+    request_retries: int = 1             # corrected requests after one that failed a check
+    ask_rows: int = 8                    # rows returned for a detail the question leaves open; more: ask for it
+    confirm_ask: bool = True             # before asking, one short call: does the question ask for a value of the table?
+    confirm_max_new_tokens: int = 20     # answer tokens of that call (thinking settings unchanged)
     examples: int = 2                    # example rows per table in the schema card
     # closeness (cosine, with the configured embedder) to the tables' reference text that also passes the gate;
     # None: words only. Set by a fixed rule on the dev questions (policy-rag evaluate-sql --calibrate-gate)
@@ -374,6 +383,10 @@ def load_config(path: Union[str, Path, None] = None, overrides=None, data: Optio
         raise ConfigError("sql.gate_similarity: a cosine between -1 and 1, or null")
     if cfg.sql.max_rows < 1 or cfg.sql.max_retries < 0 or cfg.sql.statement_timeout_ms < 1 or cfg.sql.examples < 0:
         raise ConfigError("sql: max_rows and statement_timeout_ms must be at least 1, max_retries and examples at least 0")
+    if cfg.sql.mode not in ("sql", "request"):
+        raise ConfigError(f"sql.mode: expected sql or request, got {cfg.sql.mode!r}")
+    if cfg.sql.ask_rows < 1 or cfg.sql.request_retries < 0 or cfg.sql.ask_rows > cfg.sql.max_rows:
+        raise ConfigError("sql: ask_rows must be between 1 and max_rows, request_retries at least 0")
     if cfg.embedder.padding_side not in (None, "left", "right"):
         raise ConfigError(f"embedder.padding_side: expected left, right or null, got {cfg.embedder.padding_side!r}")
     return cfg
