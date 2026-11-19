@@ -115,6 +115,17 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     so only the 7 to 8 traces per run that hit the budget survived.
   - Comparing a change with its baseline loads the baseline's answer cache (`--resume-from`), so answers the change
     did not touch stay identical; between sessions, 10 of 31 identical prompts had given different answers.
+- **Reverted: the SQL step's question no longer ends the answer** (Critical 2 of the correction plan, pull request
+  #11). It missed its success criteria, and by the plan's rule a step that misses them is reverted. When the SQL step
+  asks for a missing detail, the reply is again only its question:
+  - The 113 questions scored 95 (94 before): M02 was answered, and no other answer changed.
+  - Of the 14 premium questions without an age, S053 quoted the policy's example premiums for ages 65 and 75 without
+    their 10 lakh Sum Insured. S051, S054 and S058 said things the policy contradicts: that Mumbai is not covered, that
+    there is no Optima Super Secure plan, and that the tables state only 10 lakh.
+  - When the step asked by mistake on a question about how a benefit works, the answer ended with an unrelated
+    question (G09, M02).
+  - The model's choice to ask cannot tell a figure question missing a detail from a benefit question. Critical 3 (code
+    checks on each table request) is to make that distinction before the reply to a missing detail is changed again.
 
 ## 3.4.1 (15 November 2026)
 
