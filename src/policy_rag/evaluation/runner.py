@@ -296,6 +296,8 @@ class Evaluation:
                     rec["answer"], rec["error"], gen = st.get("answer"), st.get("error"), st.get("gen")
                     rec["table_check"] = st.get("table_check")
                     rec["sql_check"] = st.get("sql_check")
+                    if st.get("route") == "ask":
+                        rec["gate_route"] = "ask"
                 if gen:
                     rec["gen"] = {k: gen.get(k) for k in ("key", "prompt_tokens", "new_tokens", "think_tokens",
                                                           "answer_tokens", "thinking_forced", "hit_limit", "seconds", "from_cache")}

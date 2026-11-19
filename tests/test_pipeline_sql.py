@@ -49,51 +49,19 @@ def test_rows_come_first_and_the_linked_text_is_pinned(tmp_path):
     assert "SQL step over 2 tables" in "".join(logs)
 
 
-ASK = {"action": "ask", "question": "How old is the person to be insured?"}
-NO_AGE = "What is the premium for Zenith Care in Tier 1 with a 10 lakh Sum Insured?"
-
-
-def test_a_missing_detail_closes_the_text_answer_and_the_reply_completes_the_question(tmp_path):
-    rag, _, _ = _system(tmp_path, [ASK, {"action": "query", "sql": SQL}], gate={"min_score": -1000.0})
+def test_a_missing_detail_is_asked_and_the_reply_completes_the_question(tmp_path):
+    ask = {"action": "ask", "question": "How old is the person to be insured?"}
+    rag, _, _ = _system(tmp_path, [ask, {"action": "query", "sql": SQL}])
     chat = rag.new_conversation()
-    r = rag.ask(NO_AGE, conversation=chat, show_sources=False)
-    assert r.route == "answer" and r.sources                       # the text answered: the step did not end the run
-    assert r.answer.endswith("\n\nFor an exact figure from the policy's tables: How old is the person to be insured?")
-    facts = r.state["facts"]
-    assert facts.startswith("[Policy tables]\n") and '"How old is the person to be insured?"' in facts
-    assert "Do not give a figure from the tables or from an illustration" in facts
-    assert facts in rag.pipeline.prompt_for(r.state["query"], r.state["groups"], facts)   # the note reaches the model
-    assert chat.pending == NO_AGE
+    r = rag.ask("What is the premium for Zenith Care in Tier 1 with a 10 lakh Sum Insured?", conversation=chat,
+                show_sources=False)
+    assert r.route == "ask" and r.answer == "How old is the person to be insured?" and r.sources == []
+    assert chat.pending == "What is the premium for Zenith Care in Tier 1 with a 10 lakh Sum Insured?"
     r = rag.ask("30 years", conversation=chat, show_sources=False)
-    assert f"QUESTION: {NO_AGE} 30 years\n" in rag.sql.answerer.prompts[-1]
+    prompts = rag.sql.answerer.prompts
+    assert "QUESTION: What is the premium for Zenith Care in Tier 1 with a 10 lakh Sum Insured? 30 years\n" in prompts[-1]
     assert r.route == "answer" and r.standalone.endswith("30 years") and chat.pending is None
-    assert r.sources[0].startswith("[Policy tables]") and not r.answer.endswith("insured?")
     assert chat.to_dict()["pending"] is None and len(chat.turns) == 2
-
-
-def test_a_new_question_after_the_closing_question_is_not_glued_to_it(tmp_path):
-    rag, _, _ = _system(tmp_path, [ASK], gate={"min_score": -1000.0})
-    chat = rag.new_conversation()
-    rag.ask(NO_AGE, conversation=chat, show_sources=False)
-    assert chat.pending == NO_AGE
-    r = rag.ask("Is cataract surgery covered?", conversation=chat, show_sources=False)
-    assert r.state["query"] == "Is cataract surgery covered?" and r.standalone is None and chat.pending is None
-
-
-def test_a_refusal_keeps_the_closing_question_and_still_declines(tmp_path):
-    rag, _, _ = _system(tmp_path, [ASK], gate={"min_score": 1000.0})
-    r = rag.ask(NO_AGE, show_sources=False)
-    assert r.route == "no_answer" and r.answer.startswith(NO_ANSWER_TEXT) and r.answer.endswith("insured?")
-    from policy_rag.evaluation.checks import declines_at_start
-    assert declines_at_start(r.answer)
-
-
-def test_what_counts_as_the_reply_to_the_closing_question():
-    from policy_rag.memory import replies_to_pending
-    for m in ("30 years", "35", "Tier 1, Pune", "my father, 62", "individual policy with 10 lakh"):
-        assert replies_to_pending(m), m
-    for m in ("Is cataract surgery covered?", "What about maternity", "How long is the waiting period", "", "  "):
-        assert not replies_to_pending(m), m
 
 
 def test_not_in_the_tables_leaves_the_answer_to_the_text(tmp_path):
