@@ -87,7 +87,7 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   - When rows come back, the result block is the first context passage, the text linked to the tables read is pinned
     after it, and the rows open the gate.
   - When a detail is missing, the step's question is the reply (route `ask`); in a conversation, the next message
-    completes the question.
+    completes the question. (Replaced by Critical 2, below.)
   - When the tables hold no value, a one-line note says so and the text passages answer (never a forced decline).
   - Figures of an answer that are in neither the context nor the question are replaced by the rows written out
     plainly (`sql.on_unsupported_figures: rows`).
@@ -115,6 +115,14 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     so only the 7 to 8 traces per run that hit the budget survived.
   - Comparing a change with its baseline loads the baseline's answer cache (`--resume-from`), so answers the change
     did not touch stay identical; between sessions, 10 of 31 identical prompts had given different answers.
+- **The SQL step adds evidence and never ends the answer** (Critical 2 of the v3.5 correction plan): the route `ask`
+  is gone; the SQL node always continues to the text path.
+  - When a detail is missing, a note in the context names it and forbids a table or illustration figure for a case
+    the question does not state; the text answers, and the step's question closes the reply.
+  - In a conversation, the next message completes the question only when it supplies the detail; a question of its
+    own is answered as a new question.
+  - Questions the step asked back in the development run (G09, D06, M02, N05) had no context at all; their evidence
+    was among the search candidates. Saved runs with the route `ask` are still scored as before.
 
 ## 3.4.1 (15 November 2026)
 
