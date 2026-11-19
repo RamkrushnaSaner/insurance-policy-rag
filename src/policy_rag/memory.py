@@ -29,6 +29,18 @@ from typing import List, Optional, Tuple
 from .prompts import NO_ANSWER_TEXT, build_condense_prompt
 
 
+_QUESTION_START = re.compile(r"(?:what|which|how|is|are|does|do|did|can|could|will|would|should|when|where|who|why|"
+                             r"tell me|explain|list)\b", re.I)
+
+
+def replies_to_pending(message: str) -> bool:
+    """Whether a message supplies the detail the SQL step asked for ("30 years", "Tier 1, Pune") rather than starting
+    a question of its own ("Is cataract covered?"). Since the step's question only closes an answer, the user may
+    just move on; a new question then must not be glued onto the old one."""
+    m = (message or "").strip()
+    return bool(m) and not m.endswith("?") and not _QUESTION_START.match(m)
+
+
 @dataclass
 class Turn:
     question: str                 # what the user typed
