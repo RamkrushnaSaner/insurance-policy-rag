@@ -153,6 +153,31 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   mark) must be in the request. Run records keep the request, its notes and the checks before asking. 33 tests (an
   invented card on SQLite, and one on Postgres at migration 003).
 
+- **Table requests, corrected** (the fixes for the reverted version above; still `sql.mode: request`, off unless a
+  config asks for it). Each fix covers a kind of reply, not a question:
+  - **A flat request** (prompt `request_v2`, now the default `request_template`; `request_v1` is removed, its form is
+    no longer read): one flat object per lookup, `{"table": ..., "<field>": "<the question's words>",
+    "<field>_value": <what they mean>}`, two levels of brackets instead of five. A field whose `_value` is null is
+    taken as not stated.
+  - **Brackets put in order** (`table_requests.read_object`): a reply whose closing brackets are out of order is read
+    once they are put in order (a missing closer added, a stray one dropped), only when every string of the reply
+    survives; the run record keeps what was changed (`repairs`). Otherwise the correction message says where the JSON
+    breaks, with the text around it.
+  - **Fields, not columns**: the prompt shows each table's field names and never its column names; `list` takes a
+    field (`"list": "place"` lists the places of a tier). A place's `_value` may be the tier for every other place
+    ("Tier 2"); a tier that is only its listed places is refused for an unlisted place, with the places it holds, so
+    a general idea of which cities are "Tier 1" never picks a premium.
+  - **A missing detail is still a lookup**: the prompt says plainly that a premium question with no age is a lookup
+    with no age field (and that a value the tables may not hold is still given: code decides). The check before
+    asking says a missing detail does not matter to its yes or no.
+  - **`after_discount` is now `amount_after_percent`**, described as an amount with a percentage taken off; a combine
+    with one lookup is sent back saying that one value needs `"combine": null`.
+
+  Replaying the 100 recorded replies of the reverted run through this code (their old wording turned into the new
+  form, so it estimates the code, not the new prompt): 48 of the 51 broken replies are read, 71 of 100 questions pass
+  (48 before), no critical errors, and model calls fall from 139 to 108. The missing-age questions cannot be
+  replayed: the model's replies to the new prompt are needed. 17 more tests.
+
 ## 3.4.1 (15 November 2026)
 
 **No change to the system.** Retrieval, prompts, models and the system's configs are unchanged. This release

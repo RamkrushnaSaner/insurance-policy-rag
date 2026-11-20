@@ -889,6 +889,8 @@ class SqlStep:
             try:
                 req = parse_request(reply)
                 att["action"] = req["action"]
+                if req.get("repairs"):
+                    att["repairs"] = req["repairs"]
                 if req["action"] == "text_only":
                     out.status, out.reason = "text_only", req["reason"]
                     return out
@@ -958,8 +960,8 @@ class SqlStep:
                                   if c in columns)
                 parts.append((f"{ident}: {label}" if ident else label, Decimal(str(row[columns.index(col)])),
                               column_kind(label)))
-            if combine == "after_discount" and sorted(k or "" for _, _, k in parts) != ["amount", "percent"]:
-                raise SqlProblem('"after_discount" needs one lookup of an amount and one of a percentage')
+            if combine == "amount_after_percent" and sorted(k or "" for _, _, k in parts) != ["amount", "percent"]:
+                raise SqlProblem('"amount_after_percent" needs one lookup of an amount and one of a percentage')
         tables = list(dict.fromkeys(r.table for r, _, _, _ in results))
         cols = list(dict.fromkeys(c for _, _, columns, _ in results for c in columns))
         rows_out = []

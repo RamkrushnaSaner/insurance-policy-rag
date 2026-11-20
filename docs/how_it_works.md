@@ -184,20 +184,25 @@ the wrong tier, an amount no column prints read from the nearest column, the wro
 model no longer writes it. The rule is: the model judges meaning, code checks what can be checked exactly, and the
 answer shows any assumption.
 
-1. **The request.** The model replies with the table, the words of the question that ask for the value (`asks`), and
-   for each field the question states, the words it uses (`stated`) and what they mean (`value`): a listed plan or
-   policy type, an age, an amount, or the listed place the question's place lies in ("none" when it lies in none).
-   It can ask for two lookups and their `difference`, `sum` or an amount `after_discount`, or `list` a column. Or it
-   replies `text_only`. The fields of each table are read from the schema card: listed values, the printed age
-   rows, the places of each tier, and what each value column's printed heading selects (the amounts it names, a
-   condition such as "<= 20 lakhs", the plans it names). No word list: people word a quantity or name a place in any
-   way.
+1. **The request.** The model replies with the words of the question that ask for the value (`asks`) and one flat
+   object per lookup: the table, and for each field the question states, the question's words (`"<field>"`) and
+   what they mean (`"<field>_value"`): a listed plan or policy type, an age, an amount, or the listed place the
+   question's place lies in (or the tier for every other place, "Tier 2"). It can ask for two lookups and their
+   `difference`, `sum` or `amount_after_percent` (an amount with a percentage taken off), or `list` a field's values.
+   Or it replies `text_only`; a question that leaves out a detail, or names something the tables may not hold, is
+   still a lookup. The prompt names fields only, never the tables' columns. The fields of each table are read from
+   the schema card: listed values, the printed age rows, the places of each tier, and what each value column's
+   printed heading selects (the amounts it names, a condition such as "<= 20 lakhs", the plans it names). No word
+   list: people word a quantity or name a place in any way. A reply whose closing brackets are out of order is read
+   once they are put in order, when every string of it survives; otherwise the correction says where the JSON
+   breaks.
 2. **Code checks every value.** Each quoted phrase must be in the question, and every value code can see in the
    question (a plan name the card knows, a place the policy lists, an amount written with lakh, crore or a rupee
    mark) must be in the request: one left out would read rows for a case the question did not ask about. A plan, a policy type, an age, a
    deductible or a Sum Insured must resolve to a printed row or column; one the tables do not hold gives "not in the
    tables", decided by code, with no second try. A place the policy lists (also inside a longer name: "New Delhi") is
-   resolved by code whatever the model said; any other place takes the model's choice among the listed places, and
+   resolved by code whatever the model said; any other place takes the model's choice among the listed places (a
+   tier that is only its listed places is refused for a place it does not list), and
    the answer ends with a line written by code saying which tier was used and why ("Pune is not one of the places
    the policy lists for Tier 1, so Tier 2 (Rest of India) premiums apply."). A plan name the card knows elsewhere is
    never taken for a shorter one ("Optima Secure Global" is not "Optima Secure").

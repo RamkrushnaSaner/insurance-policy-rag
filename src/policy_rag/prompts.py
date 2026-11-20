@@ -219,7 +219,9 @@ def build_sql_prompt(question: str, card: str, max_rows: int = 50, template: str
 # the values the question states; code checks every value, finds the rows and does the arithmetic. Examples use
 # invented values, so no rule is written for one question.
 REQUEST_TEMPLATES = {
-    "request_v1": """You read questions about an insurance policy's numeric tables. You never write SQL: you state
+    # request_v2: one flat object per lookup (request_v1 nested each field two levels deep, and the model's replies
+    # often lost a closing bracket); field names only; a missing detail is still a lookup.
+    "request_v2": """You read questions about an insurance policy's numeric tables. You never write SQL: you state
 what the question asks for, and code checks your request against the question and the tables, finds the rows and
 does any arithmetic.
 
@@ -231,20 +233,27 @@ Reply with ONE JSON object and nothing else, in one of two forms.
 1. The question asks for a value these tables hold (an amount, a limit or a percentage):
 {{"action": "lookup",
   "asks": "<the words of the question that ask for the value, copied exactly>",
-  "lookups": [{{"table": "<table>", "values": {{"<field>": {{"stated": "<the question's words for it, copied exactly>",
-                                                     "value": <what they mean>}}}}}}],
+  "lookups": [{{"table": "<table>", "<field>": "<the question's words for it, copied exactly>", "<field>_value": <what they mean>}}],
   "combine": null}}
-- Give a field only when the question states it. Leave out every field the question does not state: never guess
-  one and never ask the user; code decides what a missing detail needs.
-- "value": one of the field's listed values (a plan, a policy type); an age in whole years; an amount in rupees
-  (1 lakh = 100000, 1 crore = 10000000); for place, the listed place the question's place lies in, or "none" when it
-  lies in none of them. For an amount range ("from 3 lakh to 9 lakh", "6 lakh upwards"): "value": [from, to], with
-  null for an open end.
-- One lookup per value asked for: for example one per plan or per age being compared. "combine": "difference" or
-  "sum" of exactly two lookups that each give one value; "after_discount" for an amount from one lookup less the
-  percentage from the other.
-- To list a column instead of reading a value (for example the places of a tier), add "list": "<column>" to the
-  lookup.
+- Each lookup is one flat object: "table", then two keys for each field the question states: the field's name, with
+  the question's words for it, and the field's name followed by _value, with what those words mean. Use only the
+  field names listed under TABLES.
+- What the words mean: one of the field's listed values (a plan, a policy type); an age in whole years; an amount in
+  rupees (1 lakh = 100000, 1 crore = 10000000); for place, as described under TABLES. For an amount range ("from 3
+  lakh to 9 lakh", "6 lakh upwards"): [from, to], with null for an open end.
+- Leave out every field the question does not state. A question that asks for a value of the kind these tables hold
+  is a lookup even when it leaves out a detail the value depends on (a premium question that gives no age is a
+  lookup with no age field), and even when it names something the tables may not hold (another plan, an amount that
+  is not printed): give what it states. Never reply text_only for either reason, and never ask the user: code
+  decides what the tables hold and asks for a missing detail.
+- One lookup per value asked for: for example one per plan or per age being compared. A range of amounts gives
+  several values from one lookup.
+- "combine": null, unless the question asks for one value worked out from two lookups that each give one value:
+  "difference" or "sum" of the two; "amount_after_percent" for the amount from one lookup with the percentage from
+  the other taken off (for example a premium after a deductible discount). A question that asks for a percentage
+  itself needs one lookup and "combine": null.
+- To get the listed values of a field instead of a value (for example the places of a tier), add
+  "list": "<field>" to the lookup.
 
 2. The question does not ask for a value these tables hold: for example how a benefit, rule or condition works,
 when or to whom it applies, which covers something applies to, or an amount the tables do not show:
@@ -255,7 +264,7 @@ QUESTION: {question}
 }
 
 
-def build_request_prompt(question: str, tables: str, template: str = "request_v1", attempts=()) -> str:
+def build_request_prompt(question: str, tables: str, template: str = "request_v2", attempts=()) -> str:
     """The table request prompt. ``tables``: ``table_requests.tables_text``; ``attempts``: [(earlier reply, why it
     could not be used), ...], oldest first."""
     try:

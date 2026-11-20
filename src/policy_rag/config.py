@@ -205,7 +205,7 @@ class SqlConfig:
     # code checks every value against the question and the card, builds the query and does the arithmetic
     # (policy_rag/table_requests.py, v3.5 Critical 3)
     mode: str = "sql"
-    request_template: str = "request_v1"   # prompts.REQUEST_TEMPLATES
+    request_template: str = "request_v2"   # prompts.REQUEST_TEMPLATES
     request_retries: int = 1             # corrected requests after one that failed a check
     ask_rows: int = 8                    # rows returned for a detail the question leaves open; more: ask for it
     confirm_ask: bool = True             # before asking, one short call: does the question ask for a value of the table?

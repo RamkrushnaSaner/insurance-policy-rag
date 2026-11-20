@@ -127,7 +127,11 @@ def step(*replies, **cfg):
 
 
 def lookup(table="premium_table", **values):
-    return {"table": table, "values": {k: {"stated": s, "value": v} for k, (s, v) in values.items()}}
+    """One flat lookup: "<field>": the question's words, "<field>_value": what they mean."""
+    out = {"table": table}
+    for k, (words, value) in values.items():
+        out[k], out[f"{k}_value"] = words, value
+    return out
 
 
 def request(*lookups, asks="premium", combine=None):
@@ -167,13 +171,14 @@ def test_the_card_gives_each_table_its_fields():
     d = models["deductible_discount_table"]
     assert set(d.fields) == {"deductible", "sum_insured", "plan"} and d.fields["plan"].kind == "plan_column"
     text = tables_text(models, SchemaCard(card_tables()))
-    assert "Tier 1: Avalon, North Region, Port Avalon, Beta City, Gamma Town" in text
+    assert "Tier 1 is only these places: Avalon, North Region, Port Avalon, Beta City, Gamma Town; Tier 2 is every " \
+        "other place (Rest of Country)" in text and '"Tier 2" when it lies in none of them' in text
     assert "printed ages: 0 to 11; 12* to 13*; >=14*" in text and "footnote: *Renewal only (invented)" in text
 
 
 def test_reply_parsing():
     assert parse_request('<think>x</think>{"action": "text_only", "reason": "a rule"}') == {
-        "action": "text_only", "reason": "a rule"}
+        "action": "text_only", "reason": "a rule", "repairs": []}
     r = parse_request(json.dumps(request(lookup(age=("45", 45)), combine="null")))
     assert r["combine"] is None and r["lookups"][0]["table"] == "premium_table"
     for bad in ('{"action": "query", "sql": "SELECT 1"}', '{"action": "lookup", "lookups": []}',
@@ -318,8 +323,10 @@ def test_more_rows_make_the_step_ask_after_the_question_is_confirmed():
     s = step(r, "<think>a premium is asked</think>yes")
     out = s.run(q)
     assert out.status == "ask" and out.clarification == "How old is the person to be insured?"
-    assert s.answerer.calls[1][:2] == ("sql", 20) and "Is the user asking for a value from this table?" in \
-        s.answerer.calls[1][2] and "annual premium (Rs.) by age" in s.answerer.calls[1][2]
+    confirm = s.answerer.calls[1][2]
+    assert s.answerer.calls[1][:2] == ("sql", 20) and "annual premium (Rs.) by age" in confirm
+    assert "may leave out a detail the table needs, such as the age for a premium" in confirm
+    assert "Does the question ask for a value of the kind this table holds?" in confirm
     assert out.attempts[-1]["confirm"] and out.attempts[-1]["yes"] is True
     assert step(r, "maybe").run(q).status == "ask"                             # no clear reply: ask as before
     out = step(r, "No.").run(q)
@@ -367,7 +374,7 @@ def test_an_amount_after_a_discount_reads_two_tables():
     r = request(lookup(plan=("Zenith Care", "Zenith Care"), age=("9-year-old", 9), place=("Avalon", "Avalon"),
                        sum_insured=("4 lakh", 400000)),
                 lookup("deductible_discount_table", deductible=("Rs 10,000", 10000), plan=("Zenith Care", "Zenith Care"),
-                       sum_insured=("4 lakh", 400000)), combine="after_discount")
+                       sum_insured=("4 lakh", 400000)), combine="amount_after_percent")
     out = step(r).run(q)
     p = premium("Zenith Care", 1, "9", 4)
     assert out.status == "answered" and out.tables == ["premium_table", "deductible_discount_table"]
@@ -387,8 +394,8 @@ def test_a_combination_needs_one_value_per_lookup():
 
 def test_a_column_can_be_listed():
     q = "Which places are Tier 1?"
-    r = request({"table": "premium_table", "list": "tier_cities",
-                 "values": {"place": {"stated": "Tier 1", "value": "Tier 1"}}}, asks="Which places")
+    r = request({"table": "premium_table", "list": "place", "place": "Tier 1", "place_value": "Tier 1"},
+                asks="Which places")
     out = step(r).run(q)
     assert out.status == "answered" and out.rows == [(T1,)] and "SELECT DISTINCT" in out.sql
 
@@ -478,3 +485,139 @@ def test_quoted_amounts_must_be_written_in_the_question_and_names_are_compared_b
                                sum_insured=("4 lakh", 400000)))
     out = step(guessed, left_open, "yes").run(q)
     assert out.status == "ask" and "gives no age in years or months" in out.attempts[0]["problem"]
+
+
+# ---------------------------------------------------------------------------------------------------- the fixes (v2)
+FLAT = ('{"action": "lookup", "asks": "annual premium", "lookups": [{"table": "premium_table", "plan": "Zenith Care", '
+        '"plan_value": "Zenith Care", "age": "9-year-old", "age_value": 9, "place": "Port Avalon", '
+        '"place_value": "Port Avalon", "sum_insured": "4 lakh", "sum_insured_value": 400000}], "combine": null}')
+
+
+@pytest.mark.parametrize("broken, change", [
+    (FLAT.replace('400000}], "combine": null}', '400000], "combine": null}]}'), "added } before character"),
+    (FLAT.replace('400000}], "combine"', '400000}}], "combine"'), "dropped } at character"),
+    (FLAT[:-1], "added } at the end"),
+])
+def test_closing_brackets_out_of_order_are_put_in_order_when_every_word_survives(broken, change):
+    from policy_rag.table_requests import read_object
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(broken)
+    obj, changes = read_object(broken)
+    assert obj == json.loads(FLAT) and any(c.startswith(change) for c in changes)
+    s = step(broken)
+    out = s.run(Q)
+    assert out.status == "answered" and out.attempts[0]["repairs"] == changes and len(s.answerer.calls) == 1
+
+
+def test_a_lookup_left_open_before_the_next_one_is_closed():
+    from policy_rag.table_requests import read_object
+    one = '{"table": "premium_table", "plan": "Zenith Care", "plan_value": "Zenith Care"}'
+    two = '{"table": "premium_table", "plan": "Zenith Care Plus", "plan_value": "Zenith Care Plus"}'
+    good = '{"action": "lookup", "asks": "How much more", "lookups": [' + one + ", " + two + '], "combine": "difference"}'
+    broken = good.replace(one + ", ", one[:-1] + ", ")             # the first lookup's } is missing
+    obj, changes = read_object(broken)
+    assert obj == json.loads(good) and changes == [f"added }} before character {broken.index(', ' + two) + 2}"]
+
+
+def test_a_reply_that_cannot_be_read_says_where_the_json_breaks():
+    from policy_rag.sql_step import SqlProblem
+    from policy_rag.table_requests import read_object
+    two_tables = FLAT.replace('"table": "premium_table", "plan"', '"table": "premium_table", "table": "x", "plan"')
+    with pytest.raises(SqlProblem, match="not valid JSON"):          # read, a word (the first table) would be lost
+        read_object(two_tables.replace('400000}], "combine"', '400000], "combine"'))
+    with pytest.raises(SqlProblem, match=r"expecting ':' delimiter at character \d+, here: ….*\"age\"  >>> \"9-year-old\""):
+        read_object(FLAT.replace('"age": "9-year-old"', '"age" "9-year-old"'))
+    with pytest.raises(SqlProblem, match="no JSON object"):
+        read_object("I cannot answer that.")
+
+
+def test_the_prompt_names_fields_never_columns():
+    card = SchemaCard(card_tables())
+    text = tables_text(table_models(card, SqliteDb()), card)
+    p = build_request_prompt("Q?", text)
+    fields = {"plan", "age", "place", "sum_insured", "policy_type", "deductible"}
+    for t in card.tables.values():
+        for c in t["columns"]:
+            if "_" in c["name"] and c["name"] not in fields:              # si_200000, tier_cities, deductible_inr ...
+                assert c["name"] not in p, c["name"]
+    for line in text.splitlines():
+        if line.strip().startswith("fields:"):
+            assert set(line.split(":", 1)[1].replace(" ", "").split(",")) <= fields, line
+    assert "fields: plan, age, place, sum_insured" in text and '"<field>_value"' in p and "flat object" in p
+
+
+def test_a_column_name_is_no_field_and_the_problem_names_the_fields():
+    q = "Zenith Care premium for a 9-year-old in Avalon with 4 lakh cover?"
+    bad = request({"table": "premium_table", "plan": "Zenith Care", "age": "9-year-old", "tier_cities": "Avalon",
+                   "sum_insured": "4 lakh"})
+    out = step(bad, bad).run(q)
+    assert out.status == "failed" and "has no field 'tier_cities': its fields are plan, age, place, sum_insured" \
+        in out.reason
+
+
+@pytest.mark.parametrize("words, choice, status, tier", [
+    ("Delta Village", "Tier 2", "answered", 2),                 # the tier for every other place
+    ("Delta Village", "Rest of Country", "answered", 2),        # its printed words
+    ("Delta Village", "", "answered", 2),                       # no meaning given: every other place, as noted
+    ("Delta Village", "Tier 1", "failed", None),                # Tier 1 is only its listed places
+    ("Delta Village", "Tier 3", "failed", None),
+    ("Port Avalon", "Tier 2", "answered", 1),                   # a listed place: code decides, not the model
+])
+def test_a_tier_is_a_place_value_only_for_every_other_place(words, choice, status, tier):
+    q = f"Zenith Care premium for a 9-year-old in {words} with 4 lakh cover?"
+    r = request(lookup(plan=("Zenith Care", "Zenith Care"), age=("9-year-old", 9), place=(words, choice),
+                       sum_insured=("4 lakh", 400000)))
+    out = step(r, r).run(q)
+    assert out.status == status and (tier is None or out.rows[0][1] == tier)
+    if choice == "Tier 1":
+        assert "Tier 1 is only the places the policy lists for it (Avalon, North Region, Port Avalon, Beta City, " \
+               "Gamma Town) and 'Delta Village' is not one of them" in out.reason
+    if choice == "Tier 3":
+        assert "the policy has no Tier 3" in out.reason
+    if status == "answered" and words == "Delta Village":
+        assert out.notes == ["Delta Village is not one of the places the policy lists for Tier 1, so Tier 2 (Rest of "
+                             "Country) premiums apply."]
+
+
+def test_a_detail_the_model_marks_as_not_given_is_left_open():
+    q = "What will Zenith Care cost my father in Avalon with 4 lakh cover?"
+    r = request({"table": "premium_table", "plan": "Zenith Care", "plan_value": "Zenith Care", "age": "my father",
+                 "age_value": None, "place": "Avalon", "place_value": "Avalon", "sum_insured": "4 lakh",
+                 "sum_insured_value": 400000}, asks="cost")
+    out = step(r, "yes").run(q)
+    assert out.status == "ask" and out.clarification == "How old is the person to be insured?"
+
+
+def test_a_field_written_as_an_object_or_a_meaning_without_words_is_corrected():
+    q = "Zenith Care premium for a 9-year-old in Avalon with 4 lakh cover?"
+    nested = request({"table": "premium_table", "values": {"plan": {"stated": "Zenith Care", "value": "Zenith Care"}}})
+    assert "has no field 'values'" in step(nested, nested).run(q).reason
+    as_object = request({"table": "premium_table", "plan": {"stated": "Zenith Care", "value": "Zenith Care"}})
+    assert "give the question's words for it as text" in step(as_object, as_object).run(q).reason
+    no_words = request({"table": "premium_table", "plan": "Zenith Care", "age_value": 9})
+    assert 'age_value is given without "age"' in step(no_words, no_words).run(q).reason
+
+
+def test_one_lookup_with_a_combine_is_sent_back_and_the_old_combine_name_is_gone():
+    q = "What discount does a Rs 50,000 deductible give on Zenith Care with 8 lakh cover?"
+    r = request(lookup("deductible_discount_table", deductible=("Rs 50,000", 50000), plan=("Zenith Care", "Zenith Care"),
+                       sum_insured=("8 lakh", 800000)), asks="discount", combine="amount_after_percent")
+    fixed = dict(r, combine=None)
+    s = step(r, fixed)
+    out = s.run(q)
+    assert out.status == "answered" and len(out.attempts) == 2
+    assert 'combines the values of two lookups, but the request has 1' in out.attempts[0]["problem"]
+    assert '"combine": null' in out.attempts[0]["problem"]
+    old = dict(r, combine="after_discount")
+    assert "unknown combine 'after_discount'" in step(old, old).run(q).reason
+    listing = dict(r, combine="list")
+    assert "Several values from one lookup (an amount range) need no combine" in step(listing, listing).run(q).reason
+
+
+def test_the_prompt_says_a_missing_detail_is_still_a_lookup():
+    p = " ".join(build_request_prompt("Q?", "TABLES-TEXT").split())
+    assert "a premium question that gives no age is a lookup with no age field" in p
+    assert "Never reply text_only for either reason" in p
+    assert "even when it names something the tables may not hold (another plan, an amount that is not printed)" in p
+    assert '"amount_after_percent"' in p and "after_discount" not in p
+    assert "A question that asks for a percentage itself needs one lookup" in p

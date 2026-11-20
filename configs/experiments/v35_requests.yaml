@@ -8,3 +8,4 @@
 extends: v35.yaml
 sql:
   mode: request
+  request_template: request_v2

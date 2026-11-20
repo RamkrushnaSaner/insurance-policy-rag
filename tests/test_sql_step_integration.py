@@ -200,7 +200,10 @@ def test_a_table_request_is_resolved_and_run_as_the_sql_login(login_url):
     """sql.mode: request on Postgres: the places of each tier read from the database, the built query run as the
     login in group rag_sql, a place outside the list taken from the model's choice and stated in a note."""
     def lk(**values):
-        return {"table": "premium_table", "values": {k: {"stated": s, "value": v} for k, (s, v) in values.items()}}
+        out = {"table": "premium_table"}
+        for k, (words, value) in values.items():
+            out[k], out[f"{k}_value"] = words, value
+        return out
     replies = [
         {"action": "lookup", "asks": "premium", "lookups": [lk(plan=("Zenith Care Plus", "Zenith Care Plus"),
                                                                age=("31-year-old", 31), place=("Beta Town", "none"),

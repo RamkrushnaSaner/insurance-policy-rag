@@ -4,11 +4,14 @@ value, finds the rows and does the arithmetic. The model never writes SQL (``sql
 The split follows one rule: the model judges meaning, code checks what can be checked exactly, and the answer shows
 any assumption.
 
-- **The model** reads the question and replies with a request (``prompts.REQUEST_TEMPLATES``): the table, the words
-  that ask for the value (``asks``), and for each field the question states, the words it uses (``stated``) and the
-  value they mean (``value``): a listed plan or policy type, an age, an amount, or the listed place the question's
-  place lies in ("none" for a place the policy does not list). It can ask for two lookups and their difference, sum,
-  or an amount after a percentage; or list a column. Or it replies ``text_only``.
+- **The model** reads the question and replies with a request (``prompts.REQUEST_TEMPLATES``): the words that ask
+  for the value (``asks``) and one flat object per lookup: the table, and for each field the question states, the
+  question's words (``"<field>"``) and what they mean (``"<field>_value"``): a listed plan or policy type, an age, an
+  amount, or the listed place the question's place lies in (or the tier for every other place). It can ask for two
+  lookups and their difference, sum, or an amount with a percentage taken off; or list a field's values. Or it
+  replies ``text_only``. Its field names are the only names it sees: never the tables' column names.
+- **Reading the reply** (``read_object``): a reply whose closing brackets are out of order is read once they are put
+  in order, when every word of it survives; otherwise the problem says where the JSON breaks.
 - **Code** (``RequestResolver``) checks that every quoted phrase is in the question, and resolves each field against
   the schema card: a listed value, a printed age row, the column whose printed heading names an amount (or whose
   printed condition covers it), the column whose heading names a plan, the row of a printed amount. A value the
@@ -33,7 +36,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
 
 LAKH, CRORE = 100_000, 10_000_000
-COMBINES = ("difference", "sum", "after_discount")
+COMBINES = ("difference", "sum", "amount_after_percent")
 
 
 class NotInTables(Exception):
@@ -207,8 +210,16 @@ class TableModel:
     catch_all: Optional[int] = None                           # the tier for every place not listed
     tier_text: Dict[int, str] = field(default_factory=dict)   # tier -> its places as printed
 
-    def listable(self) -> List[str]:
-        return [c for c in self.key_columns] + (["tier_cities"] if self.tier_text else [])
+    def list_columns(self) -> Dict[str, str]:
+        """Fields whose listed values a lookup can list, with the column that holds them (the places of each tier
+        for place)."""
+        out = {}
+        for f in self.fields.values():
+            if f.kind == "place":
+                out[f.name] = "tier_cities" if self.tier_text else f.column
+            elif f.kind in ("choice", "age", "row_amount") and f.column:
+                out[f.name] = f.column
+        return out
 
 
 def _heading(c: dict) -> Optional[str]:
@@ -268,19 +279,25 @@ def table_models(card, db) -> Dict[str, TableModel]:
 
 
 def tables_text(models: Dict[str, TableModel], card) -> str:
-    """The TABLES part of the request prompt: what each table holds and the fields a question can state."""
+    """The TABLES part of the request prompt: what each table holds and the fields a question can state. Field names
+    only: the tables' column names are not shown (a request names fields, and code finds the columns)."""
     lines = []
     for m in models.values():
         lines.append(f"{m.name}: {m.description}")
+        lines.append("  fields: " + ", ".join(m.fields))
         for f in m.fields.values():
             if f.kind == "choice":
                 lines.append(f"  - {f.name}: one of " + ", ".join(f"'{v}'" for v in f.values))
             elif f.kind == "place":
-                tiers = "; ".join(f"Tier {t}: " + ", ".join(p for p, tt in m.places.items() if tt == t)
+                tiers = "; ".join(f"Tier {t} is only these places: " + ", ".join(p for p, tt in m.places.items() if tt == t)
                                   for t in sorted(set(m.places.values())))
-                lines.append(f"  - place: the listed place the question's place lies in ({tiers}), or \"none\" for a "
-                             f"place in none of them (Tier {m.catch_all}: {m.tier_text.get(m.catch_all, '')}). A tier "
-                             "stated as such (\"Tier 2\") is a place too.")
+                if m.catch_all is not None:
+                    lines.append(f"  - place: the place the question names. {tiers}; Tier {m.catch_all} is every "
+                                 f"other place ({m.tier_text.get(m.catch_all, '')}). place_value: the listed place the "
+                                 f"question's place lies in, or \"Tier {m.catch_all}\" when it lies in none of them.")
+                else:
+                    lines.append(f"  - place: the place the question names. {tiers}. place_value: the listed place "
+                                 "the question's place lies in, or \"none\" when it lies in none of them.")
             elif f.kind == "age":
                 lines.append(f"  - age: in whole years (printed ages: {_age_span(f.values)})")
             elif f.kind == "row_amount":
@@ -294,13 +311,10 @@ def tables_text(models: Dict[str, TableModel], card) -> str:
                     elif v.condition:
                         printed.append(f"{v.condition[0]} {amount_words(v.condition[1])}"
                                        + (f" (for {', '.join(v.plans)})" if v.plans else ""))
-                lines.append("  - sum_insured: an amount in rupees, or a range (printed: "
-                             + ", ".join(dict.fromkeys(printed)) + ")")
+                lines.append("  - sum_insured: the amount (or range) the question states, in its words; code "
+                             "finds the column for it (printed: " + ", ".join(dict.fromkeys(printed)) + ")")
             elif f.kind == "plan_column":
                 lines.append("  - plan: one of " + ", ".join(f"'{v}'" for v in f.values))
-        lister = [c for c in m.listable() if c not in ("tier",)]
-        if lister:
-            lines.append("  columns that can be listed: " + ", ".join(lister))
         notes = list(dict.fromkeys(n for p in card.tables[m.name].get("printed", []) for n in p.get("footnotes") or [] if n))
         for n in notes:
             lines.append(f"  footnote: {n}")
@@ -319,35 +333,140 @@ def _age_span(values: Sequence[str]) -> str:
 
 
 # ---------------------------------------------------------------------------------------------------- the reply
-def parse_request(reply: str) -> dict:
-    """The first JSON object with an "action" in the reply, checked for shape (not yet against the question)."""
+_CLOSER = {"{": "}", "[": "]"}
+_JSON_STRING = re.compile(r'"(?:[^"\\]|\\.)*"', re.S)
+
+
+def _rebalance(span: str) -> Tuple[str, List[str]]:
+    """``span`` (the reply from the object's first ``{``) with its closing brackets put in order. Only closing
+    brackets change: a closer whose opener is further down gets the missing closers before it; an object member that
+    starts with a bracket (``, {`` inside an object, where a key must come) gets the closers that end the objects
+    above the nearest list; a closer with no opener, or one that would end the object before the reply's last ``}``,
+    is dropped; openers still open at the end are closed. Returns the text and what was changed."""
+    out: List[str] = []
+    stack: List[str] = []
+    changes: List[str] = []
+    in_str = esc = False
+    prev = ""                                       # the last character outside spaces
+    last = span.rfind("}")
+    for i, ch in enumerate(span):
+        if in_str:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str, prev = False, ch
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            if prev == "," and stack and stack[-1] == "{" and "[" in stack:    # ", {" inside an object: it has ended
+                while stack[-1] != "[":
+                    closer = _CLOSER[stack.pop()]
+                    out.insert(len(out) - _trailing(out), closer)
+                    changes.append(f"added {closer} before character {i}")
+            stack.append(ch)
+        elif ch in "}]":
+            opener = "{" if ch == "}" else "["
+            depth = max((k for k, o in enumerate(stack) if o == opener), default=None)
+            if depth is None or (depth == 0 and i != last):          # no opener, or it would end the object early
+                changes.append(f"dropped {ch} at character {i}")
+                continue
+            while len(stack) - 1 > depth:
+                closer = _CLOSER[stack.pop()]
+                out.append(closer)
+                changes.append(f"added {closer} before character {i}")
+            stack.pop()
+        out.append(ch)
+        if not ch.isspace():
+            prev = ch
+    while stack:
+        closer = _CLOSER[stack.pop()]
+        out.append(closer)
+        changes.append(f"added {closer} at the end")
+    return "".join(out), changes
+
+
+def _trailing(out: List[str]) -> int:
+    """How many characters at the end of ``out`` are the last comma and the spaces around it."""
+    n = 0
+    while n < len(out) and out[-1 - n].isspace():
+        n += 1
+    n += 1                                          # the comma
+    while n < len(out) and out[-1 - n].isspace():
+        n += 1
+    return n
+
+
+def _strings(obj) -> int:
+    """How many strings (keys and values) a parsed object holds."""
+    if isinstance(obj, dict):
+        return sum(1 + _strings(v) for v in obj.values())
+    if isinstance(obj, list):
+        return sum(_strings(v) for v in obj)
+    return 1 if isinstance(obj, str) else 0
+
+
+def read_object(reply: str) -> Tuple[dict, List[str]]:
+    """The JSON object with an "action" in the reply, and the bracket changes made to read it (none when it reads as
+    written). A reply whose brackets are out of order is read once they are put in order, but only when every word
+    of it survives (the same strings, keys and values, in the object read). Otherwise SqlProblem says where the JSON
+    breaks."""
     from .sql_step import SqlProblem
     text = re.sub(r"<think>.*?</think>|</?think>", "", reply or "", flags=re.S)
     decoder = json.JSONDecoder(strict=False)
-    obj = None
-    for m in re.finditer(r"\{", text):
+    starts = [m.start() for m in re.finditer(r'\{\s*"action"', text)]
+    for s in starts or [m.start() for m in re.finditer(r"\{", text)]:
         try:
-            cand, _ = decoder.raw_decode(text, m.start())
+            obj, _ = decoder.raw_decode(text, s)
         except ValueError:
             continue
-        if isinstance(cand, dict) and "action" in cand:
-            obj = cand
-            break
-    if obj is None:
-        raise SqlProblem('the reply is not one JSON object with an "action"')
+        if isinstance(obj, dict) and "action" in obj:
+            return obj, []
+    if not starts:
+        raise SqlProblem('the reply has no JSON object starting {"action": ...}')
+    span = text[starts[0]:].rstrip()
+    fixed, changes = _rebalance(span)
+    try:
+        obj, _ = decoder.raw_decode(fixed)
+    except ValueError:
+        obj = None
+    if isinstance(obj, dict) and "action" in obj and _strings(obj) == len(_JSON_STRING.findall(span)):
+        return obj, changes
+    try:
+        decoder.raw_decode(span)
+        where = "the object ends before its last }"
+    except json.JSONDecodeError as e:
+        before, after = span[max(0, e.pos - 50):e.pos], span[e.pos:e.pos + 20]
+        where = f"{e.msg.lower()} at character {e.pos}, here: …{before} >>> {after}…"
+    raise SqlProblem(f"the reply is not valid JSON ({where}). Write each lookup as one flat object: "
+                     '{"table": ..., "<field>": ..., "<field>_value": ...}')
+
+
+def parse_request(reply: str) -> dict:
+    """The request in the reply, checked for shape (not yet against the question or the tables). ``repairs``: the
+    bracket changes made to read it."""
+    from .sql_step import SqlProblem
+    obj, repairs = read_object(reply)
     action = str(obj.get("action") or "").strip().lower()
     if action == "text_only":
-        return {"action": "text_only", "reason": str(obj.get("reason") or "").strip()}
+        return {"action": "text_only", "reason": str(obj.get("reason") or "").strip(), "repairs": repairs}
     if action != "lookup":
         raise SqlProblem(f'unknown action {action!r}: use "lookup" or "text_only"')
     lookups = obj.get("lookups")
+    if isinstance(lookups, dict):
+        lookups = [lookups]
     if not isinstance(lookups, list) or not lookups or not all(isinstance(x, dict) for x in lookups):
-        raise SqlProblem('a "lookup" reply needs "lookups": a list of at least one {"table": ..., "values": {...}}')
+        raise SqlProblem('a "lookup" reply needs "lookups": a list of at least one {"table": ..., "<field>": ...}')
     combine = obj.get("combine")
     combine = str(combine).strip().lower() if combine not in (None, "", "null", "none") else None
     if combine is not None and combine not in COMBINES:
-        raise SqlProblem(f'unknown combine {combine!r}: use null, ' + ", ".join(f'"{c}"' for c in COMBINES))
-    return {"action": "lookup", "asks": str(obj.get("asks") or "").strip(), "lookups": lookups, "combine": combine}
+        raise SqlProblem(f'unknown combine {combine!r}: use null, ' + ", ".join(f'"{c}"' for c in COMBINES)
+                         + ". Several values from one lookup (an amount range) need no combine")
+    return {"action": "lookup", "asks": str(obj.get("asks") or "").strip(), "lookups": lookups, "combine": combine,
+            "repairs": repairs}
 
 
 # ---------------------------------------------------------------------------------------------------- resolving
@@ -376,18 +495,25 @@ def _phrase_in(name: str, text: str) -> bool:
     return re.search(r"\b" + re.escape(norm(str(name).replace("_", " "))) + r"\b", norm(str(text).replace("_", " "))) is not None
 
 
-def _stated_words(lk: dict) -> str:
-    vals = lk.get("values") or {}
-    return " | ".join(str(v.get("stated") if isinstance(v, dict) else v) for v in vals.values() if v not in (None, "", {}))
+@dataclass
+class Lookup:
+    """One lookup of a request, read: the table, the field it lists, and for each field the question states, the
+    question's words and what they mean (None when the reply gives only the words)."""
+    table: str
+    stated: Dict[str, Tuple[str, object]] = field(default_factory=dict)
+    list_field: Optional[str] = None
 
 
-def _in_stated_range(amount: int, lookups: list) -> bool:
+def _stated_words(lk: Lookup) -> str:
+    return " | ".join(words for words, _ in lk.stated.values())
+
+
+def _in_stated_range(amount: int, lookups: List[Lookup]) -> bool:
     for lk in lookups:
-        for v in (lk.get("values") or {}).values():
-            if isinstance(v, dict) and v.get("stated"):
-                low, high = range_of(str(v["stated"]))
-                if low != high and (low is None or amount >= low) and (high is None or amount <= high):
-                    return True
+        for words, _ in lk.stated.values():
+            low, high = range_of(words)
+            if low != high and (low is None or amount >= low) and (high is None or amount <= high):
+                return True
     return False
 
 
@@ -420,30 +546,80 @@ class RequestResolver:
             raise SqlProblem('"asks" must quote the words of the question that ask for the value')
         if not in_question(asks, question):
             raise SqlProblem(f'"asks" ({asks!r}) is not in the question: copy the words exactly')
-        out = [self._lookup(lk, question) for lk in request["lookups"]]
-        self._accounted_for(request, question)
+        lookups = [self.read_lookup(lk, question) for lk in request["lookups"]]
+        out = [self._lookup(lk) for lk in lookups]
+        self._accounted_for(lookups, question)
         combine = request.get("combine")
         if combine and len(out) != 2:
-            raise SqlProblem(f'"{combine}" needs exactly two lookups (found {len(out)})')
+            raise SqlProblem(f'"{combine}" combines the values of two lookups, but the request has {len(out)}. A '
+                             'question that asks for the value of one lookup needs "combine": null')
         return out
 
-    def _accounted_for(self, request: dict, question: str):
+    def read_lookup(self, lk: dict, question: str) -> Lookup:
+        """One lookup of the reply, read against its table's fields: "table", optionally "list" (a field), and for
+        each field the question states, "<field>" (the question's words) and optionally "<field>_value" (what they
+        mean). A field whose "_value" is null is taken as not stated. The words must be in the question."""
+        from .sql_step import SqlProblem
+        table = str(lk.get("table") or "").strip()
+        if table.startswith("policy_sql."):
+            table = table.split(".", 1)[1]
+        if table not in self.models:
+            raise SqlProblem(f"unknown table {table!r}: use one of {', '.join(self.models)}")
+        m = self.models[table]
+        out = Lookup(table)
+        words: Dict[str, object] = {}
+        values: Dict[str, object] = {}
+        unknown = []
+        for key, v in lk.items():
+            if key in ("table", "list"):
+                continue
+            if key in m.fields:
+                words[key] = v
+            elif key.endswith("_value") and key[:-len("_value")] in m.fields:
+                values[key[:-len("_value")]] = v
+            else:
+                unknown.append(key)
+        if unknown:
+            raise SqlProblem(f"{table} has no field {', '.join(map(repr, unknown))}: its fields are "
+                             + ", ".join(m.fields))
+        for name in m.fields:
+            if name in values and values[name] is None:          # "<field>_value": null: not stated
+                continue
+            w = words.get(name)
+            if isinstance(w, (dict, list)):
+                raise SqlProblem(f'{name}: give the question\'s words for it as text, and what they mean in '
+                                 f'"{name}_value"')
+            w = "" if w is None else str(w).strip()
+            if not w:
+                if values.get(name) not in (None, ""):
+                    raise SqlProblem(f'{name}_value is given without "{name}": give the question\'s words for it')
+                continue
+            if not in_question(w, question):
+                raise SqlProblem(f'{name}: {w!r} is not in the question: copy the words exactly')
+            out.stated[name] = (w, values.get(name))
+        lst = lk.get("list")
+        if lst not in (None, "", False):
+            listable = m.list_columns()
+            if str(lst) not in listable:
+                raise SqlProblem(f"{table}: {lst!r} cannot be listed; list one of " + ", ".join(listable))
+            out.list_field = str(lst)
+        return out
+
+    def _accounted_for(self, lookups: List[Lookup], question: str):
         """Every value the question states that code can see must be in the request: a plan (or policy type) name the
         card knows, a place the policy lists, an amount written with lakh, crore or a rupee mark. A request that
         leaves one out would read rows for a case the question did not ask about (a plan the tables do not hold read
         as the plans they do hold)."""
         from .sql_step import SqlProblem
         missing = []
-        lookups = request["lookups"]
         stated_all = " | ".join(_stated_words(lk) for lk in lookups)
         for amount in marked_amounts(question):
             if amount not in amounts_in(stated_all, bare_from=1) and not _in_stated_range(amount, lookups):
                 missing.append(f"the amount {amount_words(amount)} (state it in the field it belongs to)")
         for lk in lookups:
-            m = self.models[str(lk.get("table")).split(".")[-1]]
-            stated = lk.get("values") or {}
+            m = self.models[lk.table]
             for f in m.fields.values():
-                if f.name in stated and stated[f.name] not in (None, "", {}):
+                if f.name in lk.stated:
                     continue
                 if f.kind in ("choice", "plan_column"):
                     names = list(f.values) + ([n for n in self.plan_names] if f.name == "plan" else [])
@@ -461,46 +637,19 @@ class RequestResolver:
             raise SqlProblem("the question states " + "; ".join(missing) + ". Give every value the question states, "
                              "even one the tables may not hold: code decides that")
 
-    def _lookup(self, lk: dict, question: str) -> Resolved:
-        from .sql_step import SqlProblem
-        table = str(lk.get("table") or "").strip()
-        if table.startswith("policy_sql."):
-            table = table.split(".", 1)[1]
-        if table not in self.models:
-            raise SqlProblem(f"unknown table {table!r}: use one of {', '.join(self.models)}")
-        m = self.models[table]
-        values = lk.get("values") or {}
-        if not isinstance(values, dict):
-            raise SqlProblem('"values" must be an object of fields')
-        unknown = [k for k in values if k not in m.fields]
-        if unknown:
-            raise SqlProblem(f"{table} has no field {', '.join(map(repr, unknown))}: use " + ", ".join(m.fields))
-        r = Resolved(table)
-        stated = {}
-        for name, v in values.items():
-            if v in (None, "", {}):
-                continue
-            if not isinstance(v, dict):
-                v = {"stated": str(v), "value": v}
-            words = str(v.get("stated") or "").strip()
-            if not words:
-                raise SqlProblem(f'{name}: give "stated", the words of the question for it')
-            if not in_question(words, question):
-                raise SqlProblem(f'{name}: {words!r} is not in the question: copy the words exactly')
-            stated[name] = (words, v.get("value"))
+    def _lookup(self, lk: Lookup) -> Resolved:
+        m = self.models[lk.table]
+        r = Resolved(lk.table)
         for name, f in m.fields.items():
-            if name not in stated:
+            if name not in lk.stated:
                 if f.kind in ("choice", "place", "age", "row_amount"):
                     r.open_fields.append(name)
                 continue
-            words, value = stated[name]
+            words, value = lk.stated[name]
             getattr(self, "_" + f.kind)(m, f, words, value, r)
         r.value_columns = self._value_columns(m, r)
-        lst = lk.get("list")
-        if lst:
-            if lst not in m.listable():
-                raise SqlProblem(f"{table}: {lst!r} cannot be listed; use one of {', '.join(m.listable())}")
-            r.list_column, r.value_columns = lst, []
+        if lk.list_field:
+            r.list_column, r.value_columns = m.list_columns()[lk.list_field], []
         return r
 
     # each field kind
@@ -533,6 +682,10 @@ class RequestResolver:
                           + " and ".join(f"'{v}'" for v in f.values) + ".")
 
     def _place(self, m, f, words, value, r):
+        """The tier for the question's place. Code first: a tier the question states ("Tier 2"), a place the policy
+        lists, or the policy's words for every other place. Otherwise the model's value: a listed place the question's
+        place lies in, or the tier for every other place ("Tier 2", "none"). A tier that is only its listed places
+        cannot be chosen for an unlisted place without naming the listed place it lies in."""
         from .sql_step import SqlProblem
         t = norm(words)
         tier = re.search(r"\btier\s*-?\s*(\d+)\b", t)
@@ -548,8 +701,22 @@ class RequestResolver:
             r.filters["tier"] = m.places[p]
             r.notes.append(f"{words} is listed by the policy in Tier {m.places[p]}, so Tier {m.places[p]} premiums apply.")
             return
-        choice = str(value or "").strip()
-        if choice.lower() in ("none", "no", "other", "") or (m.catch_all is not None and _CATCH_ALL.search(choice)):
+        choice = str(value if value is not None else "").strip()
+        named = [p for p in m.places if norm(p) == norm(choice)]
+        if named:
+            p = named[0]
+            r.filters["tier"] = m.places[p]
+            r.notes.append(f"{words} is taken to be in {p}, which the policy lists in Tier {m.places[p]}, so Tier "
+                           f"{m.places[p]} premiums apply.")
+            return
+        chosen = re.search(r"\btier\s*-?\s*(\d+)\b", norm(choice))
+        chosen_tier = int(chosen.group(1)) if chosen else next(
+            (n for n, text in m.tier_text.items() if norm(text) == norm(choice)), None)
+        other = choice.lower() in ("none", "no", "other", "") or bool(_CATCH_ALL.search(choice))
+        if chosen_tier is not None and chosen_tier not in m.tier_text:
+            raise SqlProblem(f"place: the policy has no Tier {chosen_tier}: its tiers are "
+                             + ", ".join(f"Tier {n}" for n in sorted(m.tier_text)))
+        if other or (chosen_tier is not None and chosen_tier == m.catch_all):
             if m.catch_all is None:
                 raise NotInTables(f"The {_table_words(m)} lists no tier for {words!r}.")
             r.filters["tier"] = m.catch_all
@@ -557,14 +724,15 @@ class RequestResolver:
                            + ", ".join(f"Tier {t}" for t in sorted(set(m.places.values())))
                            + f", so Tier {m.catch_all} ({m.tier_text.get(m.catch_all, '')}) premiums apply.")
             return
-        named = [p for p in m.places if norm(p) == norm(choice)]
-        if not named:
-            raise SqlProblem(f'place: {choice!r} is not a listed place: give the listed place {words!r} lies in, or '
-                             '"none"')
-        p = named[0]
-        r.filters["tier"] = m.places[p]
-        r.notes.append(f"{words} is taken to be in {p}, which the policy lists in Tier {m.places[p]}, so Tier "
-                       f"{m.places[p]} premiums apply.")
+        every_other = (f', or "Tier {m.catch_all}" when it lies in none of them' if m.catch_all is not None
+                       else ', or "none"')
+        if chosen_tier is not None:
+            raise SqlProblem(f"place: Tier {chosen_tier} is only the places the policy lists for it ("
+                             + ", ".join(p for p, n in m.places.items() if n == chosen_tier)
+                             + f") and {words!r} is not one of them: give the listed place {words!r} lies in"
+                             + every_other)
+        raise SqlProblem(f"place: {choice!r} is not a listed place: give the listed place {words!r} lies in"
+                         + every_other)
 
     def _age(self, m, f, words, value, r):
         from .sql_step import SqlProblem
@@ -681,9 +849,13 @@ def ask_text(m: TableModel, field_name: str) -> str:
 
 
 def confirm_prompt(question: str, descriptions: Sequence[str]) -> str:
+    """The check before asking for a missing detail. A question that leaves out a detail the table needs (an age for
+    a premium) still asks for a value of this table: the check is only whether it asks for that kind of value."""
     tables = "\n".join(f"- {d}" for d in descriptions)
     return (f"A user of a health insurance policy asked:\n{question.strip()}\n\nThe policy has this table:\n{tables}\n\n"
-            "Is the user asking for a value from this table? Reply with one word: yes or no.")
+            "The question may leave out a detail the table needs, such as the age for a premium; that does not "
+            "matter here, because the user will be asked for it. Does the question ask for a value of the kind this "
+            "table holds? Reply with one word: yes or no.")
 
 
 def parse_yes_no(reply: str) -> Optional[bool]:
