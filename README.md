@@ -164,7 +164,7 @@ Both can rewrite a follow-up question from the conversation (memory, off by defa
 | Memory (off by default) | In a conversation, rewrites a follow-up into a complete question from the last 3 turns (one extra model call, thinking on). The answer prompt never contains the conversation. Evaluated three times and not adopted ([evaluation](docs/evaluation.md#conversation-memory)) | [`memory.py`](src/policy_rag/memory.py) |
 | Search | Dense and BM25 legs, fused by reciprocal rank. Dense: [Qwen3-Embedding-0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) vectors read from Postgres (v3.4) or [BGE-small](https://huggingface.co/BAAI/bge-small-en-v1.5) with FAISS (baseline) | [`retrieval.py`](src/policy_rag/retrieval.py), [`database.py`](src/policy_rag/database.py) |
 | Table route (v3.4) | Patterns pick the kind of table question, fields are checked against the tables, and parameterised SQL returns values traced to their printed cells | [`tables.py`](src/policy_rag/tables.py) |
-| SQL step (v3.5, in progress, off) | For premium, check-up and deductible questions the answer model writes one SELECT over the numeric tables; it is checked (tables, functions, no constants, row limit) and run read-only, and the rows reach the answer under their printed headings. In request mode the model only states a request and code checks every value and builds the query | [`sql_step.py`](src/policy_rag/sql_step.py), [`table_requests.py`](src/policy_rag/table_requests.py) |
+| SQL step (v3.5, in progress, off) | For premium, check-up and deductible questions the answer model writes one SELECT over the numeric tables; it is checked (tables, functions, no constants, row limit) and run read-only, and the rows reach the answer under their printed headings | [`sql_step.py`](src/policy_rag/sql_step.py) |
 | Reranking | A cross-encoder ([bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3)) scores every candidate | [`reranking.py`](src/policy_rag/reranking.py) |
 | Context | Pins sections whose heading the question names, adds dependent neighbours ("the list below"), keeps a token budget | [`context.py`](src/policy_rag/context.py) |
 | Gate | Refuses without calling the model when nothing relevant was found | [`pipeline.py`](src/policy_rag/pipeline.py) |
@@ -272,7 +272,6 @@ insurance-policy-rag/
 │   ├── database.py        read-only Postgres session, stored-vector (pgvector) search
 │   ├── tables.py          the table route (v3.4): typed tables, fixed SQL, checks, traced values
 │   ├── sql_step.py        the SQL step (v3.5, in progress): schema card, model-written SQL, checks, read-only runs
-│   ├── table_requests.py  the SQL step's request mode: the model states a request, code checks it and builds the query
 │   ├── registry.py        component types selected by name in the config
 │   ├── cli.py             the policy-rag command
 │   ├── ingest/            PDF -> chunk file for the my:Optima Secure layout

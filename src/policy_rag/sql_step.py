@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from .prompts import build_request_prompt, build_sql_prompt
+from .prompts import build_sql_prompt
 
 SCHEMA = "policy_sql"
 ACTIONS = ("query", "ask", "not_in_tables", "text_only")
@@ -704,8 +704,6 @@ class SqlOutcome:
     clarification: str = ""                                   # status "ask": the question for the user
     reason: str = ""                                          # the model's reason (not_in_tables, text_only), or why it failed
     attempts: List[dict] = field(default_factory=list)
-    request: dict = field(default_factory=dict)              # sql.mode request: the accepted request
-    notes: List[str] = field(default_factory=list)           # what code assumed (the tier used for a place, and why)
 
     @property
     def answered(self) -> bool:
@@ -735,7 +733,6 @@ class SqlOutcome:
         for line in dict.fromkeys(p["introduced_by"] for p in self.printed if p["introduced_by"]):
             lines.append(f"Introduced by: {line}")
         lines.append(f"Query: {self.sql}")
-        lines += [f"Note: {n}" for n in self.notes]
         lines.append(f"Rows ({len(self.rows)}):")
         lines += self.row_lines()
         if self.derived:
@@ -746,11 +743,7 @@ class SqlOutcome:
         return "\n".join(lines)
 
     def row_lines(self) -> List[str]:
-        """One line per row. Rows of a request's lookups from different tables leave the other tables' columns
-        empty: those cells are not shown."""
-        skip = bool(self.request)
-        return ["- " + "; ".join(f"{label}: {self.value_text(label, v)}" for label, v in zip(self.labels, row)
-                                 if not (skip and v is None))
+        return ["- " + "; ".join(f"{label}: {self.value_text(label, v)}" for label, v in zip(self.labels, row))
                 for row in self.rows]
 
     def plain_text(self) -> str:
@@ -788,7 +781,7 @@ class SqlOutcome:
                 "derived": [{"kind": d["kind"], "value": plain(d["value"]), "text": d["text"]} for d in self.derived],
                 "clarification": self.clarification,
                 "reason": self.reason, "linked_text": [l.get("label") for l in self.linked_text],
-                "attempts": self.attempts, "request": self.request, "notes": self.notes, "block": self.block()}
+                "attempts": self.attempts, "block": self.block()}
 
 
 # ---------------------------------------------------------------------------------------------------- the step
@@ -807,20 +800,12 @@ class SqlStep:
                             getattr(cfg, "gate_similarity", None))
         self.validator = SqlValidator(list(self.card.tables), cfg.max_rows, text_columns=self.card.text_columns())
         self.runner = SqlRunner(db)
-        self.models = self.resolver = None
-        if getattr(cfg, "mode", "sql") == "request":
-            from .table_requests import RequestResolver, table_models, tables_text
-            self.models = table_models(self.card, db)
-            self.resolver = RequestResolver(self.models)
-            self.tables_text = tables_text(self.models, self.card)
 
     def run(self, question: str) -> SqlOutcome:
         kinds, sim = self.gate.check(question)
         out = SqlOutcome(question=question, kinds=kinds, similarity=sim)
         if not out.kinds:
             return out
-        if self.resolver is not None:
-            return self._run_request(question, out)
         failed: List[Tuple[str, str]] = []
         last: Optional[SqlProblem] = None
         for n in range(1 + self.cfg.max_retries):
@@ -870,126 +855,6 @@ class SqlStep:
         out.status = "no_rows" if last is not None and last.no_rows else "failed"
         out.reason = str(last) if last is not None else ""
         return out
-
-    # ------------------------------------------------------------------ sql.mode: request (table_requests.py)
-    def _run_request(self, question: str, out: SqlOutcome) -> SqlOutcome:
-        """The model states a request; code checks it, decides "not in the tables" or "ask", builds and runs the
-        queries and does the arithmetic. One corrected request after one that fails a check."""
-        from .table_requests import NotInTables, parse_request
-        failed: List[Tuple[str, str]] = []
-        last: Optional[SqlProblem] = None
-        for n in range(1 + self.cfg.request_retries):
-            prompt = build_request_prompt(question, self.tables_text, self.cfg.request_template, failed)
-            rec = self.answerer.answer(prompt, label="sql", max_new_tokens=self.cfg.max_new_tokens)
-            reply = rec.get("answer") or ""
-            att = {"attempt": n + 1, "key": rec.get("key"), "reply": reply, "from_cache": rec.get("from_cache"),
-                   "think_tokens": rec.get("think_tokens"), "answer_tokens": rec.get("answer_tokens"),
-                   "seconds": rec.get("seconds")}
-            out.attempts.append(att)
-            try:
-                req = parse_request(reply)
-                att["action"] = req["action"]
-                if req.get("repairs"):
-                    att["repairs"] = req["repairs"]
-                if req["action"] == "text_only":
-                    out.status, out.reason = "text_only", req["reason"]
-                    return out
-                resolved = self.resolver.resolve(req, question)
-                out.request = req
-                return self._run_lookups(question, out, req, resolved, att)
-            except NotInTables as e:
-                att["not_in_tables"] = str(e)
-                out.status, out.reason, out.request = "not_in_tables", str(e), req
-                return out
-            except SqlProblem as e:
-                att["problem"] = str(e)
-                failed.append((reply, str(e)))
-                last = e
-            except DatabaseUnavailable as e:
-                att["problem"] = str(e)
-                out.status, out.reason = "unavailable", str(e)
-                return out
-        out.status, out.reason = "failed", str(last) if last is not None else ""
-        return out
-
-    def _run_lookups(self, question: str, out: SqlOutcome, req: dict, resolved: list, att: dict) -> SqlOutcome:
-        from .table_requests import build_count, build_select, combine_values
-        results = []
-        for r in resolved:
-            m = self.models[r.table]
-            limit = self.cfg.max_rows if r.list_column else self.cfg.ask_rows + 1
-            checked = self.validator.check(build_select(m, r, limit))      # the built query, checked as before
-            columns, rows = self.runner.run(checked.sql)
-            results.append((r, checked, list(columns), [tuple(x) for x in rows]))
-        att["sql"] = [c.sql for _, c, _, _ in results]
-        for r, checked, columns, rows in results:
-            if r.list_column or len(rows) <= self.cfg.ask_rows:
-                continue
-            m = self.models[r.table]
-            counts = self.runner.run(self.validator.check(build_count(m, r)).sql)[1][0]
-            spread = {f: int(c) for f, c in zip(r.open_fields, counts[1:]) if int(c) > 1}
-            if not spread:
-                raise SqlProblem(f"the lookup on {r.table} matches {counts[0]} rows: state the detail that picks "
-                                 "the row")
-            field_ = max(spread, key=spread.get)
-            att["too_many_rows"] = {"rows": int(counts[0]), "open": spread}
-            if self.cfg.confirm_ask and self._confirm(question, r.table, out) is False:
-                out.status = "text_only"
-                out.reason = (f"{r.table}: {counts[0]} rows match and the {field_} is not stated, but the check before "
-                              "asking found that the question does not ask for a value of this table")
-                return out
-            from .table_requests import ask_text
-            out.status, out.clarification = "ask", ask_text(m, field_)
-            out.reason = f"{r.table}: {counts[0]} rows match; the {field_} is not stated"
-            return out
-        if any(not rows for _, _, _, rows in results):
-            out.status, out.reason = "no_rows", "a checked lookup returned no rows"
-            return out
-        combine = req.get("combine")
-        parts = []
-        if combine:
-            for r, checked, columns, rows in results:
-                if len(rows) != 1 or len(r.value_columns) != 1:
-                    raise SqlProblem(f'"{combine}": each lookup must give one value, but the lookup on {r.table} gives '
-                                     f"{len(rows)} row(s) of {len(r.value_columns)} value(s): state the details that "
-                                     "pick one value, or use no combine")
-                col = r.value_columns[0]
-                row = rows[0]
-                label = self.card.label([r.table], col)
-                ident = ", ".join(f"{c} {row[columns.index(c)]}" for c in self.models[r.table].key_columns
-                                  if c in columns)
-                parts.append((f"{ident}: {label}" if ident else label, Decimal(str(row[columns.index(col)])),
-                              column_kind(label)))
-            if combine == "amount_after_percent" and sorted(k or "" for _, _, k in parts) != ["amount", "percent"]:
-                raise SqlProblem('"amount_after_percent" needs one lookup of an amount and one of a percentage')
-        tables = list(dict.fromkeys(r.table for r, _, _, _ in results))
-        cols = list(dict.fromkeys(c for _, _, columns, _ in results for c in columns))
-        rows_out = []
-        for _, _, columns, rows in results:
-            for row in rows:
-                cell = dict(zip(columns, row))
-                rows_out.append(tuple(cell.get(c) for c in cols))
-        out.status, out.sql, out.tables = "answered", ";\n".join(c.sql for _, c, _, _ in results), tables
-        out.columns, out.rows = cols, rows_out
-        out.labels = [self.card.label(tables, c) for c in cols]
-        out.sources = [self.card.table_of(c, tables) for c in cols]
-        out.derived = [combine_values(combine, parts)] if combine else []      # only the arithmetic the request asks
-        out.printed = self.card.printed(tables)
-        out.linked_text = self.card.linked_text(tables)
-        out.notes = list(dict.fromkeys(n for r, _, _, _ in results for n in r.notes))
-        return out
-
-    def _confirm(self, question: str, table: str, out: SqlOutcome) -> Optional[bool]:
-        """One short call before asking: does the question ask for a value of this table? None: no clear reply."""
-        from .table_requests import confirm_prompt, parse_yes_no
-        desc = self.card.tables[table].get("description") or table
-        rec = self.answerer.answer(confirm_prompt(question, [desc]), label="sql",
-                                   max_new_tokens=self.cfg.confirm_max_new_tokens)
-        verdict = parse_yes_no(rec.get("answer") or "")
-        out.attempts.append({"confirm": True, "key": rec.get("key"), "reply": rec.get("answer"), "yes": verdict,
-                             "from_cache": rec.get("from_cache"), "think_tokens": rec.get("think_tokens"),
-                             "answer_tokens": rec.get("answer_tokens"), "seconds": rec.get("seconds")})
-        return verdict
 
     def _subtractions(self, checked: CheckedSql) -> Dict[str, tuple]:
         """The query's own subtractions, each side in words: its printed heading and the condition that picks its

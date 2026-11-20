@@ -138,45 +138,20 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   - In 11 of the 14 missing-age questions the model replied `text_only` itself, and the check before asking said "no"
     on 2 of the 3 it saw.
   The form and its checks failed, not the model's reading of the questions; the corrections come as a new pull request.
+- **Reverted again: corrected table requests** (pull request #15, `sql.mode: request`, off by default, so no
+  configured run changed). Better than #13 on the same 100-question SQL set, but it missed every success criterion:
+  - 2 critical: two NCR places got Tier 2 premiums. The model gave the place without its meaning, and code
+    took a place with no meaning as "every other place". That default was code's mistake, not the model's.
+  - 11 of the 33 executed lookups failed. 6 of the 14 missing-age questions replied `text_only` instead of asking.
+  - Median 51.7 s a question against 44 s. A question with one reply took 43.5 s; 23 of 88 needed a second.
+  - On the development set, G09 (a plan comparison) was asked for an age: the check before asking said yes.
 
-- **Table requests** (Critical 3 of the correction plan; `sql.mode: request`, off unless a config asks for it,
-  [`table_requests.py`](src/policy_rag/table_requests.py), [`v35_requests.yaml`](configs/experiments/v35_requests.yaml)):
-  the model no longer writes SQL. It states the table, the words that ask for the value, and for each field the
-  question states its words and meaning; code checks every quoted phrase against the question, resolves every value
-  against the schema card (printed rows and columns, the places of each tier, the conditions and plans in printed
-  headings), decides "not in the tables" and "ask", builds the query from the card's own values and does only the
-  arithmetic the request asks for. A place the policy lists is resolved by code; any other place takes the model's
-  choice among the listed places, and the answer says which tier was used and why. Before asking for a missing
-  detail, one short call checks that the question asks for a value of that table. Prompt `request_v1`; settings
-  `sql.mode`, `request_template`, `request_retries`, `ask_rows`, `confirm_ask`, `confirm_max_new_tokens`. Every value
-  code can see in the question (a plan name the card knows, a listed place, an amount with lakh, crore or a rupee
-  mark) must be in the request. Run records keep the request, its notes and the checks before asking. 33 tests (an
-  invented card on SQLite, and one on Postgres at migration 003).
+  What worked: no broken JSON (0 of 111 replies) and no column names. Lookups passed 23 of 36 (14 before), missing-age
+  questions asked 8 of 14 (1 before), and the median fell from 93 s.
 
-- **Table requests, corrected** (the fixes for the reverted version above; still `sql.mode: request`, off unless a
-  config asks for it). Each fix covers a kind of reply, not a question:
-  - **A flat request** (prompt `request_v2`, now the default `request_template`; `request_v1` is removed, its form is
-    no longer read): one flat object per lookup, `{"table": ..., "<field>": "<the question's words>",
-    "<field>_value": <what they mean>}`, two levels of brackets instead of five. A field whose `_value` is null is
-    taken as not stated.
-  - **Brackets put in order** (`table_requests.read_object`): a reply whose closing brackets are out of order is read
-    once they are put in order (a missing closer added, a stray one dropped), only when every string of the reply
-    survives; the run record keeps what was changed (`repairs`). Otherwise the correction message says where the JSON
-    breaks, with the text around it.
-  - **Fields, not columns**: the prompt shows each table's field names and never its column names; `list` takes a
-    field (`"list": "place"` lists the places of a tier). A place's `_value` may be the tier for every other place
-    ("Tier 2"); a tier that is only its listed places is refused for an unlisted place, with the places it holds, so
-    a general idea of which cities are "Tier 1" never picks a premium.
-  - **A missing detail is still a lookup**: the prompt says plainly that a premium question with no age is a lookup
-    with no age field (and that a value the tables may not hold is still given: code decides). The check before
-    asking says a missing detail does not matter to its yes or no.
-  - **`after_discount` is now `amount_after_percent`**, described as an amount with a percentage taken off; a combine
-    with one lookup is sent back saying that one value needs `"combine": null`.
-
-  Replaying the 100 recorded replies of the reverted run through this code (their old wording turned into the new
-  form, so it estimates the code, not the new prompt): 48 of the 51 broken replies are read, 71 of 100 questions pass
-  (48 before), no critical errors, and model calls fall from 139 to 108. The missing-age questions cannot be
-  replayed: the model's replies to the new prompt are needed. 17 more tests.
+  What failed: none of the 89 lookup replies used the `"<field>_value"` key. The model wrote one key per field, and 37
+  times put the table's value there ("Tier 2", "<= 20 lakh", ">=90*", "1 crore" for a range) where the question's
+  words were asked, so code refused it.
 
 ## 3.4.1 (15 November 2026)
 
