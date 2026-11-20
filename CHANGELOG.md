@@ -126,6 +126,18 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     question (G09, M02).
   - The model's choice to ask cannot tell a figure question missing a detail from a benefit question. Critical 3 (code
     checks on each table request) is to make that distinction before the reply to a missing detail is changed again.
+- **Reverted: table requests** (Critical 3, pull request #13, `sql.mode: request`; off by default, so no configured run
+  changed). It missed its success criteria on the 100-question SQL set: lookups 14 of 36, missing-age questions asked
+  1 of 14, median 93 s a question, though no wrong figure reached an answer (0 critical). Code refused 84 of the model's
+  replies:
+  - 51 were broken JSON: the request nests five levels and the model closed the lookup one brace short; the
+    correction message did not say where, so the second reply repeated it. Re-balancing the brackets alone makes 48 of
+    them valid, and in the 35 premium requests among them the plan, age, tier and amount were all right.
+  - 20 named a field by its column (`tier_cities`, `deductible_inr`), which the prompt listed beside the fields; 4 gave
+    a place as its tier ("Tier 2"), which code refused; 4 used `after_discount` for a plain discount question.
+  - In 11 of the 14 missing-age questions the model replied `text_only` itself, and the check before asking said "no"
+    on 2 of the 3 it saw.
+  The form and its checks failed, not the model's reading of the questions; the corrections come as a new pull request.
 
 ## 3.4.1 (15 November 2026)
 
