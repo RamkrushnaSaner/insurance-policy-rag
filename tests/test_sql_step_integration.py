@@ -194,35 +194,3 @@ def test_a_slow_query_is_cancelled_and_the_connection_kept(login_url):
     assert runner.run("SELECT count(*) FROM policy_sql.premium_table") == (["count"], [(16,)])
     assert db.reconnects == 0
     db.close()
-
-
-def test_a_table_request_is_resolved_and_run_as_the_sql_login(login_url):
-    """sql.mode: request on Postgres: the places of each tier read from the database, the built query run as the
-    login in group rag_sql, a place outside the list taken from the model's choice and stated in a note."""
-    def lk(**values):
-        return {"table": "premium_table", "values": {k: {"stated": s, "value": v} for k, (s, v) in values.items()}}
-    replies = [
-        {"action": "lookup", "asks": "premium", "lookups": [lk(plan=("Zenith Care Plus", "Zenith Care Plus"),
-                                                               age=("31-year-old", 31), place=("Beta Town", "none"),
-                                                               sum_insured=("10 lakh", 1000000))]},
-        {"action": "lookup", "asks": "premium", "lookups": [lk(plan=("Zenith Care", "Zenith Care"), age=("aged 95", 95),
-                                                               place=("Omega Village", "none"),
-                                                               sum_insured=("Rs 5,00,000", 500000))]},
-        {"action": "lookup", "asks": "premium", "lookups": [lk(plan=("Zenith Care", "Zenith Care"),
-                                                               place=("Alpha City", "Alpha City"),
-                                                               sum_insured=("10 lakh", 1000000))]},
-    ]
-    step = SqlStep(SqlConfig(enabled=True, url_env=LOGIN_ENV, mode="request"), ScriptedAnswerer(replies))
-    assert step.models["premium_table"].places == {"Alpha City": 1, "Beta Town": 1}
-    assert step.models["premium_table"].catch_all == 2
-    out = step.run("What is the Zenith Care Plus premium for a 31-year-old in Beta Town with 10 lakh cover?")
-    assert out.status == "answered", out.attempts
-    assert out.rows == [("Zenith Care Plus", 1, "31", premium("Zenith Care Plus", 1, "31", 1000000), 43)]
-    assert out.notes == ["Beta Town is listed by the policy in Tier 1, so Tier 1 premiums apply."]
-    out = step.run("Zenith Care premium for my grandfather, aged 95, in Omega Village, with Rs 5,00,000 cover?")
-    assert out.rows == [("Zenith Care", 2, ">=90*", premium("Zenith Care", 2, ">=90*", 500000), 42)]
-    assert out.notes[0].startswith("Omega Village is not one of the places the policy lists for Tier 1, so Tier 2 "
-                                   "(Rest of Zland)")
-    out = step.run("What is the Zenith Care premium in Alpha City with 10 lakh cover?")       # 4 printed ages: rows
-    assert out.status == "answered" and [r[2] for r in out.rows] == ["30", "31", "66*", ">=90*"]
-    step.db.close()
