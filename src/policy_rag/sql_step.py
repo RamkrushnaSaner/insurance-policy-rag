@@ -861,7 +861,13 @@ class SqlStep:
                     raise SqlProblem("the query ran but returned no rows. If a value in the query is not written "
                                      "exactly as listed, correct it; if the tables hold no such row, reply "
                                      "not_in_tables", no_rows=True)
-                notes = self.question_check.check(question, checked) if self.question_check is not None else []
+                notes = []
+                if self.question_check is not None:
+                    try:
+                        notes = self.question_check.check(question, checked)
+                    except (SqlProblem, NotInTables) as e:
+                        att["question_check"] = str(e)                     # recorded: what the check refused
+                        raise
             except NotInTables as e:
                 att["not_in_tables"] = str(e)
                 out.status, out.reason = "not_in_tables", str(e)

@@ -129,6 +129,7 @@ def test_the_evaluation_record_and_scoring(tmp_path):
             "facts": [["9,100"]]}
     rec = build_record(item, st, rag.context, rag.pipeline.gate)
     assert rec["sql"]["status"] == "answered" and rec["sql"]["rows"] == 1 and rec["context"].startswith("[Policy tables")
+    assert rec["sql"]["notes"] == [] and rec["sql"]["question_check"] == []        # the question check's record
     v = score_answer(item, "How old is the person?", "", "", gate_route="ask")
     assert not v["fully_correct"] and any(i["kind"] == "asked" for i in v["issues"])
     na = dict(item, answerable=False, facts=[])

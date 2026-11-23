@@ -228,6 +228,7 @@ def test_a_query_that_disagrees_with_the_question_is_sent_back_with_the_reason(m
     out = s.run(Q)
     assert out.status == "answered" and len(out.attempts) == 2
     assert "but the question states 8 lakh" in out.attempts[0]["problem"] and "8 lakh" in s.answerer.prompts[1]
+    assert out.attempts[0]["question_check"] == out.attempts[0]["problem"] and "question_check" not in out.attempts[1]
     off = step({"action": "query", "sql": WRONG}, check_question=False)
     monkeypatch.setattr(off.gate, "check", lambda q: (["deductible"], None))
     assert off.run(Q).status == "answered"                                           # the switch turns the check off
