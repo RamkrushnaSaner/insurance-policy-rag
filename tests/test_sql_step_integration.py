@@ -194,3 +194,20 @@ def test_a_slow_query_is_cancelled_and_the_connection_kept(login_url):
     assert runner.run("SELECT count(*) FROM policy_sql.premium_table") == (["count"], [(16,)])
     assert db.reconnects == 0
     db.close()
+
+
+def test_the_question_check_reads_the_places_of_each_tier_from_the_database(login_url):
+    from policy_rag.sql_checks import QuestionCheck
+    db = sql_db()
+    qc = QuestionCheck(SchemaCard.load(db), db)
+    f = qc.tables["premium_table"]
+    assert f.places == {"Alpha City": 1, "Beta Town": 1} and f.catch_all == 2 and f.tier_text[2] == "Rest of Zland"
+    q = "What is the Zenith Care premium for a 31-year-old in Beta Town with a 10 lakh Sum Insured?"
+    wrong = "SELECT plan, age, si_1000000 FROM premium_table WHERE plan = 'Zenith Care' AND tier = 2 AND age = '31'"
+    step = SqlStep(SqlConfig(enabled=True, url_env=LOGIN_ENV), ScriptedAnswerer(
+        [{"action": "query", "sql": wrong}, {"action": "query", "sql": wrong.replace("tier = 2", "tier = 1")}]))
+    out = step.run(q)
+    assert out.status == "answered" and out.rows == [("Zenith Care", "31", premium("Zenith Care", 1, "31", 1000000))]
+    assert "names Beta Town (Tier 1), but the query reads only Tier 2" in out.attempts[0]["problem"] and out.notes == []
+    step.db.close()
+    db.close()

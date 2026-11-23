@@ -22,14 +22,16 @@ SQL = "SELECT plan, age, si_1000000 FROM premium_table WHERE plan = 'Zenith Care
 ROWS = (["plan", "age", "si_1000000"], [("Zenith Care", "30", 9100)])
 
 
-def _system(tmp_path, replies, db_answer=lambda q: ROWS, link=True, **sections):
-    """The sample policy and a SQL step over the invented card; its premium table is linked to a sample chunk."""
+def _system(tmp_path, replies, db_answer=lambda q: ROWS, link=True, check=True, **sections):
+    """The sample policy and a SQL step over the invented card; its premium table is linked to a sample chunk.
+    ``check``: the SQL step compares each query with the question (sql_checks.py)."""
     probe = RAGSystem.from_config(fake_config(tmp_path), log=lambda *_: None)
     target = next(c for c in probe.corpus.chunks if c.section_id == "10.1")
     tables = copy.deepcopy(card_tables())
     tables["premium_table"]["printed"][0]["linked_text"] = (
         [{"relation": "read_with", "label": target.label, "text": target.text}] if link else [])
-    step = SqlStep(SqlConfig(enabled=True), ScriptedAnswerer(replies), db=FakeDb(db_answer), card=SchemaCard(tables))
+    step = SqlStep(SqlConfig(enabled=True, check_question=check), ScriptedAnswerer(replies), db=FakeDb(db_answer),
+                   card=SchemaCard(tables))
     logs = []
     sections["sql"] = {"enabled": True, **sections.get("sql", {})}
     rag = RAGSystem.from_config(fake_config(tmp_path, **sections), log=logs.append, sql=step)
@@ -127,6 +129,7 @@ def test_the_evaluation_record_and_scoring(tmp_path):
             "facts": [["9,100"]]}
     rec = build_record(item, st, rag.context, rag.pipeline.gate)
     assert rec["sql"]["status"] == "answered" and rec["sql"]["rows"] == 1 and rec["context"].startswith("[Policy tables")
+    assert rec["sql"]["notes"] == [] and rec["sql"]["question_check"] == []        # the question check's record
     v = score_answer(item, "How old is the person?", "", "", gate_route="ask")
     assert not v["fully_correct"] and any(i["kind"] == "asked" for i in v["issues"])
     na = dict(item, answerable=False, facts=[])
@@ -140,7 +143,9 @@ def test_config_checks(tmp_path):
 
 def test_a_full_evaluation_run_with_the_sql_step(tmp_path):
     from policy_rag.evaluation.runner import Evaluation
-    rag, _, _ = _system(tmp_path, [{"action": "query", "sql": SQL}] * 50)
+    # one scripted query for every question: the question check is off here (it would refuse the query for the
+    # questions it does not fit), so this tests the evaluation run itself
+    rag, _, _ = _system(tmp_path, [{"action": "query", "sql": SQL}] * 50, check=False)
     run = Evaluation(rag.cfg, "sqlrun", mode="full", splits=["dev", "test"], system=rag).run()
     recs = run["records"]
     assert recs and all("sql" in r and "sql_check" in r for r in recs)
