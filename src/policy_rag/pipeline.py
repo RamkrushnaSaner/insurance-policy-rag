@@ -367,12 +367,20 @@ class RAGPipeline:
                 out["sql_check"] = check
                 if check["fallback"]:
                     out["answer"] = check["answer"]
+                out["answer"] = self.with_table_notes(out["answer"], sql)
             return out
         except Exception as e:
             traceback.print_exc()
             return {"answer": NO_ANSWER_TEXT, "error": f"answer: {type(e).__name__}: {e}", "route": "answer"}
         finally:
             free_gpu()
+
+    @staticmethod
+    def with_table_notes(answer: str, sql) -> str:
+        """The answer with the SQL step's notes (assumptions code could not check, written by code) as closing lines,
+        so an assumed tier is shown whatever the answer model wrote."""
+        notes = [n for n in (getattr(sql, "notes", None) or []) if n not in (answer or "")]
+        return (answer or "").rstrip() + "".join("\n\n" + n for n in notes) if notes else answer
 
     def _no_answer_node(self, state: RAGState):
         return {"answer": NO_ANSWER_TEXT, "route": "no_answer"}

@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from .sql_checks import NotInTables
 from .prompts import build_sql_prompt
 
 SCHEMA = "policy_sql"
@@ -421,6 +422,9 @@ class CheckedSql:
     # output name -> its two operands when the query itself subtracts (``a - b AS name``): (column or None, the
     # operand's WHERE condition or its SQL text) for each side
     subtractions: Dict[str, Tuple[Tuple[Optional[str], str], Tuple[Optional[str], str]]] = field(default_factory=dict)
+    read: List[str] = field(default_factory=list)           # every column the query reads, anywhere (subqueries too)
+    # column -> the literals it is compared with anywhere in the query: ("=", value) for = and IN, ("like", pattern)
+    filters: Dict[str, List[Tuple[str, object]]] = field(default_factory=dict)
 
 
 class SqlValidator:
@@ -511,9 +515,25 @@ class SqlValidator:
                     expr = expr.this
                 if isinstance(expr, exp.Sub) and proj.alias_or_name:
                     subtractions[proj.alias_or_name] = (_operand(expr.this), _operand(expr.expression))
+        read = sorted({c.name for c in tree.find_all(exp.Column)})
+        filters: Dict[str, List[Tuple[str, object]]] = {}
+        for cmp in tree.find_all(exp.EQ, exp.In, exp.Like, exp.ILike):
+            col, other = cmp.this, cmp.expression
+            if not isinstance(col, exp.Column) and isinstance(other, exp.Column):
+                col, other = other, col
+            if not isinstance(col, exp.Column):
+                continue
+            if isinstance(cmp, exp.In):
+                values = [v for v in cmp.expressions if isinstance(v, exp.Literal)]
+            else:
+                values = [other] if isinstance(other, exp.Literal) else []
+            op = "like" if isinstance(cmp, (exp.Like, exp.ILike)) else "="
+            for v in values:
+                value = v.this if v.is_string else (int(v.this) if str(v.this).lstrip("-").isdigit() else v.this)
+                filters.setdefault(col.name, []).append((op, value))
         if fetch is not None:
             tree = tree.limit(fetch)
-        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys, subtractions)
+        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys, subtractions, read, filters)
 
 
 def _operand(node) -> Tuple[Optional[str], str]:
@@ -704,6 +724,7 @@ class SqlOutcome:
     clarification: str = ""                                   # status "ask": the question for the user
     reason: str = ""                                          # the model's reason (not_in_tables, text_only), or why it failed
     attempts: List[dict] = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)            # assumptions code could not check exactly (sql_checks.py)
 
     @property
     def answered(self) -> bool:
@@ -740,6 +761,7 @@ class SqlOutcome:
             lines += [f"- {d['text']}" for d in self.derived]
         for note in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n):
             lines.append(f"Footnote: {note}")
+        lines += [f"Note: {n}" for n in self.notes]                # written by code (sql_checks.py)
         return "\n".join(lines)
 
     def row_lines(self) -> List[str]:
@@ -755,6 +777,7 @@ class SqlOutcome:
         if self.derived:
             lines += ["Calculated from these values:"] + [f"- {d['text']}" for d in self.derived]
         lines += [f"Note: {n}" for n in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n)]
+        lines += [f"Note: {n}" for n in self.notes]
         where_ = "; ".join(dict.fromkeys(printed_line(p).replace("Printed table: ", "") for p in self.printed))
         return "\n".join(lines + ([f"Source: {where_}"] if where_ else []))
 
@@ -781,7 +804,7 @@ class SqlOutcome:
                 "derived": [{"kind": d["kind"], "value": plain(d["value"]), "text": d["text"]} for d in self.derived],
                 "clarification": self.clarification,
                 "reason": self.reason, "linked_text": [l.get("label") for l in self.linked_text],
-                "attempts": self.attempts, "block": self.block()}
+                "attempts": self.attempts, "notes": self.notes, "block": self.block()}
 
 
 # ---------------------------------------------------------------------------------------------------- the step
@@ -800,6 +823,10 @@ class SqlStep:
                             getattr(cfg, "gate_similarity", None))
         self.validator = SqlValidator(list(self.card.tables), cfg.max_rows, text_columns=self.card.text_columns())
         self.runner = SqlRunner(db)
+        self.question_check = None
+        if getattr(cfg, "check_question", True):
+            from .sql_checks import QuestionCheck
+            self.question_check = QuestionCheck(self.card, db)
 
     def run(self, question: str) -> SqlOutcome:
         kinds, sim = self.gate.check(question)
@@ -834,6 +861,11 @@ class SqlStep:
                     raise SqlProblem("the query ran but returned no rows. If a value in the query is not written "
                                      "exactly as listed, correct it; if the tables hold no such row, reply "
                                      "not_in_tables", no_rows=True)
+                notes = self.question_check.check(question, checked) if self.question_check is not None else []
+            except NotInTables as e:
+                att["not_in_tables"] = str(e)
+                out.status, out.reason = "not_in_tables", str(e)
+                return out
             except SqlProblem as e:
                 att["problem"] = str(e)
                 failed.append((reply, str(e)))
@@ -851,6 +883,7 @@ class SqlStep:
             out.derived += explain_differences(out.columns, out.rows, self._subtractions(checked))
             out.printed = self.card.printed(checked.tables)
             out.linked_text = self.card.linked_text(checked.tables)
+            out.notes = notes
             return out
         out.status = "no_rows" if last is not None and last.no_rows else "failed"
         out.reason = str(last) if last is not None else ""

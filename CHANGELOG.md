@@ -144,6 +144,9 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
     took a place with no meaning as "every other place". That default was code's mistake, not the model's.
   - 11 of the 33 executed lookups failed. 6 of the 14 missing-age questions replied `text_only` instead of asking.
   - Median 51.7 s a question against 44 s. A question with one reply took 43.5 s; 23 of 88 needed a second.
+    Correction (23 Nov): the 44 s came from the development run's 17 SQL-step questions. On this 100-question set,
+    `sql_v2` itself took a median of 58 s (dev half) and 56 s (held-out half) a question, so 51.7 s was not slower than
+    the step it would replace. The other three criteria were missed regardless.
   - On the development set, G09 (a plan comparison) was asked for an age: the check before asking said yes.
 
   What worked: no broken JSON (0 of 111 replies) and no column names. Lookups passed 23 of 36 (14 before), missing-age
@@ -152,6 +155,24 @@ Nothing changes unless a config asks for it; the SQL step is not yet in the pipe
   What failed: none of the 89 lookup replies used the `"<field>_value"` key. The model wrote one key per field, and 37
   times put the table's value there ("Tier 2", "<= 20 lakh", ">=90*", "1 crore" for a range) where the question's
   words were asked, so code refused it.
+
+- **The SQL step checks each query against the question** ([`sql_checks.py`](src/policy_rag/sql_checks.py),
+  `sql.check_question`, on; P2 of the roadmap). The model still writes the SQL (`sql_v2`). After the query runs, code
+  compares the query's columns, plan, age and tier with what the question states, using only the schema card.
+  - A disagreement goes back to the model with the reason.
+  - A value the tables do not print is "not in the tables", decided by code.
+  - A place the policy does not list by name keeps its rows, and a note written by code says which tier was used.
+  - The validator now records every column a query reads and every literal it compares a column with.
+
+  Replayed on every saved `sql_v2` query (the SQL set's two runs and the development run, 53 answered queries):
+  - all 45 correct ones are kept, including the 33 executed lookups;
+  - S042 (50 lakh read from the "up to 20 lakh" column) is sent back;
+  - S075 (40 lakh, which no column prints) becomes "not in the tables";
+  - T01 (one Sum Insured column chosen for a question that states none) is sent back;
+  - PR02 (Pune read as Tier 1) is not prevented: its answer now says that Tier 1 assumes the place lies in one of
+    the listed Tier 1 places.
+
+  15 new tests (14 with an invented card, 1 on Postgres).
 
 ## 3.4.1 (15 November 2026)
 

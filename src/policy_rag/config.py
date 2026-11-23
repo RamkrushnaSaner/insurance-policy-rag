@@ -202,6 +202,8 @@ class SqlConfig:
     max_new_tokens: int = 400            # answer tokens of one SQL reply; the thinking settings are unchanged
     template: str = "sql_v2"             # prompts.SQL_TEMPLATES (sql_v1: the first dev run)
     examples: int = 2                    # example rows per table in the schema card
+    # after a query runs, code compares its choices (columns, plan, age, place) with the question (sql_checks.py)
+    check_question: bool = True
     # closeness (cosine, with the configured embedder) to the tables' reference text that also passes the gate;
     # None: words only. Set by a fixed rule on the dev questions (policy-rag evaluate-sql --calibrate-gate)
     gate_similarity: Optional[float] = None

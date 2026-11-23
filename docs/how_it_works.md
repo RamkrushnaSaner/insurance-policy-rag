@@ -165,6 +165,21 @@ searched like the rest of the policy. Instead of fixed queries, the answer model
    is only a member of `rag_sql`: it can read `policy_sql` and nothing else.
 6. **Retries.** A reply that cannot be used (not JSON, refused SQL, a database error, a timeout, no rows, too many
    rows) is shown to the model with the reason, and a corrected reply asked for, up to two times.
+6b. **The question check** ([`sql_checks.py`](../src/policy_rag/sql_checks.py), `sql.check_question`, on). After the
+   query runs, code compares its choices with the question, using only the schema card (printed headings, listed
+   values, printed ages, the places of each tier). No word lists.
+   - Each value column must be picked by an amount the question writes: the heading names it (`10 lakh`) or its
+     printed condition (`<= 20 lakh`) covers it. An amount that picks a row (a deductible) must be written in the
+     question and is not used again for a column.
+   - A plan must be the one the question names; the longest name the card knows wins.
+   - An age row must be the printed row of a number the question writes (months count as years).
+   - A place the policy lists, or a tier the question states, must get its tier.
+   - With no amount, plan or age in the question, the query must not choose one.
+
+   A disagreement goes back to the model with the reason, through the retries above. A value the tables do not print
+   (an amount no column prints, a plan the table does not list) is "not in the tables", decided by code. A place the
+   policy does not list by name is the model's judgement: the rows are kept, and a note written by code says which
+   tier was used and why. The note is in the rows' passage and is added to the end of the answer.
 7. **Arithmetic in code.** The model only fetches numbers. Differences (two rows, or two amounts of one row),
    totals and amounts after a discount (an amount and a percentage from another table) are computed by code in
    Decimal from the returned rows, never by the model. A difference is always the higher amount minus the lower,
