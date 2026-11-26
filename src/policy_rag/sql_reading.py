@@ -7,9 +7,9 @@ amount taken as a Sum Insured. When those patterns misread a question, a correct
 Now the model's reply carries a ``reading``: for every value the query uses to choose rows or columns, the column,
 the value and the exact words of the question it comes from::
 
-    {"column": "plan", "value": "Optima Secure", "words": "optma secur"}
-    {"column": "age", "value": "46", "words": "46 yr old"}
-    {"column": "si_1000000", "value": 1000000, "words": "10 lac"}
+    {"column": "plan", "value": "Zenith Care", "words": "zenit car"}          (invented names)
+    {"column": "age", "value": "40", "words": "40 yr old"}
+    {"column": "si_1000000", "value": 1000000, "words": "ten lac"}
 
 Code checks only that reading, with the tables' own values (nothing written for one question):
 
@@ -119,8 +119,8 @@ def _best_runs(words: str, names: Dict[str, Sequence[str]]) -> Tuple[List[str], 
 def word_match(span: str, form: str) -> float:
     """How well the words of ``span`` and of a name's form match, word for word (0-100): each word of the name is
     paired with at most one word of the span when they are close (``WORD_FLOOR``: a typo or two), and the score is
-    the F1 of the two sides. So 'prot avalon' fits 'Port Avalon' better than 'Avalon', and 'optima secure plan' fits
-    'Optima Secure' better than 'Optima Secure Global'. A span of one word written without spaces is compared whole."""
+    the F1 of the two sides. So 'prot avalon' fits 'Port Avalon' better than 'Avalon', and 'zenith care plan' fits
+    'Zenith Care' better than 'Zenith Care Global' (invented names). One word written without spaces is compared whole."""
     fuzz = _fuzz()
     a, b = plain(span).split(), plain(form).split()
     if not a or not b:

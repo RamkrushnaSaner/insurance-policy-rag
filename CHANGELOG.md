@@ -4,7 +4,7 @@
 
 - **Fix 1: a footnote reaches the answer only for the rows it is printed for** ([`sql_step.py`](src/policy_rag/sql_step.py),
   `scope_footnotes`). Before, the SQL step's block printed every footnote of every printed table it read, so a
-  premium for age 41 came with "*Only for Renewal Purposes", which the policy prints only for the ages marked *
+  premium for any age came with "*Only for Renewal Purposes", which the policy prints only for the ages marked *
   (66 and above); the answer model repeated it as a condition of the premium (5 core-80 answers). Now a footnote
   that starts with a mark applies only when a row read carries the mark: in a returned value or a value the query
   chose rows by. When the query neither returns nor chooses rows by the marked column, the footnote is kept with
