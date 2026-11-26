@@ -7,8 +7,9 @@ import pytest
 
 from policy_rag.config import ConfigError, SqlConfig, load_config
 from policy_rag.prompts import build_sql_prompt
-from policy_rag.sql_step import (SchemaCard, SqlGate, SqlOutcome, SqlProblem, SqlStep, compact_values, gate, group_inr,
-                                 indian_amount, parse_action, table_profiles, with_lakh)
+from policy_rag.sql_step import (SchemaCard, SqlGate, SqlOutcome, SqlProblem, SqlStep, carries_mark, compact_values,
+                                 footnote_line, footnote_mark, gate, group_inr, indian_amount, parse_action,
+                                 scope_footnotes, table_profiles, with_lakh)
 
 sqlglot = pytest.importorskip("sqlglot")
 from policy_rag.sql_step import SqlValidator  # noqa: E402
@@ -264,7 +265,8 @@ def test_answered_rows_become_a_block_with_printed_headings():
     assert "Printed table: Zenith Care Premium - Tier 1 (Annexure Z, pages 40-41)" in block
     assert "- plan: Zenith Care; Age: 30; Sum Insured 1,000,000 (premium in Rs.): 9,100; page: 40" in block
     assert "- plan: Zenith Care Plus; Age: 30; Sum Insured 1,000,000 (premium in Rs.): 10,400; page: 40" in block
-    assert "Footnote: *Renewal only (invented)" in block and f"Query: {out.sql}" in block
+    assert "Renewal only" not in block and f"Query: {out.sql}" in block    # age 30 carries no footnote mark
+    assert out.footnotes == []
     assert out.linked_text == [{"relation": "read_with", "label": "Section 2 - Sum Insured options",
                                 "text": "Sum Insured options are 5 and 10 lakh."}]
     # the figure check: values of the rows (and the question) pass, others are reported
@@ -272,6 +274,45 @@ def test_answered_rows_become_a_block_with_printed_headings():
     assert out.verify("The premium is Rs. 9,300.") == ["Rs 9,300"]
     d = out.to_dict()
     assert d["rows"][0] == ["Zenith Care", "30", 9100, 40] and d["status"] == "answered" and d["block"] == block
+
+
+def test_a_marked_footnote_applies_only_to_the_rows_printed_with_its_mark():
+    """'*Renewal only' is about the rows printed with * ('66*', '>=90*'), not about every premium of the table."""
+    marked = step([{"action": "query", "sql": "SELECT plan, age, si_1000000 FROM premium_table WHERE age IN ('31', '66*')"}],
+                  lambda sql: (["plan", "age", "si_1000000"], [("Zenith Care", "31", 9200), ("Zenith Care", "66*", 30500)]),
+                  check_question=False)
+    out = marked.run(Q)
+    assert out.footnotes == [{"text": "*Renewal only (invented)", "mark": "*", "scope": "rows", "column": "age",
+                              "values": ["66*"]}]
+    assert "Footnote, for the rows printed with * (age '66*'): *Renewal only (invented)" in out.block()
+    assert "Note, for the rows printed with * (age '66*'): *Renewal only (invented)" in out.plain_text()
+    # chosen by a marked value the query does not return: still known
+    by_filter = step([{"action": "query", "sql": "SELECT si_1000000 FROM premium_table WHERE age = '>=90*' AND tier = 1"}],
+                     lambda sql: (["si_1000000"], [(61000,)]), check_question=False).run(Q)
+    assert by_filter.footnotes[0]["scope"] == "rows" and by_filter.footnotes[0]["values"] == [">=90*"]
+    # chosen by an unmarked value the query does not return: the footnote does not apply
+    unmarked = step([{"action": "query", "sql": "SELECT si_1000000 FROM premium_table WHERE age = '31' AND tier = 1"}],
+                    lambda sql: (["si_1000000"], [(9200,)]), check_question=False).run(Q)
+    assert unmarked.footnotes == [] and "Renewal" not in unmarked.block() and "Renewal" not in unmarked.plain_text()
+    # rows neither returned nor chosen by age: which rows were read is not known, so the scope is stated
+    lowest = step([{"action": "query", "sql": "SELECT min(si_1000000) AS lowest FROM premium_table WHERE tier = 1"}],
+                  lambda sql: (["lowest"], [(7000,)]), check_question=False).run(Q)
+    assert lowest.footnotes[0]["scope"] == "unknown"
+    assert ("Footnote, only for rows whose age is printed with * (the query does not show which rows those are): "
+            "*Renewal only (invented)") in lowest.block()
+
+
+def test_footnote_marks_and_unmarked_notes():
+    assert footnote_mark("*Only for Renewal Purposes") == "*" and footnote_mark("^Note: in India") == "^"
+    assert footnote_mark("Premiums exclude GST.") == "" and footnote_mark("(1) see page 4") == ""
+    assert carries_mark("66*", "*") and carries_mark(">=90*", "*") and not carries_mark("66", "*")
+    assert not carries_mark("*", "*") and not carries_mark(66, "*")
+    printed = [{"footnotes": ["Premiums exclude GST (invented).", "*Renewal only (invented)"]}]
+    cols = [{"name": "age", "values": ["30", "66*"]}]
+    got = scope_footnotes(printed, cols, {"age": [("=", "30")]}, ["si_1000000"], [(9100,)])
+    assert got == [{"text": "Premiums exclude GST (invented).", "mark": "", "scope": "table", "column": None,
+                    "values": []}]                                   # a note without a mark is about the whole table
+    assert footnote_line(got[0]) == "Footnote: Premiums exclude GST (invented)."
 
 
 def test_percent_and_renamed_columns():
