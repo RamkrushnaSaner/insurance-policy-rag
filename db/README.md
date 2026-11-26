@@ -8,6 +8,7 @@ pgvector`, `tables.enabled`, `sql.enabled`). The files hold the schema only: no 
 | [`migrations/001_initial_schema.sql`](migrations/001_initial_schema.sql) | `c6d3ff4b…66cc` | Schema `rag`: documents and versions, text blocks, text chunks, embedding models and vectors, tables as printed (cells, references, links to chunks), the typed tables of migration 001, and the groups `rag_reader` and `rag_writer` |
 | [`migrations/002_typed_tables.sql`](migrations/002_typed_tables.sql) | `545c9abe…6b15` | A typed table for every other printed table: the lists (with keyword indexes), claim deadlines, grievance contacts, the worked examples |
 | [`migrations/003_numeric_tables_sql.sql`](migrations/003_numeric_tables_sql.sql) | `33189305…d3e5` | v3.5: drops the typed tables of 001 and 002; the three numeric tables (premiums, check-up limits, deductible discounts) as SQL tables in their printed layout; schema `policy_sql` (views of the active version, with the reference text and the printed column headings) and the group `rag_sql`, which reads `policy_sql` and nothing else; the link `read_with` |
+| [`migrations/004_numeric_ages.sql`](migrations/004_numeric_ages.sql) | `94181d09…9d39` | v3.6: the printed age of each premium row also as numbers, `age_from` and `age_to` (`'88*'` → 88, 88; `'>=90*'` → 90, NULL), added by the view `policy_sql.premium_table` itself; no data is changed or reloaded |
 
 Each migration runs once, in one transaction, as the database owner, and must match its checksum. The project's
 Neon database is at 003 with v3.5's data since 16 November 2026; v3.4's data (at 002) is kept on a snapshot branch. The development
@@ -19,6 +20,7 @@ enough (this is what CI does):
 psql "$OWNER_URL" -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/001_initial_schema.sql
 psql "$OWNER_URL" -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/002_typed_tables.sql
 psql "$OWNER_URL" -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/003_numeric_tables_sql.sql   # v3.5
+psql "$OWNER_URL" -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/004_numeric_ages.sql         # v3.6
 ```
 
 After 003, the v3.4 table route (`tables.enabled`) has no tables left to read: a database is either at 002 (v3.4) or

@@ -168,7 +168,9 @@ def printed_line(p: dict) -> str:
 
 
 def literal(v) -> str:
-    """A value as SQL would write it: text quoted, numbers plain."""
+    """A value as SQL would write it: text quoted, numbers plain, an empty value NULL."""
+    if v is None:
+        return "NULL"
     if isinstance(v, str):
         return "'" + v.replace("'", "''") + "'"
     if isinstance(v, Decimal):

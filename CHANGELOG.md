@@ -11,6 +11,14 @@
   its scope stated. A footnote without a mark still applies to the whole table. Replayed on the core-80 run's 35
   answered queries: the renewal footnote stays for the 3 that read a marked age (66*, 70*, >=90*) and is dropped
   for the 23 that read ages up to 65. No schema change, no prompt change.
+- **Fix 2: the printed age also as numbers** ([`db/migrations/004_numeric_ages.sql`](db/migrations/004_numeric_ages.sql)).
+  The printed age is text with marks ('43', '88*', '>=90*'), so age 85 was not found ('85*') and a range of ages
+  ('60 to 64', 'after 85', 'age 95') could not be written as a comparison. The view `policy_sql.premium_table` now
+  also shows `age_from` and `age_to`, read from the printed age by the view itself ('88*' -> 88, 88; '>=90*' -> 90,
+  NULL); the printed age stays, and rows are still chosen by it. No data is changed or reloaded. The schema card
+  shows the two columns (the SQL prompt grows by about 300 characters, so cached SQL replies are not reused).
+  The question check counts a number column as an amount that picks a row (a deductible) only when it has a
+  printed heading.
 
 ## Unreleased: v3.5, numeric tables as SQL (step 4 of the v3.5 plan)
 
