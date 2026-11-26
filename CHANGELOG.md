@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased: v3.6, system fixes from the core-80 review
+
+- **Fix 1: a footnote reaches the answer only for the rows it is printed for** ([`sql_step.py`](src/policy_rag/sql_step.py),
+  `scope_footnotes`). Before, the SQL step's block printed every footnote of every printed table it read, so a
+  premium for any age came with "*Only for Renewal Purposes", which the policy prints only for the ages marked *
+  (66 and above); the answer model repeated it as a condition of the premium (5 core-80 answers). Now a footnote
+  that starts with a mark applies only when a row read carries the mark: in a returned value or a value the query
+  chose rows by. When the query neither returns nor chooses rows by the marked column, the footnote is kept with
+  its scope stated. A footnote without a mark still applies to the whole table. Replayed on the core-80 run's 35
+  answered queries: the renewal footnote stays for the 3 that read a marked age (66*, 70*, >=90*) and is dropped
+  for the 23 that read ages up to 65. No schema change, no prompt change.
+- **Fix 2: the printed age also as numbers** ([`db/migrations/004_numeric_ages.sql`](db/migrations/004_numeric_ages.sql)).
+  The printed age is text with marks ('43', '88*', '>=90*'), so age 85 was not found ('85*') and a range of ages
+  ('60 to 64', 'after 85', 'age 95') could not be written as a comparison. The view `policy_sql.premium_table` now
+  also shows `age_from` and `age_to`, read from the printed age by the view itself ('88*' -> 88, 88; '>=90*' -> 90,
+  NULL); the printed age stays, and rows are still chosen by it. No data is changed or reloaded. The schema card
+  shows the two columns (the SQL prompt grows by about 300 characters, so cached SQL replies are not reused).
+  The question check counts a number column as an amount that picks a row (a deductible) only when it has a
+  printed heading.
+- **Fix 3: the SQL step's reading, checked by code** ([`sql_reading.py`](src/policy_rag/sql_reading.py), prompt
+  `sql_v3`, `sql.reading_check`; [`configs/experiments/v36.yaml`](configs/experiments/v36.yaml)). The v3.5 question
+  check re-read the question with patterns (digits only, plan names spelled exactly, any listed place anywhere in the
+  question taken as where the person lives, every amount taken as a Sum Insured) and refused 5 correct core-80
+  queries; it also caught 6 real mistakes. Now the model's query reply carries a `reading`: for every value it
+  uses to choose rows or columns, the column, the value and the question's own words for it. Code checks that the
+  words are in the question, that they mean the value (names matched with rapidfuzz against the names the tables
+  list, word for word; numbers from digits or number words with text2num; lakh and crore as units; months as
+  years), that the query uses exactly the values read and reads nothing the question does not state, and that the
+  tables print the value. It blocks only on evidence of a disagreement; words it cannot read (a number in another
+  language) become a note the answer shows. Rehearsed on a local copy of the tables with the models' own first
+  queries from the core-80 run: the 5 refused queries pass and the 6 mistakes are still caught. Misspellings
+  generated from the tables' own plan and place names (294) are matched to their name except one ('nrc' for NCR,
+  read as an unlisted place); no other place or plain word matched a listed name. Off by default: `v35.yaml` and
+  the published results are unchanged. `rapidfuzz` and `text2num` join the `db` extra.
+
 ## Unreleased: v3.5, numeric tables as SQL (step 4 of the v3.5 plan)
 
 Nothing changes unless a config asks for it; the SQL step is not yet in the pipeline (step 6).

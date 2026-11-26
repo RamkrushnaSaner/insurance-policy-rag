@@ -158,7 +158,8 @@ def test_the_step_answers_from_the_tables(login_url):
     block = out.block()
     assert f"- plan: Zenith Care; Age (as printed; * marks the printed footnote): 31; Sum Insured 1,000,000 (premium in " \
            f"Rs.): {premium('Zenith Care', 2, '31', 1000000):,}; page: 42" in block
-    assert "Footnote: *Renewal only (invented)" in block and "Query: SELECT plan" in block
+    assert "Footnote, for the rows printed with * (age '>=90*'): *Renewal only (invented)" in block
+    assert "Query: SELECT plan" in block
     assert [l["label"] for l in out.linked_text] == ["Section 2 - Sum Insured options (invented)"]
     assert out.verify(f"Rs. {premium('Zenith Care Plus', 2, '31', 1000000):,}") == []
     step.db.close()
@@ -210,4 +211,32 @@ def test_the_question_check_reads_the_places_of_each_tier_from_the_database(logi
     assert out.status == "answered" and out.rows == [("Zenith Care", "31", premium("Zenith Care", 1, "31", 1000000))]
     assert "names Beta Town (Tier 1), but the query reads only Tier 2" in out.attempts[0]["problem"] and out.notes == []
     step.db.close()
+    db.close()
+
+
+def test_the_printed_age_also_as_numbers_for_comparisons_and_ranges(login_url):
+    """Migration 004: '66*' -> age_from 66, age_to 66; '>=90*' -> 90, NULL. The printed age stays as it is."""
+    db = sql_db()
+    card = SchemaCard.load(db)
+    names = [c["name"] for c in card.tables["premium_table"]["columns"]]
+    if "age_from" not in names:
+        pytest.skip("migration 004 is not applied")
+    assert names[-2:] == ["age_from", "age_to"] and "age" in names
+    assert "age_from (integer): First age of the printed age row, as a number" in card.text
+    assert "age_to (integer): Last age of the printed age row, as a number" in card.text
+    runner, val = SqlRunner(db), SqlValidator(list(card.tables), text_columns=card.text_columns())
+
+    def rows(sql):
+        return runner.run(val.check(sql).sql)[1]
+    base = "FROM premium_table WHERE plan = 'Zenith Care' AND tier = 2"
+    assert rows(f"SELECT age, age_from, age_to {base} ORDER BY age_from") == [
+        ("30", 30, 30), ("31", 31, 31), ("66*", 66, 66), (">=90*", 90, None)]
+    assert rows(f"SELECT age {base} AND age_from >= 60 ORDER BY age_from") == [("66*",), (">=90*",)]      # 'after 60'
+    assert rows(f"SELECT age {base} AND age_from BETWEEN 30 AND 31 ORDER BY age_from") == [("30",), ("31",)]
+    assert rows(f"SELECT age {base} AND age_from <= 95 AND (age_to >= 95 OR age_to IS NULL)") == [(">=90*",)]
+    with pytest.raises(SqlProblem, match="age is text"):
+        val.check("SELECT age FROM premium_table WHERE age >= '60'")        # the printed age is still compared exactly
+    from policy_rag.sql_checks import QuestionCheck
+    f = QuestionCheck(card, db).tables["premium_table"]
+    assert list(f.ages) == ["age"] and f.row_amounts == {}                  # the numbers are neither ages nor amounts
     db.close()

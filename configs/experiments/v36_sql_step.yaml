@@ -1,0 +1,8 @@
+# v3.6: the SQL step on its own question set, as v35_sql_step.yaml, with the reading check (prompt sql_v3,
+# sql_reading.py) and the gate closeness of v3.5 (0.678). Needs the database at migration 004 for the age columns.
+#   policy-rag evaluate-sql --config configs/experiments/v36_sql_step.yaml --testset <private set> --name sql_v36
+extends: v35_sql_step.yaml
+sql:
+  gate_similarity: 0.678
+  template: sql_v3
+  reading_check: true
