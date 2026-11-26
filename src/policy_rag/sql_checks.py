@@ -217,8 +217,8 @@ class QuestionCheck:
                     continue
                 elif c["type"] in ("text", "character varying") and vals and all(len(str(v)) <= 40 for v in vals):
                     f.choices[n] = [str(v) for v in vals]
-                elif c["type"] in ("integer", "bigint", "smallint", "numeric") and vals:
-                    f.row_amounts[n] = [int(v) for v in vals]
+                elif c["type"] in ("integer", "bigint", "smallint", "numeric") and vals and h:
+                    f.row_amounts[n] = [int(v) for v in vals if v is not None]   # a printed column (a deductible)
             if db is not None and {"tier", "tier_cities"} <= names:
                 for tier, text in db.query(f'SELECT DISTINCT tier, tier_cities FROM {_schema()}."{name}" ORDER BY 1', None):
                     f.tier_text[int(tier)] = text

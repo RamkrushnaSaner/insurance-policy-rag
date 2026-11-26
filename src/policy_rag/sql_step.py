@@ -23,7 +23,8 @@ other printed table is text chunks, searched like the rest of the policy.
    rows, so the model never has to do the arithmetic; ``explain_differences``: when the query subtracts itself, the
    size of the result and which side is larger, so no answer depends on the sign.
 8. ``SqlOutcome.block()``: the rows for the answer model's context, each value under its printed heading, with the
-   query, the calculations and the tables' printed titles, pages, introducing sentences and footnotes;
+   query, the calculations, the tables' printed titles, pages and introducing sentences, and the footnotes that apply
+   to the rows read (``scope_footnotes``: a footnote with a mark only for rows printed with that mark);
    ``linked_text``: the text chunks to read with the tables; ``verify(answer)``: figures in an answer that are in
    neither the block nor the question.
 
@@ -167,7 +168,9 @@ def printed_line(p: dict) -> str:
 
 
 def literal(v) -> str:
-    """A value as SQL would write it: text quoted, numbers plain."""
+    """A value as SQL would write it: text quoted, numbers plain, an empty value NULL."""
+    if v is None:
+        return "NULL"
     if isinstance(v, str):
         return "'" + v.replace("'", "''") + "'"
     if isinstance(v, Decimal):
@@ -233,6 +236,67 @@ def _short(v, n: int = 60):
     if isinstance(v, str) and len(v) > n:
         return v[:n - 1].rstrip() + "…"
     return v
+
+
+# ---------------------------------------------------------------------------------------------------- footnotes
+_MARK = re.compile(r"^\s*([^\w\s'\"(\[{]+)")
+
+
+def footnote_mark(text: str) -> str:
+    """The mark a printed footnote starts with ('*Only for ...' -> '*'); '' for a note about the whole table."""
+    m = _MARK.match(text or "")
+    return m.group(1) if m else ""
+
+
+def carries_mark(value, mark: str) -> bool:
+    """Whether a printed value carries a footnote's mark ('66*', '>=90*' carry '*'; '66' does not)."""
+    if not mark or not isinstance(value, str):
+        return False
+    s = value.strip()
+    return s != mark and (s.endswith(mark) or s.startswith(mark))
+
+
+def scope_footnotes(printed: Sequence[dict], card_columns: Sequence[dict],
+                    filters: Dict[str, List[Tuple[str, object]]], columns: Sequence[str], rows: Sequence[Sequence],
+                    aliases: Optional[Dict[str, str]] = None) -> List[dict]:
+    """The printed footnotes that apply to the rows a query read, as the policy prints them.
+
+    A footnote without a mark is about the whole table: it applies. A footnote that starts with a mark ('*Only for
+    Renewal Purposes') is about the values printed with that mark ('66*'): it applies only when a row read carries the
+    mark, seen in a value the query returned or a value it chose rows by. When the query neither returns nor chooses
+    rows by the column that carries the mark, which rows it read is not known: the footnote is kept, with its scope
+    stated. Each entry: {text, mark, scope: 'table' | 'rows' | 'unknown', column, values}."""
+    aliases = aliases or {}
+    returned = [aliases.get(c, c) for c in columns]
+    out = []
+    for text in dict.fromkeys(n for p in printed for n in p.get("footnotes") or [] if n):
+        mark = footnote_mark(text)
+        if not mark:
+            out.append({"text": text, "mark": "", "scope": "table", "column": None, "values": []})
+            continue
+        marked = [c["name"] for c in card_columns if any(carries_mark(v, mark) for v in c.get("values") or [])]
+        seen = [v for col, vals in filters.items() for op, v in vals if op == "=" and (col in marked or not marked)]
+        seen += [r[i] for r in rows for i, c in enumerate(returned) if i < len(r) and (c in marked or not marked)]
+        carrying = list(dict.fromkeys(str(v) for v in seen if carries_mark(v, mark)))
+        known = bool(marked) and any(c in filters or c in returned for c in marked)
+        column = marked[0] if len(marked) == 1 else None
+        if carrying:
+            out.append({"text": text, "mark": mark, "scope": "rows", "column": column, "values": carrying})
+        elif not known:
+            out.append({"text": text, "mark": mark, "scope": "unknown", "column": column, "values": []})
+    return out
+
+
+def footnote_line(f: dict, lead: str = "Footnote") -> str:
+    """How a scoped footnote is shown: for the whole table, for the rows that carry its mark, or with its scope."""
+    if f["scope"] == "table":
+        return f"{lead}: {f['text']}"
+    col = f" {f['column']}" if f.get("column") else ""
+    if f["scope"] == "rows":
+        shown = ", ".join(literal(v) for v in f["values"][:8]) + (", ..." if len(f["values"]) > 8 else "")
+        return f"{lead}, for the rows printed with {f['mark']} ({col.strip() or 'values'} {shown}): {f['text']}"
+    return (f"{lead}, only for rows whose{col or ' value'} is printed with {f['mark']} (the query does not show which "
+            f"rows those are): {f['text']}")
 
 
 # ---------------------------------------------------------------------------------------------------- 2. schema card
@@ -725,6 +789,7 @@ class SqlOutcome:
     reason: str = ""                                          # the model's reason (not_in_tables, text_only), or why it failed
     attempts: List[dict] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)            # assumptions code could not check exactly (sql_checks.py)
+    footnotes: List[dict] = field(default_factory=list)       # the printed footnotes that apply to the rows read
 
     @property
     def answered(self) -> bool:
@@ -759,8 +824,7 @@ class SqlOutcome:
         if self.derived:
             lines.append("Calculated by code from these rows (exact):")
             lines += [f"- {d['text']}" for d in self.derived]
-        for note in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n):
-            lines.append(f"Footnote: {note}")
+        lines += [footnote_line(f) for f in self.footnotes]        # only those that apply to these rows
         lines += [f"Note: {n}" for n in self.notes]                # written by code (sql_checks.py)
         return "\n".join(lines)
 
@@ -776,7 +840,7 @@ class SqlOutcome:
         lines = ["From the policy's tables (exact values as printed):"] + self.row_lines()
         if self.derived:
             lines += ["Calculated from these values:"] + [f"- {d['text']}" for d in self.derived]
-        lines += [f"Note: {n}" for n in dict.fromkeys(n for p in self.printed for n in p["footnotes"] if n)]
+        lines += [footnote_line(f, "Note") for f in self.footnotes]
         lines += [f"Note: {n}" for n in self.notes]
         where_ = "; ".join(dict.fromkeys(printed_line(p).replace("Printed table: ", "") for p in self.printed))
         return "\n".join(lines + ([f"Source: {where_}"] if where_ else []))
@@ -804,7 +868,7 @@ class SqlOutcome:
                 "derived": [{"kind": d["kind"], "value": plain(d["value"]), "text": d["text"]} for d in self.derived],
                 "clarification": self.clarification,
                 "reason": self.reason, "linked_text": [l.get("label") for l in self.linked_text],
-                "attempts": self.attempts, "notes": self.notes, "block": self.block()}
+                "attempts": self.attempts, "notes": self.notes, "footnotes": self.footnotes, "block": self.block()}
 
 
 # ---------------------------------------------------------------------------------------------------- the step
@@ -890,6 +954,9 @@ class SqlStep:
             out.printed = self.card.printed(checked.tables)
             out.linked_text = self.card.linked_text(checked.tables)
             out.notes = notes
+            card_columns = [c for t in checked.tables for c in self.card.tables.get(t, {}).get("columns", [])]
+            out.footnotes = scope_footnotes(out.printed, card_columns, checked.filters, out.columns, out.rows,
+                                            checked.aliases)
             return out
         out.status = "no_rows" if last is not None and last.no_rows else "failed"
         out.reason = str(last) if last is not None else ""
