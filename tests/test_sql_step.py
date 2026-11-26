@@ -114,7 +114,9 @@ def test_reply_parsing():
     fenced = 'Here it is:\n```json\n{"action": "query",\n "sql": "SELECT plan\n  FROM premium_table"}\n```'
     assert parse_action(fenced)["sql"] == "SELECT plan\n  FROM premium_table"      # newlines inside the string
     assert parse_action('<think>{"action": "text_only"}</think>{"action": "ask", "question": "Your age?"}') == {
-        "action": "ask", "sql": "", "question": "Your age?", "reason": ""}
+        "action": "ask", "sql": "", "question": "Your age?", "reason": "", "reading": None}
+    reading = [{"column": "age", "value": "31", "words": "31-year-old"}]
+    assert parse_action('{"action": "query", "reading": ' + json.dumps(reading) + ', "sql": "SELECT 1"}')["reading"] == reading
     assert parse_action('{"note": 1} {"action": "NOT_IN_TABLES", "reason": "no 7 lakh column"}')["action"] == "not_in_tables"
     for bad, msg in [("SELECT 1", "not one JSON object"), ('{"action": "guess"}', "unknown action"),
                      ('{"action": "query"}', "needs the SQL"), ('{"action": "ask"}', "needs the question")]:

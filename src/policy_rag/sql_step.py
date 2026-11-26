@@ -455,7 +455,8 @@ def parse_action(reply: str) -> dict:
     action = str(obj.get("action") or "").strip().lower()
     if action not in ACTIONS:
         raise SqlProblem(f"unknown action {action!r}: use one of {', '.join(ACTIONS)}")
-    out = {"action": action, "sql": "", "question": "", "reason": str(obj.get("reason") or "").strip()}
+    out = {"action": action, "sql": "", "question": "", "reason": str(obj.get("reason") or "").strip(),
+           "reading": obj.get("reading")}
     if action == "query":
         out["sql"] = str(obj.get("sql") or "").strip()
         if not out["sql"]:
@@ -489,6 +490,8 @@ class CheckedSql:
     read: List[str] = field(default_factory=list)           # every column the query reads, anywhere (subqueries too)
     # column -> the literals it is compared with anywhere in the query: ("=", value) for = and IN, ("like", pattern)
     filters: Dict[str, List[Tuple[str, object]]] = field(default_factory=dict)
+    # column -> the numbers it is compared with by <, <=, >, >= or BETWEEN anywhere in the query: (op, number)
+    bounds: Dict[str, List[Tuple[str, object]]] = field(default_factory=dict)
 
 
 class SqlValidator:
@@ -595,9 +598,30 @@ class SqlValidator:
             for v in values:
                 value = v.this if v.is_string else (int(v.this) if str(v.this).lstrip("-").isdigit() else v.this)
                 filters.setdefault(col.name, []).append((op, value))
+        bounds: Dict[str, List[Tuple[str, object]]] = {}
+        flip = {">": "<", ">=": "<=", "<": ">", "<=": ">="}
+        for cmp in tree.find_all(exp.GT, exp.GTE, exp.LT, exp.LTE):
+            op = {exp.GT: ">", exp.GTE: ">=", exp.LT: "<", exp.LTE: "<="}[type(cmp)]
+            col, other = cmp.this, cmp.expression
+            if not isinstance(col, exp.Column) and isinstance(other, exp.Column):
+                col, other, op = other, col, flip[op]
+            if isinstance(col, exp.Column) and isinstance(other, exp.Literal) and not other.is_string:
+                bounds.setdefault(col.name, []).append((op, _number(other.this)))
+        for b in tree.find_all(exp.Between):
+            if isinstance(b.this, exp.Column):
+                for side, op in (("low", ">="), ("high", "<=")):
+                    lit = b.args.get(side)
+                    if isinstance(lit, exp.Literal) and not lit.is_string:
+                        bounds.setdefault(b.this.name, []).append((op, _number(lit.this)))
         if fetch is not None:
             tree = tree.limit(fetch)
-        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys, subtractions, read, filters)
+        return CheckedSql(tree.sql(dialect="postgres"), sorted(used), fetch, aliases, keys, subtractions, read, filters,
+                          bounds)
+
+
+def _number(text):
+    t = str(text)
+    return int(t) if t.lstrip("-").isdigit() else Decimal(t)
 
 
 def _operand(node) -> Tuple[Optional[str], str]:
@@ -887,10 +911,13 @@ class SqlStep:
                             getattr(cfg, "gate_similarity", None))
         self.validator = SqlValidator(list(self.card.tables), cfg.max_rows, text_columns=self.card.text_columns())
         self.runner = SqlRunner(db)
-        self.question_check = None
-        if getattr(cfg, "check_question", True):
+        self.question_check = self.reading_check = None
+        if getattr(cfg, "reading_check", False):
+            from .sql_reading import ReadingCheck
+            self.reading_check = ReadingCheck(self.card, db)        # v3.6: the model's reading, verified by code
+        elif getattr(cfg, "check_question", True):
             from .sql_checks import QuestionCheck
-            self.question_check = QuestionCheck(self.card, db)
+            self.question_check = QuestionCheck(self.card, db)      # v3.5: the question re-read by patterns
 
     def run(self, question: str) -> SqlOutcome:
         kinds, sim = self.gate.check(question)
@@ -926,7 +953,16 @@ class SqlStep:
                                      "exactly as listed, correct it; if the tables hold no such row, reply "
                                      "not_in_tables", no_rows=True)
                 notes = []
-                if self.question_check is not None:
+                if self.reading_check is not None:
+                    from .sql_reading import parse_reading
+                    reading = parse_reading(action.get("reading"))
+                    att["reading"] = reading
+                    try:
+                        notes = self.reading_check.check_reading(question, checked, reading)
+                    except (SqlProblem, NotInTables) as e:
+                        att["question_check"] = str(e)                     # recorded: what the check refused
+                        raise
+                elif self.question_check is not None:
                     try:
                         notes = self.question_check.check(question, checked)
                     except (SqlProblem, NotInTables) as e:

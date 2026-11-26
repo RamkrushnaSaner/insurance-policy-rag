@@ -204,6 +204,9 @@ class SqlConfig:
     examples: int = 2                    # example rows per table in the schema card
     # after a query runs, code compares its choices (columns, plan, age, place) with the question (sql_checks.py)
     check_question: bool = True
+    # v3.6 (needs template sql_v3): the reply's "reading" (each value used, with the question's words it comes
+    # from) is verified by code instead (sql_reading.py); check_question is then not used
+    reading_check: bool = False
     # closeness (cosine, with the configured embedder) to the tables' reference text that also passes the gate;
     # None: words only. Set by a fixed rule on the dev questions (policy-rag evaluate-sql --calibrate-gate)
     gate_similarity: Optional[float] = None

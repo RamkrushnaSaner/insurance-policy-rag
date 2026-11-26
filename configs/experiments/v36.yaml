@@ -1,0 +1,12 @@
+# v3.6: v3.5 with the system fixes of the core-80 review (CHANGELOG, "v3.6"):
+#   fix 1  a printed footnote reaches the answer only for the rows it is printed for (code; on in every config);
+#   fix 2  the printed age also as numbers, age_from and age_to (migration 004 on the database);
+#   fix 3  the SQL step's reading: the model states the question's words for every value it uses, and code checks
+#          them (prompt sql_v3, sql_reading.py) instead of re-reading the question with patterns.
+# Needs what v35.yaml needs, with the database at migration 004 (fix 3 also runs at 003, without the age columns),
+# and pip install -e ".[models,db]" (rapidfuzz and text2num join the db extra).
+#   policy-rag evaluate --config configs/experiments/v36.yaml --name v36 --splits dev test
+extends: v35.yaml
+sql:
+  template: sql_v3
+  reading_check: true
