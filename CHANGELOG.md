@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased: v3.6, system fixes from the core-80 review
+
+- **Fix 1: a footnote reaches the answer only for the rows it is printed for** ([`sql_step.py`](src/policy_rag/sql_step.py),
+  `scope_footnotes`). Before, the SQL step's block printed every footnote of every printed table it read, so a
+  premium for age 41 came with "*Only for Renewal Purposes", which the policy prints only for the ages marked *
+  (66 and above); the answer model repeated it as a condition of the premium (5 core-80 answers). Now a footnote
+  that starts with a mark applies only when a row read carries the mark: in a returned value or a value the query
+  chose rows by. When the query neither returns nor chooses rows by the marked column, the footnote is kept with
+  its scope stated. A footnote without a mark still applies to the whole table. Replayed on the core-80 run's 35
+  answered queries: the renewal footnote stays for the 3 that read a marked age (66*, 70*, >=90*) and is dropped
+  for the 23 that read ages up to 65. No schema change, no prompt change.
+
 ## Unreleased: v3.5, numeric tables as SQL (step 4 of the v3.5 plan)
 
 Nothing changes unless a config asks for it; the SQL step is not yet in the pipeline (step 6).

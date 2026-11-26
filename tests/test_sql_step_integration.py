@@ -158,7 +158,8 @@ def test_the_step_answers_from_the_tables(login_url):
     block = out.block()
     assert f"- plan: Zenith Care; Age (as printed; * marks the printed footnote): 31; Sum Insured 1,000,000 (premium in " \
            f"Rs.): {premium('Zenith Care', 2, '31', 1000000):,}; page: 42" in block
-    assert "Footnote: *Renewal only (invented)" in block and "Query: SELECT plan" in block
+    assert "Footnote, for the rows printed with * (age '>=90*'): *Renewal only (invented)" in block
+    assert "Query: SELECT plan" in block
     assert [l["label"] for l in out.linked_text] == ["Section 2 - Sum Insured options (invented)"]
     assert out.verify(f"Rs. {premium('Zenith Care Plus', 2, '31', 1000000):,}") == []
     step.db.close()
